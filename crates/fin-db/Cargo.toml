@@ -1,0 +1,17 @@
+[package]
+name = "fin-db"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fin-core = { path = "../fin-core" }
+rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+chrono.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile = "3"
