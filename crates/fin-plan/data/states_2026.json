@@ -1,0 +1,926 @@
+{
+ "year": 2026,
+ "source": "State revenue departments; flagged states are approximate. Verify before relying on exact figures.",
+ "states": {
+  "AK": {
+   "name": "Alaska",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "AL": {
+   "name": "Alabama",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.05
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "AR": {
+   "name": "Arkansas",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.039
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "AZ": {
+   "name": "Arizona",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.025
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "CA": {
+   "name": "California",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.01
+    ],
+    [
+     1075600,
+     0.02
+    ],
+    [
+     2549900,
+     0.04
+    ],
+    [
+     4024500,
+     0.06
+    ],
+    [
+     5586600,
+     0.08
+    ],
+    [
+     7060600,
+     0.09300000000000001
+    ],
+    [
+     36065900,
+     0.10300000000000001
+    ],
+    [
+     43278700,
+     0.113
+    ],
+    [
+     72131400,
+     0.12300000000000001
+    ],
+    [
+     100000000,
+     0.133
+    ]
+   ],
+   "std_single": 554000,
+   "std_joint": 1108000,
+   "joint_multiplier": 2.0,
+   "approximate": false,
+   "notes": "Includes 1% mental health surcharge over $1M."
+  },
+  "CO": {
+   "name": "Colorado",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.044000000000000004
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "CT": {
+   "name": "Connecticut",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.02
+    ],
+    [
+     1000000,
+     0.045
+    ],
+    [
+     5000000,
+     0.055
+    ],
+    [
+     10000000,
+     0.06
+    ],
+    [
+     20000000,
+     0.065
+    ],
+    [
+     25000000,
+     0.069
+    ],
+    [
+     50000000,
+     0.0699
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 2.0,
+   "approximate": true,
+   "notes": ""
+  },
+  "DC": {
+   "name": "District of Columbia",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.07
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "DE": {
+   "name": "Delaware",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.055
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "FL": {
+   "name": "Florida",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "GA": {
+   "name": "Georgia",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.0519
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "HI": {
+   "name": "Hawaii",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.075
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "IA": {
+   "name": "Iowa",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.038
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "ID": {
+   "name": "Idaho",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.053
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "IL": {
+   "name": "Illinois",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.0495
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "IN": {
+   "name": "Indiana",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.029500000000000002
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "KS": {
+   "name": "Kansas",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.052000000000000005
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "KY": {
+   "name": "Kentucky",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.035
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "LA": {
+   "name": "Louisiana",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.03
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "MA": {
+   "name": "Massachusetts",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.05
+    ],
+    [
+     100000000,
+     0.09
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "5% plus 4% surtax over $1M; personal exemption not modeled."
+  },
+  "MD": {
+   "name": "Maryland",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.02
+    ],
+    [
+     100000,
+     0.03
+    ],
+    [
+     200000,
+     0.04
+    ],
+    [
+     300000,
+     0.0475
+    ],
+    [
+     10000000,
+     0.05
+    ],
+    [
+     12500000,
+     0.0525
+    ],
+    [
+     15000000,
+     0.055
+    ],
+    [
+     25000000,
+     0.0575
+    ]
+   ],
+   "std_single": 335000,
+   "std_joint": 670000,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "State only; county tax not included."
+  },
+  "ME": {
+   "name": "Maine",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.065
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "MI": {
+   "name": "Michigan",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.0425
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "MN": {
+   "name": "Minnesota",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.0535
+    ],
+    [
+     3257000,
+     0.068
+    ],
+    [
+     10699000,
+     0.0785
+    ],
+    [
+     19863000,
+     0.09849999999999999
+    ]
+   ],
+   "std_single": 1495000,
+   "std_joint": 2990000,
+   "joint_multiplier": 1.4,
+   "approximate": true,
+   "notes": ""
+  },
+  "MO": {
+   "name": "Missouri",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.045
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "MS": {
+   "name": "Mississippi",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.04
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "MT": {
+   "name": "Montana",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.059000000000000004
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "NC": {
+   "name": "North Carolina",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.039900000000000005
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "ND": {
+   "name": "North Dakota",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.0195
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "NE": {
+   "name": "Nebraska",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.0455
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "NH": {
+   "name": "New Hampshire",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "NJ": {
+   "name": "New Jersey",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.013999999999999999
+    ],
+    [
+     2000000,
+     0.0175
+    ],
+    [
+     3500000,
+     0.035
+    ],
+    [
+     4000000,
+     0.05525
+    ],
+    [
+     7500000,
+     0.0637
+    ],
+    [
+     50000000,
+     0.0897
+    ],
+    [
+     100000000,
+     0.1075
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Joint brackets approximated; no standard deduction."
+  },
+  "NM": {
+   "name": "New Mexico",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.049
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "NV": {
+   "name": "Nevada",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "NY": {
+   "name": "New York",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.04
+    ],
+    [
+     850000,
+     0.045
+    ],
+    [
+     1170000,
+     0.0525
+    ],
+    [
+     1390000,
+     0.055
+    ],
+    [
+     8065000,
+     0.06
+    ],
+    [
+     21540000,
+     0.06849999999999999
+    ],
+    [
+     107755000,
+     0.0965
+    ],
+    [
+     500000000,
+     0.10300000000000001
+    ],
+    [
+     2500000000,
+     0.109
+    ]
+   ],
+   "std_single": 800000,
+   "std_joint": 1605000,
+   "joint_multiplier": 2.0,
+   "approximate": true,
+   "notes": "Joint brackets approximated by doubling single."
+  },
+  "OH": {
+   "name": "Ohio",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.0
+    ],
+    [
+     2605000,
+     0.0275
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "OK": {
+   "name": "Oklahoma",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.045
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "OR": {
+   "name": "Oregon",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.0475
+    ],
+    [
+     440000,
+     0.0675
+    ],
+    [
+     1100000,
+     0.0875
+    ],
+    [
+     12500000,
+     0.099
+    ]
+   ],
+   "std_single": 274500,
+   "std_joint": 549500,
+   "joint_multiplier": 2.0,
+   "approximate": true,
+   "notes": ""
+  },
+  "PA": {
+   "name": "Pennsylvania",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.030699999999999998
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "RI": {
+   "name": "Rhode Island",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.0475
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "SC": {
+   "name": "South Carolina",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.06
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "SD": {
+   "name": "South Dakota",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "TN": {
+   "name": "Tennessee",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "TX": {
+   "name": "Texas",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "UT": {
+   "name": "Utah",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.044500000000000005
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "VA": {
+   "name": "Virginia",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.02
+    ],
+    [
+     300000,
+     0.03
+    ],
+    [
+     500000,
+     0.05
+    ],
+    [
+     1700000,
+     0.0575
+    ]
+   ],
+   "std_single": 875000,
+   "std_joint": 1750000,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": ""
+  },
+  "VT": {
+   "name": "Vermont",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.065
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "WA": {
+   "name": "Washington",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  },
+  "WI": {
+   "name": "Wisconsin",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.035
+    ],
+    [
+     1432000,
+     0.044000000000000004
+    ],
+    [
+     2864000,
+     0.053
+    ],
+    [
+     31531000,
+     0.0765
+    ]
+   ],
+   "std_single": 1300000,
+   "std_joint": 2400000,
+   "joint_multiplier": 1.33,
+   "approximate": true,
+   "notes": ""
+  },
+  "WV": {
+   "name": "West Virginia",
+   "kind": "flat",
+   "brackets": [
+    [
+     0,
+     0.045
+    ]
+   ],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": true,
+   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+  },
+  "WY": {
+   "name": "Wyoming",
+   "kind": "none",
+   "brackets": [],
+   "std_single": 0,
+   "std_joint": 0,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "No tax on wages or retirement income."
+  }
+ }
+}
