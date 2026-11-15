@@ -44,7 +44,7 @@ jobs:
         with: { workspaces: "apps/desktop/src-tauri -> target" }
       - run: npm ci
         working-directory: apps/desktop
-      - name: Build (PRs: build only)
+      - name: Build (pull requests only build)
         if: github.event_name != 'push'
         working-directory: apps/desktop
         run: npm run tauri -- build ${{ matrix.args }}
