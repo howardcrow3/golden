@@ -47,3 +47,36 @@ describe("api", () => {
     await expect(estimateTax({ wagesCents: 1, filing: "single", state: "TX" })).rejects.toThrow(/desktop app/);
   });
 });
+
+import { linePoints, verdict } from "./chart";
+import { quickPlan } from "./api";
+
+describe("chart", () => {
+  it("scales a series into the box", () => {
+    const pts = linePoints([0, 50, 100], 100, 50, 0).split(" ");
+    expect(pts).toEqual(["0.0,50.0", "50.0,25.0", "100.0,0.0"]);
+  });
+  it("handles empty and single-point series", () => {
+    expect(linePoints([], 10, 10)).toBe("");
+    expect(linePoints([5], 100, 50, 0).split(" ")).toHaveLength(1);
+  });
+  it("reads success rates in plain words", () => {
+    expect(verdict(0.95).tone).toBe("good");
+    expect(verdict(0.7).tone).toBe("ok");
+    expect(verdict(0.2).tone).toBe("bad");
+    expect(verdict(0.85).label).toBe("On track");
+  });
+});
+
+describe("quickPlan api", () => {
+  it("calls the quick_plan command", async () => {
+    const invoke = vi.fn().mockResolvedValue({ successRate: 0.9 });
+    const req = { picks: {} } as never;
+    const out = await quickPlan(req, invoke);
+    expect(invoke).toHaveBeenCalledWith("quick_plan", { req });
+    expect(out.successRate).toBe(0.9);
+  });
+  it("explains itself outside the desktop app", async () => {
+    await expect(quickPlan({} as never)).rejects.toThrow(/desktop app/);
+  });
+});
