@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan with chat and a what-if</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;display=swap">
+<style>
+body{margin:0}
+:root{--paper:#f5f0e7;--surface:#f0e8d8;--line:#d9d2c5;--ink:#1c1c1c;--body:#3a3530;--border-control:#8a8278;--accent:#d4a853;--on-ink:#f5f0e7;--on-accent:#1c1c1c;--danger:#8f3b2a;--s1:#f0e8d8;--s2:#d9d2c5;--s3:#c8b99a;--s4:#a89c85;--s5:#6e675d;--s6:#3a3530}
+@media (prefers-color-scheme: dark){:root{--paper:#1c1c1c;--surface:#282828;--line:#2e2e2e;--ink:#f5f0e7;--body:#c8b99a;--on-ink:#1c1c1c;--danger:#e58e80;--s1:#2a2825;--s2:#34312d;--s3:#46413a;--s4:#6b6459;--s5:#a89c85;--s6:#c8b99a}}
+a{color:var(--ink);text-decoration-color:var(--accent)}a:hover{color:var(--ink)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: var(--paper); color: var(--body); font-family: Inter, system-ui, sans-serif; font-weight: 300; font-variant-numeric: tabular-nums">
+
+<nav aria-label="Main" style="flex: 1 1 232px; max-width: 232px; min-width: 200px; box-sizing: border-box; background: var(--surface); border-right: 1px solid var(--line); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px">
+<div style="font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); padding: 0 8px">Golden</div>
+<div style="display: flex; gap: 16px; padding: 0 8px; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">
+<a href="#" style="text-decoration: none; color: var(--body); padding-bottom: 4px">Howard</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding-bottom: 4px">Spouse</a>
+<a href="#" aria-current="true" style="text-decoration: none; color: var(--ink); padding-bottom: 4px; border-bottom: 2px solid var(--accent)">Both</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; font-size: 15px; font-weight: 400">
+<a href="Main.dc.html" style="text-decoration: none; color: var(--body); padding: 10px 12px">Overview</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Cash flow</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Balance sheet</a>
+<a href="#" aria-current="page" style="text-decoration: none; background: var(--ink); color: var(--on-ink); padding: 10px 12px">Plan</a>
+<a href="Retirement.dc.html" style="text-decoration: none; color: var(--body); padding: 10px 12px">Retirement</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Investments</a>
+</div>
+<div style="border-top: 1px solid var(--line)"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; font-size: 15px; font-weight: 400">
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Transactions</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Documents</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Approvals</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Activity</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Settings</a>
+</div>
+<a href="#" style="margin-top: auto; text-decoration: none; color: var(--body); font-size: 12px; line-height: 1.6; padding: 0 8px; display: flex; gap: 8px; align-items: flex-start"><span aria-hidden="true" style="flex: none; margin-top: 6px; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--ink); box-sizing: border-box"></span><span><span style="color: var(--ink); font-weight: 500">Private.</span> Nothing leaves this computer</span></a>
+</nav>
+
+<main style="flex: 999 1 480px; min-width: 0; box-sizing: border-box; padding: 32px 40px 64px; display: flex; flex-direction: column; gap: 32px">
+<header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 24px">
+<div>
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400; display: flex; gap: 8px; align-items: center">Base plan<span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span><span style="color: var(--ink)">What-if open</span></div>
+<h1 style="margin: 8px 0 0; font-size: 44px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">Plan</h1>
+</div>
+<button type="button" style="all: unset; cursor: pointer; padding: 13px 24px; border: 1px solid var(--ink); color: var(--ink); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500">Compare scenarios</button>
+</header>
+
+<section aria-label="Plan against what-if" style="display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 26px; line-height: 1.25; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">The house sale makes up for retiring early, but the money runs lower after 80</h2>
+<div style="font-size: 12px">Household net worth, median path, today's dollars, by Howard's age</div>
+<svg viewBox="0 0 1000 270" role="img" aria-label="Median net worth for the plan and for the what-if, age 55 to 95" style="width: 100%; height: auto; display: block">
+<g stroke="var(--line)" stroke-width="1">
+<line x1="64" x2="980" y1="190.4" y2="190.4"></line><line x1="64" x2="980" y1="148.8" y2="148.8"></line><line x1="64" x2="980" y1="107.2" y2="107.2"></line><line x1="64" x2="980" y1="65.6" y2="65.6"></line>
+</g>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="end">
+<text x="54" y="236">$0</text><text x="54" y="194">$1M</text><text x="54" y="153">$2M</text><text x="54" y="111">$3M</text><text x="54" y="70">$4M</text>
+</g>
+<path d="M64.0 173.2 L86.9 167.3 L109.8 161.2 L132.7 154.7 L155.6 147.9 L178.5 140.8 L201.4 133.4 L224.3 131.9 L247.2 130.4 L270.1 131.1 L293.0 131.9 L315.9 132.7 L338.8 133.5 L361.7 134.3 L384.6 135.2 L407.5 136.1 L430.4 137.0 L453.3 138.0 L476.2 139.1 L499.1 140.1 L522.0 141.2 L544.9 142.4 L567.8 143.6 L590.7 144.8 L613.6 146.1 L636.5 147.5 L659.4 148.9 L682.3 150.3 L705.2 151.9 L728.1 153.4 L751.0 155.1 L773.9 156.8 L796.8 158.6 L819.7 160.4 L842.6 162.3 L865.5 164.3 L888.4 166.4 L911.3 168.6 L934.2 170.8 L957.1 173.1 L980.0 175.6" fill="none" stroke="var(--ink)" stroke-width="2"></path>
+<path d="M64.0 173.2 L86.9 167.3 L109.8 161.2 L132.7 154.7 L155.6 147.9 L178.5 148.7 L201.4 149.6 L224.3 150.4 L247.2 151.3 L270.1 127.6 L293.0 128.8 L315.9 130.0 L338.8 131.2 L361.7 132.5 L384.6 133.9 L407.5 135.3 L430.4 136.7 L453.3 138.2 L476.2 139.8 L499.1 141.5 L522.0 143.2 L544.9 144.9 L567.8 146.8 L590.7 148.7 L613.6 150.7 L636.5 152.8 L659.4 154.9 L682.3 157.2 L705.2 159.5 L728.1 161.9 L751.0 164.4 L773.9 167.1 L796.8 169.8 L819.7 172.6 L842.6 175.6 L865.5 178.6 L888.4 181.8 L911.3 185.1 L934.2 188.6 L957.1 192.2 L980.0 195.9" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 4"></path>
+<line x1="178.5" x2="178.5" y1="40" y2="232" stroke="var(--accent)" stroke-width="1.5"></line>
+<line x1="258" x2="258" y1="40" y2="232" stroke="var(--accent)" stroke-width="1.5"></line>
+<text x="172" y="52" font-size="12" font-family="Inter, sans-serif" font-weight="500" fill="var(--ink)" text-anchor="end">Retire at 60</text>
+<text x="264" y="52" font-size="12" font-family="Inter, sans-serif" font-weight="500" fill="var(--ink)">House sold</text>
+<text x="984" y="170" font-size="12" font-family="Inter, sans-serif" fill="var(--ink)" text-anchor="end">Plan</text>
+<text x="984" y="214" font-size="12" font-family="Inter, sans-serif" fill="var(--ink)" text-anchor="end">What-if</text>
+<line x1="64" x2="980" y1="232" y2="232" stroke="var(--border-control)" stroke-width="1"></line>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="middle">
+<text x="68" y="254" text-anchor="start">55</text><text x="178.5" y="254">60</text><text x="293" y="254">65</text><text x="407.5" y="254">70</text><text x="522" y="254">75</text><text x="636.5" y="254">80</text><text x="751" y="254">85</text><text x="865.5" y="254">90</text><text x="976" y="254" text-anchor="end">95</text>
+</g>
+</svg>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; font-size: 12px; align-items: center">
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 24px; border-top: 2px solid var(--ink)"></span>Base plan</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 24px; border-top: 2px dashed var(--ink)"></span>What-if</span>
+</div>
+</section>
+
+<section aria-label="Events" style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Planned events</h2>
+<table style="width: 100%; border-collapse: collapse; font-size: 15px">
+<thead><tr style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; text-align: left"><th style="font-weight: 400; padding: 0 0 12px">Event</th><th style="font-weight: 400; padding: 0 0 12px">When</th><th style="font-weight: 400; padding: 0 0 12px; text-align: right">Amount</th></tr></thead>
+<tbody>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink)">New car</td><td style="padding: 12px 0">Mar 2028</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">$42,000</td></tr>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink)">Mortgage paid off</td><td style="padding: 12px 0">Aug 2039</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">&#8722;$2,140 a month</td></tr>
+<tr style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink); display: flex; gap: 8px; align-items: center">House sale<span style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400; color: var(--body)">What-if</span></td><td style="padding: 12px 0">Jun 2035</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">$900,000</td></tr>
+</tbody>
+</table>
+</section>
+<p style="margin: 0; font-size: 12px">Sample figures for layout only.</p>
+</main>
+
+<aside aria-label="Assistant" style="flex: 1 1 360px; max-width: 420px; box-sizing: border-box; background: var(--surface); border-left: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 16px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Assistant</h2>
+<span style="font-size: 12px">Plan, Base plan, Both</span>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">You</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink); text-align: right; max-width: 30em">What if I retire at 60 and we sell the house in 2035?</p>
+</div>
+
+<div style="font-size: 12px; line-height: 1.8">Read Base plan &#183; Read home value and mortgage &#183; Ran 2,000 market paths</div>
+
+<div style="background: var(--paper); border: 1px solid var(--line); border-top: 2px solid var(--accent); padding: 20px; display: flex; flex-direction: column; gap: 16px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400; color: var(--ink)">What-if</div>
+<ul style="list-style: none; margin: 0; padding: 0; font-size: 14px; line-height: 1.6; display: flex; flex-direction: column; gap: 6px">
+<li>Howard retires January 2031, at 60</li>
+<li>House sold June 2035 for $900,000, mortgage of $210,000 paid off</li>
+<li>Rent after the sale: $3,200 a month <a href="#" style="font-size: 12px; text-underline-offset: 4px">assumed, edit</a></li>
+</ul>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+<thead><tr style="font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; text-align: left"><th style="font-weight: 400; padding: 0 0 8px"></th><th style="font-weight: 400; padding: 0 0 8px; text-align: right">Plan</th><th style="font-weight: 400; padding: 0 0 8px; text-align: right">What-if</th></tr></thead>
+<tbody>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 8px 0">Plan success</td><td style="padding: 8px 0; text-align: right; color: var(--ink)">87%</td><td style="padding: 8px 0; text-align: right; color: var(--danger); font-weight: 400">81%, below 85%</td></tr>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 8px 0">Howard retires</td><td style="padding: 8px 0; text-align: right; color: var(--ink)">Jun 2033</td><td style="padding: 8px 0; text-align: right; color: var(--ink)">29 months earlier</td></tr>
+<tr style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line)"><td style="padding: 8px 0">Net worth at 90</td><td style="padding: 8px 0; text-align: right; color: var(--ink)">$1.85M</td><td style="padding: 8px 0; text-align: right; color: var(--ink)">$1.28M</td></tr>
+</tbody>
+</table>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="all: unset; cursor: pointer; padding: 12px 16px; background: var(--ink); color: var(--on-ink); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 500">Save as scenario</button>
+<button type="button" style="all: unset; cursor: pointer; padding: 11px 16px; border: 1px solid var(--ink); color: var(--ink); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 500">Compare</button>
+<button type="button" style="all: unset; cursor: pointer; padding: 11px 16px; border: 1px solid var(--ink); color: var(--ink); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 500">Make this the plan</button>
+</div>
+</div>
+
+<p style="margin: 0; font-size: 15px; line-height: 1.65">Retiring at 60 costs 6 points. Spending 6% less in retirement, about $590 a month, brings it back to 85%. <a href="#" style="text-underline-offset: 4px">Add that to the what-if</a></p>
+
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">You</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink); text-align: right">Also use 3% inflation from now on.</p>
+</div>
+
+<div style="background: var(--paper); border: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400; color: var(--ink)">Change to the plan</div>
+<div style="font-size: 15px; display: flex; gap: 12px; align-items: baseline"><span>Inflation</span><span style="text-decoration: line-through">2.5%</span><span style="color: var(--ink); font-weight: 400">3.0%</span></div>
+<div style="font-size: 14px">Plan success 87% to 83%. The open what-if updates too.</div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="all: unset; cursor: pointer; padding: 12px 20px; background: var(--ink); color: var(--on-ink); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 500">Apply</button>
+<button type="button" style="all: unset; cursor: pointer; padding: 11px 20px; border: 1px solid var(--border-control); color: var(--ink); font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 500">Not now</button>
+</div>
+</div>
+
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px">
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px"><a href="#" style="text-underline-offset: 4px">What if we downsize instead?</a><a href="#" style="text-underline-offset: 4px">What drives the drop after 80?</a></div>
+<div style="display: flex; gap: 8px">
+<label for="ask" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message the Assistant</label>
+<input id="ask" type="text" placeholder="Ask, change an assumption, or try a what-if" style="flex: 1; min-width: 0; box-sizing: border-box; height: 48px; padding: 0 14px; border: 1px solid var(--border-control); background: var(--paper); color: var(--ink); font: 400 15px Inter, sans-serif; border-radius: 0">
+<button type="button" style="all: unset; cursor: pointer; padding: 0 20px; height: 48px; line-height: 48px; background: var(--ink); color: var(--on-ink); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500">Send</button>
+</div>
+</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

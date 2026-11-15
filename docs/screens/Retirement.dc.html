@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Retirement</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;display=swap">
+<style>
+body{margin:0}
+:root{--paper:#f5f0e7;--surface:#f0e8d8;--line:#d9d2c5;--ink:#1c1c1c;--body:#3a3530;--border-control:#8a8278;--accent:#d4a853;--on-ink:#f5f0e7;--on-accent:#1c1c1c;--danger:#8f3b2a;--s1:#f0e8d8;--s2:#d9d2c5;--s3:#c8b99a;--s4:#a89c85;--s5:#6e675d;--s6:#3a3530}
+@media (prefers-color-scheme: dark){:root{--paper:#1c1c1c;--surface:#282828;--line:#2e2e2e;--ink:#f5f0e7;--body:#c8b99a;--on-ink:#1c1c1c;--danger:#e58e80;--s1:#2a2825;--s2:#34312d;--s3:#46413a;--s4:#6b6459;--s5:#a89c85;--s6:#c8b99a}}
+a{color:var(--ink);text-decoration-color:var(--accent)}a:hover{color:var(--ink)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: var(--paper); color: var(--body); font-family: Inter, system-ui, sans-serif; font-weight: 300; font-variant-numeric: tabular-nums">
+
+<nav aria-label="Main" style="flex: 1 1 232px; max-width: 232px; min-width: 200px; box-sizing: border-box; background: var(--surface); border-right: 1px solid var(--line); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px">
+<div style="font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); padding: 0 8px">Golden</div>
+<div style="display: flex; gap: 16px; padding: 0 8px; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">
+<a href="#" style="text-decoration: none; color: var(--body); padding-bottom: 4px">Howard</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding-bottom: 4px">Spouse</a>
+<a href="#" aria-current="true" style="text-decoration: none; color: var(--ink); padding-bottom: 4px; border-bottom: 2px solid var(--accent)">Both</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; font-size: 15px; font-weight: 400">
+<a href="Main.dc.html" style="text-decoration: none; color: var(--body); padding: 10px 12px">Overview</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Cash flow</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Balance sheet</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Plan</a>
+<a href="#" aria-current="page" style="text-decoration: none; background: var(--ink); color: var(--on-ink); padding: 10px 12px">Retirement</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Investments</a>
+</div>
+<div style="border-top: 1px solid var(--line)"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; font-size: 15px; font-weight: 400">
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Transactions</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px; display: flex; justify-content: space-between"><span>Documents</span><span style="font-size: 12px">2</span></a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px; display: flex; justify-content: space-between"><span>Approvals</span><span style="font-size: 12px">3</span></a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Activity</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Settings</a>
+</div>
+<div style="margin-top: auto; font-size: 12px; line-height: 1.6; padding: 0 8px">Local model: Qwen3 8B<br>All data on this Mac</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 48px 64px; display: flex; flex-direction: column; gap: 32px; max-width: 1280px">
+<header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 24px">
+<div>
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Scenario: Base plan</div>
+<h1 style="margin: 8px 0 0; font-size: 44px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">Retirement</h1>
+</div>
+<div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap">
+<button type="button" style="all: unset; cursor: pointer; padding: 13px 24px; border: 1px solid var(--ink); color: var(--ink); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500">Assumptions</button>
+<button type="button" style="all: unset; cursor: pointer; padding: 14px 32px; background: var(--ink); color: var(--on-ink); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500">Save as scenario</button>
+</div>
+</header>
+
+<section aria-label="Retirement choices" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px">
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 28px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Howard</h2>
+<span style="font-size: 12px">Age 55</span>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--line); padding-top: 16px">
+<div><div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Retire</div><div style="font-size: 24px; color: var(--ink); margin-top: 4px">June 2033, at 62</div></div>
+<div style="display: flex; border: 1px solid var(--border-control)"><button type="button" aria-label="One month earlier" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px">&#8722;</button><button type="button" aria-label="One month later" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px; border-left: 1px solid var(--border-control)">+</button></div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--line); padding-top: 16px">
+<div><div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Social Security</div><div style="font-size: 24px; color: var(--ink); margin-top: 4px">At 67, $3,410 a month</div></div>
+<div style="display: flex; border: 1px solid var(--border-control)"><button type="button" aria-label="Claim one year earlier" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px">&#8722;</button><button type="button" aria-label="Claim one year later" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px; border-left: 1px solid var(--border-control)">+</button></div>
+</div>
+<div style="font-size: 15px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 16px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span>Earliest safe month: March 2032</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 28px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Spouse</h2>
+<span style="font-size: 12px">Age 53</span>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--line); padding-top: 16px">
+<div><div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Retire</div><div style="font-size: 24px; color: var(--ink); margin-top: 4px">January 2035, at 62</div></div>
+<div style="display: flex; border: 1px solid var(--border-control)"><button type="button" aria-label="One month earlier" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px">&#8722;</button><button type="button" aria-label="One month later" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px; border-left: 1px solid var(--border-control)">+</button></div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--line); padding-top: 16px">
+<div><div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Social Security</div><div style="font-size: 24px; color: var(--ink); margin-top: 4px">At 67, $2,620 a month</div></div>
+<div style="display: flex; border: 1px solid var(--border-control)"><button type="button" aria-label="Claim one year earlier" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px">&#8722;</button><button type="button" aria-label="Claim one year later" style="all: unset; cursor: pointer; width: 44px; height: 44px; text-align: center; line-height: 44px; color: var(--ink); font-size: 18px; border-left: 1px solid var(--border-control)">+</button></div>
+</div>
+<div style="font-size: 15px; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 16px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span>Earliest safe month: August 2034</div>
+</div>
+</section>
+
+<section aria-label="Result" style="display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-end; border-bottom: 1px solid var(--line); padding-bottom: 32px">
+<div>
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Plan success</div>
+<div style="font-size: 88px; line-height: 0.95; font-weight: 300; letter-spacing: -0.04em; color: var(--ink); margin-top: 8px">87%</div>
+</div>
+<p style="margin: 0; max-width: 34em; font-size: 17px; line-height: 1.75">In 1,740 of 2,000 simulated market paths, your savings last until Howard is 95. Your target is 85%. Safe spending in retirement is $9,800 a month in today's dollars.</p>
+</section>
+
+<section aria-label="Household net worth by age" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline">
+<h2 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Savings peak near $2.4M at 63, and the median path still holds $1.4M at 95</h2>
+<div style="font-size: 12px">Household net worth, today's dollars, by Howard's age</div>
+</div>
+<svg viewBox="0 0 1000 286" role="img" aria-label="Fan chart of household net worth from age 55 to 95, with retirement dates marked" style="width: 100%; height: auto; display: block">
+<g stroke="var(--line)" stroke-width="1">
+<line x1="64" x2="980" y1="190.4" y2="190.4"></line>
+<line x1="64" x2="980" y1="148.8" y2="148.8"></line>
+<line x1="64" x2="980" y1="107.2" y2="107.2"></line>
+<line x1="64" x2="980" y1="65.6" y2="65.6"></line>
+<line x1="64" x2="980" y1="24" y2="24"></line>
+</g>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="end">
+<text x="54" y="236">$0</text><text x="54" y="194">$1M</text><text x="54" y="153">$2M</text><text x="54" y="111">$3M</text><text x="54" y="70">$4M</text><text x="54" y="28">$5M</text>
+</g>
+<path d="M64.0 173.2 L86.9 165.1 L109.8 156.2 L132.7 146.6 L155.6 136.2 L178.5 124.9 L201.4 112.7 L224.3 107.4 L247.2 102.0 L270.1 99.4 L293.0 96.8 L315.9 94.4 L338.8 92.1 L361.7 89.9 L384.6 87.7 L407.5 85.7 L430.4 83.9 L453.3 82.1 L476.2 80.5 L499.1 79.0 L522.0 77.7 L544.9 76.5 L567.8 75.5 L590.7 74.7 L613.6 74.0 L636.5 73.5 L659.4 73.2 L682.3 73.2 L705.2 73.3 L728.1 73.7 L751.0 74.3 L773.9 75.2 L796.8 76.3 L819.7 77.7 L842.6 79.4 L865.5 81.4 L888.4 83.7 L911.3 86.4 L934.2 89.4 L957.1 92.8 L980.0 96.6 L980.0 232.0 L957.1 232.0 L934.2 232.0 L911.3 232.0 L888.4 232.0 L865.5 232.0 L842.6 232.0 L819.7 231.0 L796.8 228.1 L773.9 225.1 L751.0 222.0 L728.1 218.8 L705.2 215.6 L682.3 212.3 L659.4 209.0 L636.5 205.6 L613.6 202.2 L590.7 198.8 L567.8 195.3 L544.9 191.9 L522.0 188.4 L499.1 185.0 L476.2 181.6 L453.3 178.1 L430.4 174.7 L407.5 171.3 L384.6 168.0 L361.7 164.7 L338.8 161.4 L315.9 158.1 L293.0 154.9 L270.1 151.7 L247.2 148.6 L224.3 147.4 L201.4 146.3 L178.5 150.6 L155.6 155.1 L132.7 159.6 L109.8 164.1 L86.9 168.6 L64.0 173.2 Z" fill="var(--s2)"></path>
+<path d="M64.0 173.2 L86.9 166.4 L109.8 159.2 L132.7 151.5 L155.6 143.2 L178.5 134.5 L201.4 125.1 L224.3 122.1 L247.2 119.0 L270.1 118.4 L293.0 117.9 L315.9 117.4 L338.8 116.9 L361.7 116.5 L384.6 116.2 L407.5 116.0 L430.4 115.8 L453.3 115.7 L476.2 115.6 L499.1 115.7 L522.0 115.8 L544.9 116.0 L567.8 116.4 L590.7 116.8 L613.6 117.3 L636.5 117.9 L659.4 118.6 L682.3 119.5 L705.2 120.4 L728.1 121.5 L751.0 122.8 L773.9 124.1 L796.8 125.7 L819.7 127.3 L842.6 129.2 L865.5 131.2 L888.4 133.3 L911.3 135.7 L934.2 138.3 L957.1 141.0 L980.0 144.0 L980.0 200.4 L957.1 198.4 L934.2 196.4 L911.3 194.4 L888.4 192.4 L865.5 190.4 L842.6 188.4 L819.7 186.4 L796.8 184.4 L773.9 182.4 L751.0 180.5 L728.1 178.5 L705.2 176.5 L682.3 174.6 L659.4 172.7 L636.5 170.7 L613.6 168.8 L590.7 166.9 L567.8 165.0 L544.9 163.1 L522.0 161.2 L499.1 159.3 L476.2 157.5 L453.3 155.6 L430.4 153.8 L407.5 151.9 L384.6 150.1 L361.7 148.3 L338.8 146.5 L315.9 144.7 L293.0 142.9 L270.1 141.1 L247.2 139.3 L224.3 139.6 L201.4 139.9 L178.5 145.8 L155.6 151.6 L132.7 157.3 L109.8 162.7 L86.9 168.0 L64.0 173.2 Z" fill="var(--s3)"></path>
+<path d="M64.0 173.2 L86.9 167.3 L109.8 161.2 L132.7 154.7 L155.6 147.9 L178.5 140.8 L201.4 133.4 L224.3 131.9 L247.2 130.4 L270.1 131.1 L293.0 131.9 L315.9 132.7 L338.8 133.5 L361.7 134.3 L384.6 135.2 L407.5 136.1 L430.4 137.0 L453.3 138.0 L476.2 139.1 L499.1 140.1 L522.0 141.2 L544.9 142.4 L567.8 143.6 L590.7 144.8 L613.6 146.1 L636.5 147.5 L659.4 148.9 L682.3 150.3 L705.2 151.9 L728.1 153.4 L751.0 155.1 L773.9 156.8 L796.8 158.6 L819.7 160.4 L842.6 162.3 L865.5 164.3 L888.4 166.4 L911.3 168.6 L934.2 170.8 L957.1 173.1 L980.0 175.6" fill="none" stroke="var(--ink)" stroke-width="2"></path>
+<line x1="224.3" x2="224.3" y1="24" y2="232" stroke="var(--accent)" stroke-width="1.5"></line>
+<line x1="247.2" x2="247.2" y1="24" y2="232" stroke="var(--accent)" stroke-width="1.5"></line>
+<text x="218" y="38" font-size="12" font-family="Inter, sans-serif" font-weight="500" fill="var(--ink)" text-anchor="end">Howard retires</text>
+<text x="253" y="38" font-size="12" font-family="Inter, sans-serif" font-weight="500" fill="var(--ink)">Spouse retires</text>
+<line x1="64" x2="980" y1="232" y2="232" stroke="var(--border-control)" stroke-width="1"></line>
+<path d="M338.8 226 L344.8 232 L338.8 238 L332.8 232 Z" fill="var(--ink)"></path>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="middle">
+<text x="68" y="256" text-anchor="start">55</text><text x="178.5" y="256">60</text><text x="338.8" y="256">67</text><text x="522" y="256">75</text><text x="636.5" y="256">80</text><text x="751" y="256">85</text><text x="865.5" y="256">90</text><text x="976" y="256" text-anchor="end">95</text>
+<text x="338.8" y="276" font-size="11">Social Security starts</text>
+</g>
+</svg>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; font-size: 12px; align-items: center">
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 24px; border-top: 2px solid var(--ink)"></span>Median path</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s3)"></span>Half of paths</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s2)"></span>8 in 10 paths</span>
+</div>
+</section>
+
+<section aria-label="What moves the answer" style="display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Spending 10% less moves the plan most</h2>
+<table style="width: 100%; border-collapse: collapse; font-size: 15px">
+<thead><tr style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; text-align: left"><th style="font-weight: 400; padding: 0 0 12px">Lever</th><th style="font-weight: 400; padding: 0 0 12px; text-align: right">Plan success</th><th style="font-weight: 400; padding: 0 0 12px; text-align: right">Change</th><th style="font-weight: 400; padding: 0 0 12px; text-align: right">Try it</th></tr></thead>
+<tbody>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink)">Spend 10% less in retirement</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">93%</td><td style="padding: 12px 0; text-align: right">+6 points</td><td style="padding: 12px 0; text-align: right"><a href="#" style="text-underline-offset: 6px">Apply</a></td></tr>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink)">Both retire 12 months later</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">92%</td><td style="padding: 12px 0; text-align: right">+5 points</td><td style="padding: 12px 0; text-align: right"><a href="#" style="text-underline-offset: 6px">Apply</a></td></tr>
+<tr style="border-top: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink)">Both claim Social Security at 70</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">91%</td><td style="padding: 12px 0; text-align: right">+4 points</td><td style="padding: 12px 0; text-align: right"><a href="#" style="text-underline-offset: 6px">Apply</a></td></tr>
+<tr style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line)"><td style="padding: 12px 0; color: var(--ink)">Save 5% more of pay until retirement</td><td style="padding: 12px 0; text-align: right; color: var(--ink)">90%</td><td style="padding: 12px 0; text-align: right">+3 points</td><td style="padding: 12px 0; text-align: right"><a href="#" style="text-underline-offset: 6px">Apply</a></td></tr>
+</tbody>
+</table>
+</section>
+<p style="margin: 0; font-size: 12px">Sample figures for layout only.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
