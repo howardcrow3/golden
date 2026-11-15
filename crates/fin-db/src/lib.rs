@@ -28,6 +28,27 @@ impl Db {
         Self::init(Connection::open(path)?)
     }
 
+    /// Open (or create) an encrypted database. Requires the `sqlcipher` feature; fails with a
+    /// clear error on a wrong key, and the file on disk is unreadable without the key.
+    #[cfg(feature = "sqlcipher")]
+    pub fn open_encrypted(path: impl AsRef<Path>, key: &str) -> Result<Db> {
+        let conn = Connection::open(path)?;
+        conn.pragma_update(None, "key", key)?;
+        // Reading the schema forces SQLCipher to try the key now rather than on first query.
+        conn.query_row("SELECT count(*) FROM sqlite_master", [], |r| {
+            r.get::<_, i64>(0)
+        })
+        .map_err(|_| DbError::Invalid("wrong key or not a Golden database".into()))?;
+        Self::init(conn)
+    }
+
+    /// Change the encryption key of an open encrypted database.
+    #[cfg(feature = "sqlcipher")]
+    pub fn rekey(&self, new_key: &str) -> Result<()> {
+        self.conn.pragma_update(None, "rekey", new_key)?;
+        Ok(())
+    }
+
     pub fn open_in_memory() -> Result<Db> {
         Self::init(Connection::open_in_memory()?)
     }

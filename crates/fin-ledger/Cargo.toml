@@ -1,0 +1,16 @@
+[package]
+name = "fin-ledger"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fin-core = { path = "../fin-core" }
+serde.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+fin-db = { path = "../fin-db" }
+fin-ingest = { path = "../fin-ingest" }
+serde_json.workspace = true

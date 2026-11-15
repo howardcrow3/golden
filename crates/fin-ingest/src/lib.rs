@@ -45,3 +45,4 @@ pub fn read_statement(bytes: &[u8]) -> Result<Vec<ParsedTxn>, IngestError> {
         csv_reader::parse(&text)
     }
 }
+pub mod library;

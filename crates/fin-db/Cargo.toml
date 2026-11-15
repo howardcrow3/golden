@@ -7,10 +7,16 @@ publish.workspace = true
 
 [dependencies]
 fin-core = { path = "../fin-core" }
-rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
+rusqlite = { version = "0.32", features = ["chrono"] }
 chrono.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+[features]
+# Encrypted database file (SQLCipher with vendored OpenSSL). The desktop app enables this.
+default = ["plain"]
+plain = ["rusqlite/bundled"]
+sqlcipher = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
 
 [dev-dependencies]
 proptest.workspace = true
