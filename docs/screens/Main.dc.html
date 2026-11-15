@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&amp;display=swap">
+<style>
+body{margin:0}
+:root{--paper:#f5f0e7;--surface:#f0e8d8;--line:#d9d2c5;--ink:#1c1c1c;--body:#3a3530;--border-control:#8a8278;--accent:#d4a853;--on-ink:#f5f0e7;--on-accent:#1c1c1c;--danger:#8f3b2a;--s1:#f0e8d8;--s2:#d9d2c5;--s3:#c8b99a;--s4:#a89c85;--s5:#6e675d;--s6:#3a3530}
+@media (prefers-color-scheme: dark){:root{--paper:#1c1c1c;--surface:#282828;--line:#2e2e2e;--ink:#f5f0e7;--body:#c8b99a;--on-ink:#1c1c1c;--danger:#e58e80;--s1:#2a2825;--s2:#34312d;--s3:#46413a;--s4:#6b6459;--s5:#a89c85;--s6:#c8b99a}}
+a{color:var(--ink);text-decoration-color:var(--accent)}a:hover{color:var(--ink)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: var(--paper); color: var(--body); font-family: Inter, system-ui, sans-serif; font-weight: 300; font-variant-numeric: tabular-nums">
+
+<nav aria-label="Main" style="flex: 1 1 232px; max-width: 232px; min-width: 200px; box-sizing: border-box; background: var(--surface); border-right: 1px solid var(--line); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px">
+<div style="font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); padding: 0 8px">Golden</div>
+<div style="display: flex; gap: 16px; padding: 0 8px; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">
+<a href="#" style="text-decoration: none; color: var(--body); padding-bottom: 4px">Howard</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding-bottom: 4px">Spouse</a>
+<a href="#" aria-current="true" style="text-decoration: none; color: var(--ink); padding-bottom: 4px; border-bottom: 2px solid var(--accent)">Both</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; font-size: 15px; font-weight: 400">
+<a href="#" aria-current="page" style="text-decoration: none; background: var(--ink); color: var(--on-ink); padding: 10px 12px">Overview</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Cash flow</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Balance sheet</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Plan</a>
+<a href="Retirement.dc.html" style="text-decoration: none; color: var(--body); padding: 10px 12px">Retirement</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Investments</a>
+</div>
+<div style="border-top: 1px solid var(--line)"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; font-size: 15px; font-weight: 400">
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Transactions</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px; display: flex; justify-content: space-between"><span>Documents</span><span style="font-size: 12px">2</span></a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px; display: flex; justify-content: space-between"><span>Approvals</span><span style="font-size: 12px">3</span></a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Activity</a>
+<a href="#" style="text-decoration: none; color: var(--body); padding: 10px 12px">Settings</a>
+</div>
+<div style="margin-top: auto; font-size: 12px; line-height: 1.6; padding: 0 8px">Local model: Qwen3 8B<br>All data on this Mac</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 48px 64px; display: flex; flex-direction: column; gap: 32px; max-width: 1280px">
+<header style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 24px">
+<div>
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">November 2026</div>
+<h1 style="margin: 8px 0 0; font-size: 44px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">Overview</h1>
+</div>
+<div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap">
+<div role="group" aria-label="Show by" style="display: flex; border: 1px solid var(--border-control); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500">
+<button type="button" title="W" style="all: unset; cursor: pointer; padding: 12px 16px; color: var(--body)">Week</button>
+<button type="button" title="M" aria-pressed="true" style="all: unset; cursor: pointer; padding: 12px 16px; background: var(--ink); color: var(--on-ink)">Month</button>
+<button type="button" title="Q" style="all: unset; cursor: pointer; padding: 12px 16px; color: var(--body)">Quarter</button>
+<button type="button" title="Y" style="all: unset; cursor: pointer; padding: 12px 16px; color: var(--body)">Year</button>
+</div>
+<button type="button" style="all: unset; cursor: pointer; padding: 14px 32px; background: var(--ink); color: var(--on-ink); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500">Ask</button>
+</div>
+</header>
+
+<section aria-label="Key figures" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px">
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Net worth</div>
+<div style="font-size: 40px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">$1,284,600</div>
+<div style="font-size: 14px">Up $18,400 since September</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Saved in October</div>
+<div style="font-size: 40px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">$3,940</div>
+<div style="font-size: 14px">Average $3,610 a month</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Savings rate</div>
+<div style="font-size: 40px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">21%</div>
+<div style="font-size: 14px">Of gross pay, incl. 401(k)</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 400">Retirement plan</div>
+<div style="font-size: 40px; line-height: 1.05; font-weight: 300; letter-spacing: -0.03em; color: var(--ink)">87%</div>
+<div style="font-size: 14px; display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span>On track, target 85%</div>
+</div>
+</section>
+
+<section aria-label="Net worth" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline">
+<h2 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Net worth up $274,600 in two years, on course for $1.68M by 2029</h2>
+<div style="font-size: 12px">Nov 2024 to Oct 2026 actual, then projected</div>
+</div>
+<svg viewBox="0 0 1000 270" role="img" aria-label="Net worth, 24 months actual and 36 months projected with its likely range" style="width: 100%; height: auto; display: block">
+<g stroke="var(--line)" stroke-width="1">
+<line x1="64" x2="980" y1="213.1" y2="213.1"></line>
+<line x1="64" x2="980" y1="165.8" y2="165.8"></line>
+<line x1="64" x2="980" y1="118.5" y2="118.5"></line>
+<line x1="64" x2="980" y1="71.3" y2="71.3"></line>
+<line x1="64" x2="980" y1="24" y2="24"></line>
+</g>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="end">
+<text x="54" y="217">$1.00M</text><text x="54" y="170">$1.25M</text><text x="54" y="122">$1.50M</text><text x="54" y="75">$1.75M</text><text x="54" y="28">$2.00M</text>
+</g>
+<path d="M421.1 159.3 L436.6 150.7 L452.1 146.1 L467.7 142.2 L483.2 138.6 L498.7 135.1 L514.2 131.8 L529.8 128.6 L545.3 125.5 L560.8 122.4 L576.3 119.4 L591.9 116.4 L607.4 113.5 L622.9 110.5 L638.4 107.6 L654.0 104.7 L669.5 101.8 L685.0 98.9 L700.5 96.0 L716.1 93.1 L731.6 90.3 L747.1 87.4 L762.6 84.5 L778.2 81.6 L793.7 78.7 L809.2 75.8 L824.7 72.9 L840.3 70.0 L855.8 67.1 L871.3 64.2 L886.8 61.3 L902.4 58.4 L917.9 55.4 L933.4 52.5 L948.9 49.5 L964.5 46.5 L980.0 43.6 L980.0 125.2 L964.5 127.1 L948.9 128.9 L933.4 130.7 L917.9 132.4 L902.4 134.2 L886.8 135.9 L871.3 137.5 L855.8 139.2 L840.3 140.8 L824.7 142.4 L809.2 143.9 L793.7 145.4 L778.2 146.9 L762.6 148.4 L747.1 149.8 L731.6 151.1 L716.1 152.5 L700.5 153.8 L685.0 155.0 L669.5 156.3 L654.0 157.4 L638.4 158.5 L622.9 159.6 L607.4 160.6 L591.9 161.6 L576.3 162.5 L560.8 163.3 L545.3 164.0 L529.8 164.6 L514.2 165.2 L498.7 165.6 L483.2 165.8 L467.7 165.8 L452.1 165.4 L436.6 164.3 L421.1 159.3 Z" fill="var(--s2)"></path>
+<path d="M421.1 159.3 L436.6 154.5 L452.1 151.5 L467.7 148.7 L483.2 146.1 L498.7 143.6 L514.2 141.1 L529.8 138.6 L545.3 136.2 L560.8 133.8 L576.3 131.4 L591.9 129.0 L607.4 126.6 L622.9 124.2 L638.4 121.7 L654.0 119.3 L669.5 116.9 L685.0 114.5 L700.5 112.1 L716.1 109.6 L731.6 107.2 L747.1 104.7 L762.6 102.2 L778.2 99.8 L793.7 97.3 L809.2 94.7 L824.7 92.2 L840.3 89.7 L855.8 87.1 L871.3 84.6 L886.8 82.0 L902.4 79.4 L917.9 76.8 L933.4 74.2 L948.9 71.6 L964.5 68.9 L980.0 66.2 L980.0 102.5 L964.5 104.7 L948.9 106.8 L933.4 109.0 L917.9 111.0 L902.4 113.1 L886.8 115.1 L871.3 117.2 L855.8 119.2 L840.3 121.1 L824.7 123.1 L809.2 125.0 L793.7 126.9 L778.2 128.8 L762.6 130.6 L747.1 132.4 L731.6 134.2 L716.1 136.0 L700.5 137.7 L685.0 139.4 L669.5 141.1 L654.0 142.8 L638.4 144.4 L622.9 146.0 L607.4 147.5 L591.9 149.0 L576.3 150.5 L560.8 151.9 L545.3 153.3 L529.8 154.6 L514.2 155.9 L498.7 157.1 L483.2 158.2 L467.7 159.2 L452.1 160.0 L436.6 160.6 L421.1 159.3 Z" fill="var(--s3)"></path>
+<path d="M64.0 212.0 L79.5 211.5 L95.1 209.6 L110.6 208.9 L126.1 208.6 L141.6 206.7 L157.2 202.4 L172.7 198.6 L188.2 195.0 L203.7 194.0 L219.3 191.5 L234.8 190.2 L250.3 189.4 L265.8 188.9 L281.4 187.9 L296.9 183.5 L312.4 179.6 L327.9 175.8 L343.5 172.0 L359.0 171.1 L374.5 169.7 L390.0 166.7 L405.6 163.3 L421.1 159.3 L421.1 232 L64.0 232 Z" fill="var(--s2)" fill-opacity="0.6"></path>
+<path d="M64.0 212.0 L79.5 211.5 L95.1 209.6 L110.6 208.9 L126.1 208.6 L141.6 206.7 L157.2 202.4 L172.7 198.6 L188.2 195.0 L203.7 194.0 L219.3 191.5 L234.8 190.2 L250.3 189.4 L265.8 188.9 L281.4 187.9 L296.9 183.5 L312.4 179.6 L327.9 175.8 L343.5 172.0 L359.0 171.1 L374.5 169.7 L390.0 166.7 L405.6 163.3 L421.1 159.3" fill="none" stroke="var(--ink)" stroke-width="2"></path>
+<path d="M421.1 159.3 L436.6 157.5 L452.1 155.8 L467.7 154.0 L483.2 152.2 L498.7 150.3 L514.2 148.5 L529.8 146.6 L545.3 144.8 L560.8 142.9 L576.3 140.9 L591.9 139.0 L607.4 137.0 L622.9 135.1 L638.4 133.1 L654.0 131.1 L669.5 129.0 L685.0 127.0 L700.5 124.9 L716.1 122.8 L731.6 120.7 L747.1 118.6 L762.6 116.4 L778.2 114.3 L793.7 112.1 L809.2 109.9 L824.7 107.7 L840.3 105.4 L855.8 103.2 L871.3 100.9 L886.8 98.6 L902.4 96.3 L917.9 93.9 L933.4 91.6 L948.9 89.2 L964.5 86.8 L980.0 84.4" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 4"></path>
+<line x1="421.1" x2="421.1" y1="24" y2="232" stroke="var(--accent)" stroke-width="1.5"></line>
+<circle cx="421.1" cy="159.3" r="4.5" fill="var(--accent)" stroke="var(--paper)" stroke-width="1.5"></circle>
+<text x="429" y="38" font-size="12" font-family="Inter, sans-serif" font-weight="500" fill="var(--ink)">Today</text>
+<text x="984" y="80" font-size="12" font-family="Inter, sans-serif" fill="var(--ink)" text-anchor="end">$1.68M median</text>
+<line x1="64" x2="980" y1="232" y2="232" stroke="var(--border-control)" stroke-width="1"></line>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="middle">
+<text x="72" y="254" text-anchor="start">Nov 2024</text><text x="250.3" y="254">Nov 2025</text><text x="607.4" y="254">Oct 2027</text><text x="793.7" y="254">Oct 2028</text><text x="976" y="254" text-anchor="end">Oct 2029</text>
+</g>
+</svg>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; font-size: 12px; align-items: center">
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 24px; border-top: 2px solid var(--ink)"></span>Actual</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 24px; border-top: 2px dashed var(--ink)"></span>Projected median</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s3)"></span>Half of outcomes</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s2)"></span>8 in 10 outcomes</span>
+</div>
+</section>
+
+<section aria-label="Income by stream" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline">
+<h2 style="margin: 0; font-size: 28px; line-height: 1.2; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Income swings from $17,800 to $38,000 a month; the March bonus and quarterly vests are the lumps</h2>
+<div style="font-size: 12px">By month, Nov 2025 to Oct 2026 actual, then projected</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; font-size: 12px; align-items: center">
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s6)"></span>Salaries, 2 jobs</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s5)"></span>Consulting and rental</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s4)"></span>Bonus</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s3)"></span>RSU vests</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 16px; height: 10px; background: var(--s2)"></span>Dividends and interest</span>
+<span style="display: flex; gap: 8px; align-items: center"><span aria-hidden="true" style="width: 14px; height: 8px; border: 1.5px solid var(--s5)"></span>Projected</span>
+</div>
+<svg viewBox="0 0 1000 280" role="img" aria-label="Monthly gross income stacked by stream: 12 months actual and 6 projected, with a bonus in March and RSU vests in February, May, August and November" style="width: 100%; height: auto; display: block">
+<g stroke="var(--line)" stroke-width="1">
+<line x1="64" x2="980" y1="193.5" y2="193.5"></line>
+<line x1="64" x2="980" y1="137" y2="137"></line>
+<line x1="64" x2="980" y1="80.5" y2="80.5"></line>
+<line x1="64" x2="980" y1="24" y2="24"></line>
+</g>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="end">
+<text x="54" y="254">$0</text><text x="54" y="197.5">$10k</text><text x="54" y="141">$20k</text><text x="54" y="84.5">$30k</text><text x="54" y="28">$40k</text>
+</g>
+<rect x="73.7" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="73.7" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="73.7" y="96.9" width="31.6" height="53.7" fill="var(--s3)"></rect>
+<rect x="73.7" y="95.8" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="124.6" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="124.6" y="146.6" width="31.6" height="17.5" fill="var(--s5)"></rect>
+<rect x="124.6" y="135.3" width="31.6" height="11.3" fill="var(--s2)"></rect>
+<rect x="175.4" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="175.4" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="175.4" y="149.4" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="226.3" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="226.3" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="226.3" y="96.9" width="31.6" height="53.7" fill="var(--s3)"></rect>
+<rect x="226.3" y="95.8" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="277.2" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="277.2" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="277.2" y="46.6" width="31.6" height="104.0" fill="var(--s4)"></rect>
+<rect x="277.2" y="35.3" width="31.6" height="11.3" fill="var(--s2)"></rect>
+<rect x="328.1" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="328.1" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="328.1" y="149.4" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="379.0" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="379.0" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="379.0" y="96.9" width="31.6" height="53.7" fill="var(--s3)"></rect>
+<rect x="379.0" y="95.8" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="429.9" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="429.9" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="429.9" y="139.3" width="31.6" height="11.3" fill="var(--s2)"></rect>
+<rect x="480.8" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="480.8" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="480.8" y="149.4" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="531.7" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="531.7" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="531.7" y="96.9" width="31.6" height="53.7" fill="var(--s3)"></rect>
+<rect x="531.7" y="95.8" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<rect x="582.6" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="582.6" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="582.6" y="139.3" width="31.6" height="11.3" fill="var(--s2)"></rect>
+<rect x="633.4" y="164.1" width="31.6" height="85.9" fill="var(--s6)"></rect>
+<rect x="633.4" y="150.6" width="31.6" height="13.6" fill="var(--s5)"></rect>
+<rect x="633.4" y="149.4" width="31.6" height="1.1" fill="var(--s2)"></rect>
+<g fill="var(--paper)" stroke-width="1.5">
+<rect x="684.3" y="161.6" width="31.6" height="88.4" stroke="var(--s6)"></rect>
+<rect x="684.3" y="148.0" width="31.6" height="13.6" stroke="var(--s5)"></rect>
+<rect x="684.3" y="92.6" width="31.6" height="55.4" stroke="var(--s3)"></rect>
+<rect x="735.2" y="161.6" width="31.6" height="88.4" stroke="var(--s6)"></rect>
+<rect x="735.2" y="144.1" width="31.6" height="17.5" stroke="var(--s5)"></rect>
+<rect x="735.2" y="132.8" width="31.6" height="11.3" stroke="var(--s2)"></rect>
+<rect x="786.1" y="161.6" width="31.6" height="88.4" stroke="var(--s6)"></rect>
+<rect x="786.1" y="148.0" width="31.6" height="13.6" stroke="var(--s5)"></rect>
+<rect x="837.0" y="161.6" width="31.6" height="88.4" stroke="var(--s6)"></rect>
+<rect x="837.0" y="148.0" width="31.6" height="13.6" stroke="var(--s5)"></rect>
+<rect x="837.0" y="92.6" width="31.6" height="55.4" stroke="var(--s3)"></rect>
+<rect x="887.9" y="161.6" width="31.6" height="88.4" stroke="var(--s6)"></rect>
+<rect x="887.9" y="148.0" width="31.6" height="13.6" stroke="var(--s5)"></rect>
+<rect x="887.9" y="40.7" width="31.6" height="107.3" stroke="var(--s4)"></rect>
+<rect x="887.9" y="29.4" width="31.6" height="11.3" stroke="var(--s2)"></rect>
+<rect x="938.8" y="161.6" width="31.6" height="88.4" stroke="var(--s6)"></rect>
+<rect x="938.8" y="148.0" width="31.6" height="13.6" stroke="var(--s5)"></rect>
+</g>
+<line x1="674.7" x2="674.7" y1="24" y2="250" stroke="var(--accent)" stroke-width="1.5"></line>
+<text x="668" y="38" font-size="12" font-family="Inter, sans-serif" font-weight="500" fill="var(--ink)" text-anchor="end">Today</text>
+<g font-size="12" font-family="Inter, sans-serif" fill="var(--ink)" text-anchor="middle">
+<text x="293" y="29">Bonus $18.4k</text>
+<text x="89.4" y="89">Vest $9.5k</text>
+<text x="242.1" y="89">Vest $9.5k</text>
+<text x="394.8" y="89">Vest $9.5k</text>
+<text x="547.4" y="89">Vest $9.5k</text>
+</g>
+<line x1="64" x2="980" y1="250" y2="250" stroke="var(--border-control)" stroke-width="1"></line>
+<g fill="var(--body)" font-size="12" font-family="Inter, sans-serif" text-anchor="middle">
+<text x="89.4" y="270">Nov</text><text x="140.3" y="270">Dec</text><text x="191.2" y="270">Jan</text><text x="242.1" y="270">Feb</text><text x="293" y="270">Mar</text><text x="343.9" y="270">Apr</text><text x="394.8" y="270">May</text><text x="445.7" y="270">Jun</text><text x="496.6" y="270">Jul</text><text x="547.4" y="270">Aug</text><text x="598.3" y="270">Sep</text><text x="649.2" y="270">Oct</text><text x="700.1" y="270">Nov</text><text x="751" y="270">Dec</text><text x="801.9" y="270">Jan</text><text x="852.8" y="270">Feb</text><text x="903.7" y="270">Mar</text><text x="954.6" y="270">Apr</text>
+</g>
+</svg>
+<p style="margin: 0; font-size: 15px; line-height: 1.65; max-width: 72ch">Each stream is placed on the dates it pays, with its own withholding, rather than averaged. Switch to Week to see the paydays and the vest dates; switch to Year to see the totals.</p>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px">
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 32px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 22px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Income streams</h2>
+<span style="font-size: 12px">7 streams</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; font-size: 15px">
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line)"><span style="color: var(--ink)">Howard, salary</span><span style="color: var(--ink)">$8,900</span><span style="font-size: 12px">Biweekly, Fridays</span><span style="font-size: 12px; text-align: right">a month</span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line)"><span style="color: var(--ink)">Spouse, salary</span><span style="color: var(--ink)">$6,300</span><span style="font-size: 12px">15th and last day</span><span style="font-size: 12px; text-align: right">a month</span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line)"><span style="color: var(--ink)">Howard, bonus</span><span style="color: var(--ink)">$18,400</span><span style="font-size: 12px">March, 22% federal held</span><span style="font-size: 12px; text-align: right">a year</span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line)"><span style="color: var(--ink)">Howard, RSU vests</span><span style="color: var(--ink)">$9,500</span><span style="font-size: 12px">Feb, May, Aug, Nov</span><span style="font-size: 12px; text-align: right">a vest</span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line)"><span style="color: var(--ink)">Spouse, consulting (1099)</span><span style="color: var(--ink)">$1,100</span><span style="font-size: 12px">Irregular, estimated tax quarterly</span><span style="font-size: 12px; text-align: right">a month avg</span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line)"><span style="color: var(--ink)">Joint, rental net</span><span style="color: var(--ink)">$1,300</span><span style="font-size: 12px">1st of the month</span><span style="font-size: 12px; text-align: right">a month</span></li>
+<li style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line)"><span style="color: var(--ink)">Joint, dividends and interest</span><span style="color: var(--ink)">$9,600</span><span style="font-size: 12px">Quarter ends, plus monthly</span><span style="font-size: 12px; text-align: right">a year</span></li>
+</ul>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 32px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 22px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">October cash flow</h2>
+<a href="#" style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500; text-underline-offset: 6px">Open</a>
+</div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; gap: 12px 16px; align-items: center; font-size: 15px">
+<span>Income</span><span style="height: 12px; background: var(--s5); width: 100%"></span><span style="text-align: right; color: var(--ink)">$18,420</span>
+<span>Taxes</span><span style="height: 12px; background: var(--s4); width: 23%"></span><span style="text-align: right; color: var(--ink)">$4,310</span>
+<span>Spending</span><span style="height: 12px; background: var(--s3); width: 55%"></span><span style="text-align: right; color: var(--ink)">$10,170</span>
+<span>Saved</span><span style="height: 12px; background: var(--s6); width: 21%"></span><span style="text-align: right; color: var(--ink)">$3,940</span>
+</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.65">Spending was $640 above the 12-month average. Travel ($1,180) and a car repair ($720) account for most of it.</p>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--line); padding: 32px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 style="margin: 0; font-size: 22px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink)">Needs a look</h2>
+<span style="font-size: 12px">5 items</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; font-size: 15px">
+<li style="display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line)"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--danger)"></span><span style="flex: 1">Chase checking, October statement</span><span style="color: var(--danger); font-weight: 400">Off by $42.10</span></li>
+<li style="display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line)"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--border-control); box-sizing: border-box"></span><span style="flex: 1">Fidelity 401(k), Q3 statement</span><span>Needs a look</span></li>
+<li style="display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line)"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span><span style="flex: 1">Rule: Costco is Groceries, not Shopping</span><span>Proposed</span></li>
+<li style="display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line)"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span><span style="flex: 1">New account: Amex Gold ending 1008</span><span>Proposed</span></li>
+<li style="display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line)"><span aria-hidden="true" style="flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent)"></span><span style="flex: 1">Lock October</span><span>Ready</span></li>
+</ul>
+</div>
+</section>
+<p style="margin: 0; font-size: 12px">Sample figures for layout only.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1640}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
