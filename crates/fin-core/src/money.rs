@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(Money::from_cents(-5).to_string(), "-$0.05");
         assert_eq!(Money::ZERO.to_string(), "$0.00");
         assert_eq!(
-            Money::from_cents(100_000_000_00).to_string(),
+            Money::from_cents(10_000_000_000).to_string(),
             "$100,000,000.00"
         );
     }
