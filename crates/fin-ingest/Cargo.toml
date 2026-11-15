@@ -1,0 +1,16 @@
+[package]
+name = "fin-ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fin-core = { path = "../fin-core" }
+csv = "1"
+chrono.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+fin-db = { path = "../fin-db" }
