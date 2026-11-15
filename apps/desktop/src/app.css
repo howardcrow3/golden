@@ -1,0 +1,24 @@
+/* Turtlebox-inspired tokens: warm neutrals, one gold accent (never used as text),
+   Inter only, square corners, borders instead of shadows. */
+:root {
+  --ivory: #faf7f0;
+  --paper: #fffdf8;
+  --charcoal: #2a2724;
+  --muted: #6f685f;
+  --line: #e2dccd;
+  --gold: #b08d3a;
+  --good: #3f6b4f;
+  --bad: #8a3b2e;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--charcoal);
+  background: var(--ivory);
+}
+* { box-sizing: border-box; border-radius: 0; }
+body { margin: 0; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); }
+button, select, input { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--paper); padding: 6px 12px; }
+button { cursor: pointer; }
+button[aria-pressed="true"] { border-color: var(--gold); border-bottom-width: 3px; }
+.card { background: var(--paper); border: 1px solid var(--line); padding: 20px; }
+.num { font-variant-numeric: tabular-nums; }
