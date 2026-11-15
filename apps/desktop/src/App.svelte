@@ -1,8 +1,9 @@
 <script lang="ts">
   import Overview from "./lib/Overview.svelte";
   import TaxCalculator from "./lib/TaxCalculator.svelte";
+  import Retirement from "./lib/Retirement.svelte";
 
-  const pages = ["Overview", "Tax estimate"] as const;
+  const pages = ["Overview", "Retirement", "Tax estimate"] as const;
   let page = $state<(typeof pages)[number]>("Overview");
 </script>
 
@@ -15,7 +16,7 @@
     <div class="mode">Private mode · nothing leaves this computer</div>
   </nav>
   <main>
-    {#if page === "Overview"}<Overview />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
   </main>
 </div>
 

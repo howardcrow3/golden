@@ -31,3 +31,18 @@ describe("TaxCalculator", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/desktop app/);
   });
 });
+
+import Retirement from "./Retirement.svelte";
+
+describe("Retirement", () => {
+  it("shows an explanation instead of crashing when the engine is unavailable", async () => {
+    render(Retirement);
+    await fireEvent.click(screen.getByRole("button", { name: "Run plan" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/desktop app/);
+  });
+  it("offers the market what-ifs", () => {
+    render(Retirement);
+    const sel = screen.getByLabelText("Market what-if") as HTMLSelectElement;
+    expect([...sel.options].map((o) => o.value)).toEqual(["", "Cautious", "Optimistic"]);
+  });
+});
