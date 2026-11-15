@@ -6,3 +6,5 @@ pub mod federal;
 
 pub use brackets::{Bracket, BracketTable};
 pub use federal::{FederalInput, FederalResult, FederalTaxYear, FilingStatus};
+pub mod state;
+pub use state::{StateRules, StateTaxYear};
