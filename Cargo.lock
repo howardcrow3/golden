@@ -145,6 +145,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fin-plan"
+version = "0.1.0"
+dependencies = [
+ "fin-core",
+ "proptest",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
