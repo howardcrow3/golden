@@ -1,42 +1,52 @@
 <script lang="ts">
-  import { quickPlan, type QuickPlanRequest, type QuickPlanResult } from "./api";
+  import { getHousehold, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
-  import { formatCents, formatPercent } from "./money";
+  import { formatCents, formatPercent, parseDollars } from "./money";
+  import Assumptions from "./Assumptions.svelte";
 
-  let age = $state(45);
-  let retireAge = $state(62);
-  let spending = $state(90_000);
-  let salary = $state(180_000);
-  let returnPick = $state<"" | "Cautious" | "Historical" | "Optimistic">("");
+  let { invoke }: { invoke?: Invoke } = $props();
+  let h = $state<Household | null>(null);
+  let dollars = $state({ salary: "", spending: "", cash: "", taxable: "", traditional: "", roth: "", ss: "", contribution: "" });
   let result = $state<QuickPlanResult | null>(null);
   let error = $state("");
   let busy = $state(false);
 
-  function request(): QuickPlanRequest {
-    return {
-      currentYear: new Date().getFullYear(),
-      age,
-      retireAge,
-      filing: "married_joint",
-      state: "TX",
-      salaryCents: salary * 100,
-      contributionCents: 2_350_000,
-      spendingCents: spending * 100,
-      cashCents: 3_000_000,
-      taxableCents: 15_000_000,
-      traditionalCents: 60_000_000,
-      rothCents: 12_000_000,
-      ssAnnualCents: 3_800_000,
-      picks: returnPick ? { real_return: returnPick } : {},
-      runs: 400,
-    };
+  const fields = [
+    ["salary", "Salary", "salaryCents"],
+    ["contribution", "Pre-tax 401(k) saving per year", "contributionCents"],
+    ["spending", "Spending per year", "spendingCents"],
+    ["cash", "Cash", "cashCents"],
+    ["taxable", "Taxable investments", "taxableCents"],
+    ["traditional", "Traditional 401(k)/IRA", "traditionalCents"],
+    ["roth", "Roth", "rothCents"],
+    ["ss", "Social Security per year", "ssAnnualCents"],
+  ] as const;
+
+  function fill(x: Household) {
+    h = x;
+    for (const [k, , c] of fields) dollars[k] = formatCents(x[c], { whole: true }).replace("$", "");
   }
 
+  $effect(() => {
+    getHousehold(invoke)
+      .then(fill)
+      .catch((e) => (error = e instanceof Error ? e.message : String(e)));
+  });
+
   async function run() {
+    if (!h) return;
     busy = true;
     error = "";
     try {
-      result = await quickPlan(request());
+      const next: Household = { ...h };
+      for (const [k, label, c] of fields) {
+        const cents = parseDollars(dollars[k]);
+        if (cents === null) throw new Error(`${label}: enter a dollar amount.`);
+        next[c] = cents;
+      }
+      await saveHousehold(next, invoke);
+      h = next;
+      result = await runPlan(400, invoke);
     } catch (e) {
       result = null;
       error = e instanceof Error ? e.message : String(e);
@@ -45,27 +55,41 @@
     }
   }
 
+  async function rerun() {
+    if (!result) return;
+    try {
+      result = await runPlan(400, invoke);
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   let v = $derived(result ? verdict(result.successRate) : null);
   let points = $derived(result ? linePoints(result.years.map((y) => y.balanceCents), 640, 180) : "");
 </script>
 
 <h1>Retirement</h1>
-<p class="sub">Sample household. Change a number or pick a what-if and run it again.</p>
+<p class="sub">Your household, saved on this computer. Change a number, then run the plan.</p>
 
+{#if h}
 <form class="card controls" onsubmit={(e) => { e.preventDefault(); run(); }}>
-  <label>Age <input type="number" bind:value={age} min="18" max="90" aria-label="Age" /></label>
-  <label>Retire at <input type="number" bind:value={retireAge} min="18" max="90" aria-label="Retire at" /></label>
-  <label>Spending per year <input type="number" bind:value={spending} step="1000" aria-label="Spending per year" /></label>
-  <label>Salary <input type="number" bind:value={salary} step="1000" aria-label="Salary" /></label>
-  <label>Market what-if
-    <select bind:value={returnPick} aria-label="Market what-if">
-      <option value="">Likeliest (4% real)</option>
-      <option value="Cautious">Cautious (2%)</option>
-      <option value="Optimistic">Optimistic (6%)</option>
+  <label>Birth date <input bind:value={h.birthDate} aria-label="Birth date" placeholder="YYYY-MM-DD" /></label>
+  <label>Retire at <input type="number" bind:value={h.retireAge} min="18" max="90" aria-label="Retire at" /></label>
+  <label>State <input bind:value={h.state} maxlength="2" size="3" aria-label="State" /></label>
+  <label>Filing
+    <select bind:value={h.filing} aria-label="Filing status">
+      <option value="single">Single</option>
+      <option value="married_joint">Married filing jointly</option>
+      <option value="married_separate">Married filing separately</option>
+      <option value="head_of_household">Head of household</option>
     </select>
   </label>
-  <button type="submit" disabled={busy}>{busy ? "Running…" : "Run plan"}</button>
+  {#each fields as [k, label]}
+    <label>{label} <input bind:value={dollars[k]} aria-label={label} inputmode="numeric" /></label>
+  {/each}
+  <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>
 </form>
+{/if}
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 {#if result && v}
@@ -82,11 +106,15 @@
   </section>
 {/if}
 
+<Assumptions {invoke} onchange={rerun} />
+
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }
   .controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
   input[type="number"] { width: 130px; }
+  input { width: 150px; }
+  section { margin-bottom: 16px; }
   .big { font-size: 36px; font-weight: 600; }
   .big span { font-size: 14px; font-weight: 500; margin-left: 8px; }
   .good { color: var(--good); } .ok { color: var(--muted); } .bad { color: var(--bad); }

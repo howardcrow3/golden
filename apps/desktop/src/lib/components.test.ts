@@ -32,20 +32,6 @@ describe("TaxCalculator", () => {
   });
 });
 
-import Retirement from "./Retirement.svelte";
-
-describe("Retirement", () => {
-  it("shows an explanation instead of crashing when the engine is unavailable", async () => {
-    render(Retirement);
-    await fireEvent.click(screen.getByRole("button", { name: "Run plan" }));
-    expect((await screen.findByRole("alert")).textContent).toMatch(/desktop app/);
-  });
-  it("offers the market what-ifs", () => {
-    render(Retirement);
-    const sel = screen.getByLabelText("Market what-if") as HTMLSelectElement;
-    expect([...sel.options].map((o) => o.value)).toEqual(["", "Cautious", "Optimistic"]);
-  });
-});
 
 import Import from "./Import.svelte";
 import CashFlow from "./CashFlow.svelte";
@@ -129,5 +115,86 @@ describe("License", () => {
   it("keeps Activate disabled until something is pasted", () => {
     render(License, { invoke: async () => trial });
     expect((screen.getByRole("button", { name: "Activate" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+import Retirement from "./Retirement.svelte";
+import Assumptions from "./Assumptions.svelte";
+import { assumptionName, optionText } from "./assumptions";
+
+const household = {
+  birthDate: "1981-06-15", retireAge: 62, filing: "married_joint", state: "TX",
+  salaryCents: 18_000_000, contributionCents: 2_350_000, spendingCents: 9_000_000, cashCents: 3_000_000,
+  taxableCents: 15_000_000, traditionalCents: 60_000_000, rothCents: 12_000_000, ssAnnualCents: 3_800_000, picks: {},
+};
+const planResult = {
+  successRate: 0.87, depletedYear: null, p10Cents: 1, p50Cents: 2, p90Cents: 3,
+  years: [{ year: 2026, age: 45, balanceCents: 100, spendingCents: 1, taxesCents: 1 }, { year: 2027, age: 46, balanceCents: 200, spendingCents: 1, taxesCents: 1 }],
+  realReturn: 0.04, volatility: 0.11, horizonAge: 95, ssClaimAge: 67,
+};
+const rows = [
+  { key: "real_return", active: "Historical", picked: false, options: [
+    { label: "Cautious", value: 0.02, likelihood: 0.25, probability: 0.25, source: "Bond-heavy" },
+    { label: "Historical", value: 0.04, likelihood: 0.5, probability: 0.5, source: "Long-run balanced" },
+  ] },
+];
+
+describe("Retirement", () => {
+  it("loads the saved household, saves edits, and runs the plan", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      if (cmd === "household") return household;
+      if (cmd === "assumptions") return rows;
+      if (cmd === "run_plan") return planResult;
+      return undefined;
+    };
+    render(Retirement, { invoke });
+    const spending = (await screen.findByLabelText("Spending per year")) as HTMLInputElement;
+    expect(spending.value).toBe("90,000");
+    await fireEvent.input(spending, { target: { value: "80,000" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Save and run plan" }));
+    expect((await screen.findByTestId("success")).textContent).toMatch(/87%/);
+    const saved = calls.find(([c]) => c === "save_household")![1] as { household: { spendingCents: number } };
+    expect(saved.household.spendingCents).toBe(8_000_000);
+    expect(calls.findIndex(([c]) => c === "save_household")).toBeLessThan(calls.findIndex(([c]) => c === "run_plan"));
+  });
+  it("tells the person which field is not a dollar amount, without saving", async () => {
+    const calls: string[] = [];
+    const invoke = async (cmd: string) => {
+      calls.push(cmd);
+      return cmd === "household" ? household : rows;
+    };
+    render(Retirement, { invoke });
+    await fireEvent.input(await screen.findByLabelText("Cash"), { target: { value: "lots" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Save and run plan" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Cash: enter a dollar amount/);
+    expect(calls).not.toContain("save_household");
+  });
+  it("explains that the data lives in the desktop app when run in a browser", async () => {
+    render(Retirement);
+    expect((await screen.findAllByRole("alert"))[0].textContent).toMatch(/desktop app/);
+  });
+});
+
+describe("Assumptions", () => {
+  it("lists options with likelihoods and sends the pick", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      return cmd === "assumptions" ? rows : household;
+    };
+    render(Assumptions, { invoke });
+    const sel = (await screen.findByLabelText("Investment return (after inflation)")) as HTMLSelectElement;
+    expect([...sel.options].map((o) => o.textContent)).toEqual(["Likeliest", "Cautious · 25% likely", "Historical · 50% likely"]);
+    expect(screen.getByText(/Using Historical: Long-run balanced/)).toBeTruthy();
+    await fireEvent.change(sel, { target: { value: "Cautious" } });
+    await Promise.resolve();
+    expect(calls.some(([c, a]) => c === "set_pick" && (a as { label: string }).label === "Cautious")).toBe(true);
+  });
+  it("names assumptions in plain words and falls back for unknown keys", () => {
+    expect(assumptionName("horizon_age")).toBe("Plan until age");
+    expect(assumptionName("some_new_key")).toBe("some new key");
+    expect(optionText(rows[0].options[0])).toBe("Cautious · 25% likely");
   });
 });

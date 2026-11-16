@@ -1,4 +1,5 @@
 //! Tauri shell: a thin command layer over the pure-Rust crates (all logic and tests live there).
+use fin_app::household::{AssumptionRow, Household};
 use fin_app::licensing::LicenseStatus;
 use fin_app::{AccountRow, App as Core, CategoryRow, ImportReport, PeriodRow};
 use fin_app::keystore::{open_private, KeyStore};
@@ -58,6 +59,35 @@ fn bundled_public_key() -> Option<fin_license::VerifyingKey> {
 }
 
 #[tauri::command]
+fn household(state: Shared) -> Result<Household, String> {
+    lock(&state)?.household()
+}
+
+#[tauri::command]
+fn save_household(state: Shared, household: Household) -> Result<(), String> {
+    lock(&state)?.save_household(&household)
+}
+
+#[tauri::command]
+fn set_pick(state: Shared, key: String, label: String) -> Result<Household, String> {
+    lock(&state)?.set_pick(&key, &label)
+}
+
+#[tauri::command]
+fn assumptions(state: Shared) -> Result<Vec<AssumptionRow>, String> {
+    lock(&state)?.assumptions()
+}
+
+/// Run the saved household through the plan. The lock is released before the CPU-heavy part.
+#[tauri::command]
+async fn run_plan(state: Shared<'_>, runs: usize) -> Result<QuickPlanResult, String> {
+    let req = lock(&state)?.plan_request(today(), runs)?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::run(&req))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 fn accounts(state: Shared) -> Result<Vec<AccountRow>, String> {
     lock(&state)?.accounts()
 }
@@ -105,6 +135,11 @@ pub fn run() {
             quick_plan,
             app_info,
             import_statement,
+            household,
+            save_household,
+            set_pick,
+            assumptions,
+            run_plan,
             license_status,
             activate_license,
             accounts,
