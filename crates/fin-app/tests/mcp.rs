@@ -205,3 +205,11 @@ fn debt_plan_is_offered_and_works() {
     assert_eq!(r["result"]["isError"], false);
     assert!(payload(&r)["debts"].is_array());
 }
+
+#[test]
+fn insights_are_offered_and_work() {
+    let a = app();
+    let r = call(&a, "insights", json!({}));
+    assert_eq!(r["result"]["isError"], false);
+    assert!(payload(&r).is_array());
+}

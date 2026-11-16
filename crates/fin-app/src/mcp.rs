@@ -27,6 +27,7 @@ fn tools() -> Value {
          "inputSchema":s(json!({"from":{"type":"string"},"to":{"type":"string"}}),&["from","to"])},
         {"name":"debt_plan","description":"Payoff time and interest for the debts that have a rate and minimum, with a monthly extra payment (cents).",
          "inputSchema":s(json!({"extraCents":{"type":"integer","minimum":0}}),&["extraCents"])},
+        {"name":"insights","description":"Plain-language observations about the last full month.","inputSchema":s(json!({}),&[])},
         {"name":"suggest_allocation","description":"Suggested split of a yearly savings amount (cents).",
          "inputSchema":s(json!({"yearlySavingsCents":{"type":"integer","minimum":0}}),&["yearlySavingsCents"])}
     ])
@@ -56,6 +57,7 @@ fn call(app: &App, name: &str, a: &Value) -> Result<Value, String> {
                 .and_then(Value::as_i64)
                 .ok_or("Missing number argument \"extraCents\".")?,
         )?),
+        "insights" => ser(app.insights()?),
         "recurring" => ser(app.recurring(text(a, "from")?, text(a, "to")?)?),
         "forecast" => {
             let m = a

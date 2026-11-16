@@ -434,3 +434,11 @@ export async function getDebtPlan(extraCents: number, invoke?: Invoke): Promise<
 export async function setDebtTerms(name: string, aprBp: number, minCents: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_debt_terms", { name, aprBp, minCents });
 }
+
+export interface Insight {
+  kind: string;
+  text: string;
+}
+export async function getInsights(invoke?: Invoke): Promise<Insight[]> {
+  return (await (await resolve(invoke))("insights")) as Insight[];
+}

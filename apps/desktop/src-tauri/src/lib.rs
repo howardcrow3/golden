@@ -271,6 +271,11 @@ fn set_debt_terms(
 }
 
 #[tauri::command]
+fn insights(state: Shared) -> Result<Vec<fin_app::insights::Insight>, String> {
+    lock(&state)?.insights()
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -345,6 +350,7 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            insights,
             debt_plan,
             set_debt_terms,
             recurring,

@@ -7,6 +7,7 @@
   import BalanceSheet from "./BalanceSheet.svelte";
   import RecurringList from "./RecurringList.svelte";
   import Debts from "./Debts.svelte";
+  import Insights from "./Insights.svelte";
 
   // Sample household until real data is imported.
   const monthlyBudget = 650_000;
@@ -28,6 +29,7 @@
   <div class="big num" data-testid="budget">{formatCents(budget, { whole: true })}</div>
 </section>
 
+<Insights />
 <BalanceSheet />
 <RecurringList />
 <Debts />
