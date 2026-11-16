@@ -44,3 +44,42 @@ pub fn file_statement(root: &Path, bytes: &[u8], meta: &StatementMeta) -> std::i
 pub fn default_root(app_data: &Path) -> PathBuf {
     app_data.join("Statements")
 }
+
+/// Setting that holds the folder the person chose.
+pub const FOLDER_KEY: &str = "library_folder";
+
+impl crate::App {
+    /// Choose where statements are filed. An empty path goes back to the default folder.
+    /// The folder is created if needed and must be writable. Files already filed stay where
+    /// they are; only new imports go to the new folder.
+    pub fn set_library_folder(&mut self, path: &str) -> Result<String, String> {
+        self.require_edit()?;
+        let path = path.trim();
+        if path.is_empty() {
+            self.db
+                .set_setting(FOLDER_KEY, "")
+                .map_err(|e| e.to_string())?;
+            self.library_root = self.library_default.clone();
+            return Ok(self
+                .library_root
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default());
+        }
+        let p = Path::new(path);
+        if !p.is_absolute() {
+            return Err("Enter the full path of the folder, for example /Users/you/Documents/Statements or C:\\Users\\you\\Statements.".into());
+        }
+        std::fs::create_dir_all(p).map_err(|e| format!("Couldn't use that folder: {e}"))?;
+        let probe = p.join(".golden-write-test");
+        std::fs::write(&probe, b"ok")
+            .map_err(|e| format!("Golden can't write to that folder: {e}"))?;
+        let _ = std::fs::remove_file(&probe);
+        let canon = p.to_string_lossy().to_string();
+        self.db
+            .set_setting(FOLDER_KEY, &canon)
+            .map_err(|e| e.to_string())?;
+        self.library_root = Some(p.to_path_buf());
+        Ok(canon)
+    }
+}

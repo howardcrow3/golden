@@ -66,6 +66,7 @@ pub struct App {
     pub(crate) clock: fn() -> NaiveDate,
     pub(crate) interpreter: Box<dyn chat::Interpreter>,
     library_root: Option<std::path::PathBuf>,
+    pub(crate) library_default: Option<std::path::PathBuf>,
 }
 
 fn today_local() -> NaiveDate {
@@ -108,6 +109,7 @@ impl App {
             clock: today_local,
             interpreter: Box::new(chat::RuleInterpreter),
             library_root: None,
+            library_default: None,
         };
         app.load_saved_rules();
         app
@@ -188,8 +190,15 @@ impl App {
     }
 
     /// Where original statements are filed (None disables filing).
+    /// `root` is the default; a folder the person chose earlier (saved in settings) wins.
     pub fn with_library(mut self, root: Option<std::path::PathBuf>) -> App {
+        self.library_default = root.clone();
         self.library_root = root;
+        if let Ok(Some(saved)) = self.db.get_setting(library::FOLDER_KEY) {
+            if !saved.trim().is_empty() {
+                self.library_root = Some(std::path::PathBuf::from(saved));
+            }
+        }
         self
     }
 
