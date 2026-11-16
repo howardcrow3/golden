@@ -11,6 +11,7 @@ pub mod household;
 pub mod keystore;
 pub mod library;
 pub mod licensing;
+pub mod paystub;
 pub mod transactions;
 
 use chrono::NaiveDate;

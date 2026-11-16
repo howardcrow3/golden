@@ -3,6 +3,7 @@
 pub mod csv_reader;
 pub mod dates;
 pub mod ofx;
+pub mod paystub;
 
 use fin_core::{Money, NaiveDate};
 
