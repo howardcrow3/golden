@@ -133,19 +133,30 @@ export async function activateLicense(token: string, invoke?: Invoke): Promise<L
   return (await (await resolve(invoke))("activate_license", { token })) as LicenseStatus;
 }
 
-export interface Household {
+export interface PersonRow {
+  name: string;
   birthDate: string;
   retireAge: number;
+  ssAnnualCents: number;
+}
+export interface StreamRow {
+  label: string;
+  person: number;
+  annualCents: number;
+  startYear: number | null;
+  endYear: number | null;
+  contributionCents: number;
+}
+export interface Household {
+  people: PersonRow[];
+  streams: StreamRow[];
   filing: TaxRequest["filing"];
   state: string;
-  salaryCents: number;
-  contributionCents: number;
   spendingCents: number;
   cashCents: number;
   taxableCents: number;
   traditionalCents: number;
   rothCents: number;
-  ssAnnualCents: number;
   picks: Record<string, string>;
 }
 export interface OptionRow {

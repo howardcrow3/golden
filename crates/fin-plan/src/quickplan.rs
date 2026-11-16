@@ -109,12 +109,16 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
         annual_spending: Money::from_cents(req.spending_cents),
         horizon_age: 95,
     };
-    let picks: Picks = req.picks.clone();
+    run_plan(&plan, &req.picks, req.runs)
+}
+
+/// Run any household plan (any number of people and income streams) with what-if picks.
+pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPlanResult, String> {
     let r = scenario::run(
-        &plan,
+        plan,
         &Assumptions::defaults(),
-        &picks,
-        req.runs.clamp(10, 5_000),
+        picks,
+        runs.clamp(10, 5_000),
         20_260_101,
     )
     .map_err(|e| e.to_string())?;
