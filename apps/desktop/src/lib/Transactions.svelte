@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { categoryChoices, exportBackup, exportTransactions, listTransactions, setCategory, type Invoke, type TxnRow } from "./api";
+  import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, type Invoke, type TxnRow } from "./api";
   import { formatCents } from "./money";
 
   let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
@@ -67,6 +67,33 @@
     }
   }
 
+  function readBytes(f: File): Promise<Uint8Array> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(new Uint8Array(r.result as ArrayBuffer));
+      r.onerror = () => reject(new Error("Couldn't read that file."));
+      r.readAsArrayBuffer(f);
+    });
+  }
+
+  async function restore(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    if (!f) return;
+    note = "";
+    error = "";
+    try {
+      const r = await restoreBackup(await readBytes(f), invoke);
+      note = `Restored ${r.added} transactions (${r.skippedDuplicates} were already here)` +
+        (r.settingsRestored.length ? ` and your ${r.settingsRestored.join(", ").replace("user_rules", "category rules")}.` : ".");
+      await load();
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    } finally {
+      input.value = "";
+    }
+  }
+
   async function change(row: TxnRow, value: string) {
     const v = value.trim();
     if (!v || v === row.category) return;
@@ -91,6 +118,7 @@
   <label class="check"><input type="checkbox" bind:checked={remember} /> Remember this merchant for next time</label>
   <button type="button" onclick={exportCsv}>Export CSV</button>
   <button type="button" onclick={backup}>Back up everything</button>
+  <label class="check">Restore from backup <input type="file" accept=".json" aria-label="Backup file" onchange={restore} /></label>
 </div>
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}

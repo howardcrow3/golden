@@ -83,6 +83,13 @@ fn export_backup(app: tauri::AppHandle, state: Shared) -> Result<String, String>
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Merge a Golden backup file (as bytes) into this database.
+#[tauri::command]
+fn restore_backup(state: Shared, bytes: Vec<u8>) -> Result<fin_app::backup::RestoreReport, String> {
+    let text = String::from_utf8(bytes).map_err(|_| "That file isn't a Golden backup.".to_string())?;
+    lock(&state)?.restore_backup(&text)
+}
+
 #[tauri::command]
 fn license_status(state: Shared) -> Result<LicenseStatus, String> {
     lock(&state)?.license_status(today())
@@ -209,6 +216,7 @@ pub fn run() {
             import_file,
             export_transactions,
             export_backup,
+            restore_backup,
             transactions,
             category_choices,
             budget_status,
