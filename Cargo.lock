@@ -344,7 +344,9 @@ dependencies = [
  "fin-db",
  "fin-ingest",
  "fin-ledger",
+ "getrandom 0.2.17",
  "serde",
+ "tempfile",
 ]
 
 [[package]]

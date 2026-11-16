@@ -62,3 +62,44 @@ fn migrations_run_on_encrypted_databases() {
         fin_db::migrations::latest_version()
     );
 }
+
+#[test]
+fn plain_database_is_upgraded_in_place_keeping_data() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("golden.db");
+    {
+        let db = Db::open(&path).unwrap();
+        let a = db
+            .add_account("Checking", "checking", Some("Chase"), None)
+            .unwrap();
+        db.add_account("Savings", "savings", None, None).unwrap();
+        let _ = a;
+    }
+    assert!(Db::is_plain_file(&path));
+    Db::encrypt_plain_file(&path, "k").unwrap();
+    assert!(!Db::is_plain_file(&path));
+    let bytes = std::fs::read(&path).unwrap();
+    assert!(!String::from_utf8_lossy(&bytes).contains("Chase"));
+    let db = Db::open_encrypted(&path, "k").unwrap();
+    assert_eq!(db.accounts().unwrap().len(), 2);
+    assert!(db.schema_version().unwrap() > 0);
+}
+
+#[test]
+fn keys_with_quotes_survive_the_upgrade() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("q.db");
+    Db::open(&path)
+        .unwrap()
+        .add_account("A", "savings", None, None)
+        .unwrap();
+    Db::encrypt_plain_file(&path, "it's a \"key\"").unwrap();
+    assert_eq!(
+        Db::open_encrypted(&path, "it's a \"key\"")
+            .unwrap()
+            .accounts()
+            .unwrap()
+            .len(),
+        1
+    );
+}

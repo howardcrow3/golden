@@ -1,7 +1,30 @@
 //! Tauri shell: a thin command layer over the pure-Rust crates (all logic and tests live there).
 use fin_app::{AccountRow, App as Core, CategoryRow, ImportReport, PeriodRow};
+use fin_app::keystore::{open_private, KeyStore};
 use std::sync::Mutex;
 use tauri::{Manager, State};
+
+/// The database key lives in the macOS Keychain / Windows Credential Manager.
+struct OsKeyStore;
+
+impl OsKeyStore {
+    fn entry() -> Result<keyring::Entry, String> {
+        keyring::Entry::new("app.golden.desktop", "database-key").map_err(|e| e.to_string())
+    }
+}
+
+impl KeyStore for OsKeyStore {
+    fn get(&self) -> Result<Option<String>, String> {
+        match Self::entry()?.get_password() {
+            Ok(k) => Ok(Some(k)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    fn set(&self, key: &str) -> Result<(), String> {
+        Self::entry()?.set_password(key).map_err(|e| e.to_string())
+    }
+}
 
 type Shared<'a> = State<'a, Mutex<Core>>;
 
@@ -53,7 +76,7 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
-            let db = fin_db::Db::open(dir.join("golden.db"))?;
+            let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
             app.manage(Mutex::new(Core::new(db)));
             Ok(())
         })

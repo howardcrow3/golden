@@ -42,6 +42,43 @@ impl Db {
         Self::init(conn)
     }
 
+    /// True when `path` holds an unencrypted SQLite database (used to upgrade older installs).
+    pub fn is_plain_file(path: impl AsRef<Path>) -> bool {
+        use std::io::Read;
+        let mut head = [0u8; 16];
+        std::fs::File::open(path)
+            .and_then(|mut f| f.read_exact(&mut head))
+            .map(|_| &head == b"SQLite format 3\0")
+            .unwrap_or(false)
+    }
+
+    /// Encrypt an existing plain database file in place with `key`, keeping all data.
+    /// The original is replaced only after the encrypted copy has been written.
+    #[cfg(feature = "sqlcipher")]
+    pub fn encrypt_plain_file(path: impl AsRef<Path>, key: &str) -> Result<()> {
+        let path = path.as_ref();
+        let tmp = path.with_extension("db.enc-tmp");
+        let _ = std::fs::remove_file(&tmp);
+        {
+            let conn = Connection::open(path)?;
+            let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+            let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            let tmp_str = tmp.to_string_lossy().replace('\'', "''");
+            let key_sql = key.replace('\'', "''");
+            conn.execute_batch(&format!(
+                "ATTACH DATABASE '{tmp_str}' AS enc KEY '{key_sql}';
+                 SELECT sqlcipher_export('enc');
+                 PRAGMA enc.user_version = {version};
+                 DETACH DATABASE enc;"
+            ))?;
+        }
+        for ext in ["db-wal", "db-shm"] {
+            let _ = std::fs::remove_file(path.with_extension(ext));
+        }
+        std::fs::rename(&tmp, path).map_err(|e| DbError::Invalid(e.to_string()))?;
+        Ok(())
+    }
+
     /// Change the encryption key of an open encrypted database.
     #[cfg(feature = "sqlcipher")]
     pub fn rekey(&self, new_key: &str) -> Result<()> {
