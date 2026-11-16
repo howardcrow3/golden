@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { activateLicense, licenseStatus, type Invoke, type LicenseStatus } from "./api";
+  import { activateLicense, DEFAULT_PRICING, getPricing, licenseStatus, type Invoke, type LicenseStatus, type Pricing } from "./api";
+  import { formatCents } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let status = $state<LicenseStatus | null>(null);
   let token = $state("");
   let error = $state("");
   let note = $state("");
+  let pricing = $state<Pricing>(DEFAULT_PRICING);
 
   export function describe(s: LicenseStatus): string {
     if (s.state === "licensed") return s.plaidActive ? "Licensed, with bank connections." : "Licensed. Thank you.";
@@ -13,7 +15,15 @@
     return "Trial ended. Your data is safe and exports still work.";
   }
 
+  export function priceLine(p: Pricing): string {
+    const core = formatCents(p.coreCents);
+    const plaid = formatCents(p.plaidCents);
+    const per = p.plaidInterval === "year" ? "a year" : "a month";
+    return `Golden is ${core} once per major version. Bank connections are an optional ${plaid} ${per}.`;
+  }
+
   $effect(() => {
+    getPricing(invoke).then((p) => (pricing = p));
     licenseStatus(invoke).then((s) => (status = s)).catch(() => (status = null));
   });
 
@@ -31,7 +41,8 @@
 </script>
 
 <h1>Licence</h1>
-<p class="sub">Golden is $25 once per major version. Bank connections are an optional $20 a year.</p>
+<p class="sub" data-testid="prices">{priceLine(pricing)}</p>
+{#if pricing.warning}<p class="err" role="alert">{pricing.warning}</p>{/if}
 
 {#if status}<section class="card" data-testid="status">{describe(status)}</section>{/if}
 

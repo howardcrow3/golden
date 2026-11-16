@@ -35,9 +35,16 @@ An unsigned installer shows a SmartScreen warning; an EV certificate removes it 
 
 Today every merge refreshes the rolling `nightly` release. Before selling, add a tagged `v1.x` release job that only runs on version tags, so customers never receive a nightly.
 
+## 5. Prices and Paddle
+
+- Prices: `crates/fin-license/data/pricing.json` (core one-time and Plaid per month, in cents). The Licence screen and tests read it, so change it there only. Currently $39.99 and $5 a month.
+- Paddle price IDs are repository secrets `GOLDEN_PRICE_ID` (core) and `GOLDEN_PLAID_PRICE_ID` (Plaid). CI passes them into the app build. They must be **price** IDs (`pri_...`), not product IDs (`pro_...`); the app refuses a product ID and says so on the Licence screen.
+- Changing a price in Paddle creates a new price ID: update the secret too, or checkout would charge the old amount.
+
 ## Checklist
 
 - [ ] Licence keypair generated, secret stored offline, public key committed
 - [ ] Apple secrets added and notarization verified on a nightly build
 - [ ] Windows signing configured and verified
 - [ ] Tagged release workflow added
+- [ ] Paddle checkout and licence-issuing webhook deployed

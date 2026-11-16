@@ -7,6 +7,8 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier};
 use fin_core::NaiveDate;
 use serde::{Deserialize, Serialize};
 
+pub mod pricing;
+
 pub use ed25519_dalek::VerifyingKey;
 
 pub const TRIAL_DAYS: i64 = 14;

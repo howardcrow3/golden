@@ -90,6 +90,12 @@ fn restore_backup(state: Shared, bytes: Vec<u8>) -> Result<fin_app::backup::Rest
     lock(&state)?.restore_backup(&text)
 }
 
+/// What Golden costs, plus the Paddle price IDs this build was given (see the signing guide).
+#[tauri::command]
+fn pricing() -> fin_license::pricing::PricingInfo {
+    fin_license::pricing::PricingInfo::from_ids(option_env!("GOLDEN_PRICE_ID"), option_env!("GOLDEN_PLAID_PRICE_ID"))
+}
+
 #[tauri::command]
 fn license_status(state: Shared) -> Result<LicenseStatus, String> {
     lock(&state)?.license_status(today())
@@ -230,6 +236,7 @@ pub fn run() {
             run_plan,
             whatif,
             keep_whatif,
+            pricing,
             license_status,
             activate_license,
             accounts,

@@ -274,3 +274,31 @@ export interface RestoreReport {
 export async function restoreBackup(bytes: Uint8Array, invoke?: Invoke): Promise<RestoreReport> {
   return (await (await resolve(invoke))("restore_backup", { bytes: Array.from(bytes) })) as RestoreReport;
 }
+
+export interface Pricing {
+  currency: string;
+  coreCents: number;
+  plaidCents: number;
+  plaidInterval: "month" | "year";
+  corePriceId: string | null;
+  plaidPriceId: string | null;
+  warning: string | null;
+}
+/** Shown until the app answers (and in a plain browser). Must match crates/fin-license/data/pricing.json. */
+export const DEFAULT_PRICING: Pricing = {
+  currency: "USD",
+  coreCents: 3999,
+  plaidCents: 500,
+  plaidInterval: "month",
+  corePriceId: null,
+  plaidPriceId: null,
+  warning: null,
+};
+export async function getPricing(invoke?: Invoke): Promise<Pricing> {
+  try {
+    const p = (await (await resolve(invoke))("pricing")) as Pricing;
+    return typeof p?.coreCents === "number" && typeof p?.plaidCents === "number" ? p : DEFAULT_PRICING;
+  } catch {
+    return DEFAULT_PRICING;
+  }
+}

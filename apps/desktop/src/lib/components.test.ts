@@ -92,6 +92,26 @@ describe("CashFlow", () => {
 
 import License from "./License.svelte";
 
+describe("License prices", () => {
+  it("shows $39.99 once and $5 a month by default", () => {
+    render(License);
+    expect(screen.getByTestId("prices").textContent).toBe(
+      "Golden is $39.99 once per major version. Bank connections are an optional $5.00 a month.",
+    );
+  });
+  it("uses the prices the app reports and shows a bad price ID warning", async () => {
+    const invoke = async (cmd: string) =>
+      cmd === "pricing"
+        ? { currency: "USD", coreCents: 2500, plaidCents: 2000, plaidInterval: "year", corePriceId: null, plaidPriceId: null, warning: "Core price: pro_x is a Paddle product ID." }
+        : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
+    render(License, { invoke });
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("prices").textContent).toBe("Golden is $25.00 once per major version. Bank connections are an optional $20.00 a year."),
+    );
+    expect((await screen.findByRole("alert")).textContent).toMatch(/product ID/);
+  });
+});
+
 describe("License", () => {
   const trial = { state: "trial", daysLeft: 9, canEdit: true, plaidActive: false };
   it("shows the trial countdown", async () => {
