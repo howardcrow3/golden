@@ -49,6 +49,7 @@ jobs:
         env:
           GOLDEN_PRICE_ID: ${{ secrets.GOLDEN_PRICE_ID }}
           GOLDEN_PLAID_PRICE_ID: ${{ secrets.GOLDEN_PLAID_PRICE_ID }}
+          GOLDEN_CHECKOUT_URL: ${{ vars.GOLDEN_CHECKOUT_URL }}
         working-directory: apps/desktop
         run: npm run tauri -- build ${{ matrix.args }}
       - name: Build and publish nightly release
@@ -58,6 +59,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOLDEN_PRICE_ID: ${{ secrets.GOLDEN_PRICE_ID }}
           GOLDEN_PLAID_PRICE_ID: ${{ secrets.GOLDEN_PLAID_PRICE_ID }}
+          GOLDEN_CHECKOUT_URL: ${{ vars.GOLDEN_CHECKOUT_URL }}
         with:
           projectPath: apps/desktop
           args: ${{ matrix.args }}
