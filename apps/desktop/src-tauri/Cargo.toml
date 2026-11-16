@@ -16,5 +16,6 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 fin-plan = { path = "../../../crates/fin-plan" }
-fin-app = { path = "../../../crates/fin-app" }
-fin-db = { path = "../../../crates/fin-db" }
+fin-app = { path = "../../../crates/fin-app", default-features = false, features = ["sqlcipher"] }
+fin-db = { path = "../../../crates/fin-db", default-features = false, features = ["sqlcipher"] }
+keyring = { version = "3", features = ["apple-native", "windows-native"] }

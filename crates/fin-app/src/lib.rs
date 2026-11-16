@@ -1,6 +1,8 @@
 //! Application service: the one place the UI talks to. It wires file import, categorization
 //! rules and the ledger together and returns plain serializable shapes. The Tauri shell only
 //! forwards calls here, so everything is testable without a window.
+pub mod keystore;
+
 use chrono::NaiveDate;
 use fin_core::{Grain, PeriodKey};
 use fin_db::ledger::{AccountId, Metric, NewTxn};

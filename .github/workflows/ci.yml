@@ -33,4 +33,4 @@ jobs:
       - run: cargo test --workspace --all-targets
       - run: cargo test --workspace --doc
       - name: Encrypted database (SQLCipher)
-        run: cargo test -p fin-db --no-default-features --features sqlcipher
+        run: cargo test -p fin-db -p fin-app --no-default-features --features sqlcipher

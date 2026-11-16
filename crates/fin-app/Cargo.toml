@@ -12,6 +12,10 @@ fin-ingest = { path = "../fin-ingest" }
 fin-ledger = { path = "../fin-ledger" }
 serde.workspace = true
 chrono.workspace = true
+getrandom = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
 
 [features]
 default = ["plain"]
