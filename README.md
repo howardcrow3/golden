@@ -12,6 +12,8 @@ Plan documents are in [`docs/`](docs/README.md).
 | `crates/fin-plan` | Federal and state tax, retirement projection, Monte Carlo, assumptions with options, what-if scenarios |
 | `crates/fin-db` | SQLite ledger (optional SQLCipher encryption), idempotent imports, totals at any grain |
 | `crates/fin-ingest` | CSV and OFX statement readers, statement library naming |
+| `crates/fin-license` | 14-day trial and offline Ed25519-signed licences (plus Plaid add-on expiry) |
+| `crates/fin-app` | Service layer behind the Tauri commands: import, filing, recategorize, export, household, what-if chat |
 | `crates/fin-ledger` | Merchant normalization, categorization rules, transfer matching |
 | `apps/desktop` | Tauri 2 shell and Svelte UI |
 
@@ -27,3 +29,14 @@ cd apps/desktop && npm ci && npm test && npm run tauri dev
 
 - **CI** runs format, lint and every test on Linux, macOS and Windows for each pull request.
 - **App** type-checks and tests the UI, builds the desktop app on macOS (Apple silicon) and Windows, and on every push to `main` publishes the installers to the rolling [`nightly`](../../releases/tag/nightly) release. Builds are unsigned until signing certificates are added.
+
+## Status
+
+Working today: statement import (CSV/OFX) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
+
+Known gaps:
+
+- Six states (AR, CT, MD, MN, NY, VT) are flagged approximate; see the notes in `crates/fin-plan/data/states_2026.json`.
+- `apps/desktop/src-tauri/license_public_key.txt` is empty, so licence activation is off until you run `cargo run -p fin-license --features tool --bin golden-license -- keygen`, keep the secret key offline and commit the public key.
+- Installers are unsigned (no Apple notarization or Windows certificate yet).
+- The what-if chat is rule-based; the AI layer is not integrated yet.
