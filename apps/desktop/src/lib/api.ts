@@ -264,3 +264,13 @@ export async function setBudget(category: string, monthlyCents: number, invoke?:
 export async function exportBackup(invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("export_backup")) as string;
 }
+
+export interface RestoreReport {
+  accounts: number;
+  added: number;
+  skippedDuplicates: number;
+  settingsRestored: string[];
+}
+export async function restoreBackup(bytes: Uint8Array, invoke?: Invoke): Promise<RestoreReport> {
+  return (await (await resolve(invoke))("restore_backup", { bytes: Array.from(bytes) })) as RestoreReport;
+}

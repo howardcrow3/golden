@@ -422,6 +422,34 @@ describe("Transactions", () => {
     expect((await screen.findByRole("status")).textContent).toBe("Backup saved to /data/Exports/golden-backup-2026-11-16.json");
     expect(log.some(([c]) => c === "export_backup")).toBe(true);
   });
+  it("restores a backup file and reloads the list", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    const base = fake(log);
+    const invoke = async (cmd: string, args?: Record<string, unknown>) =>
+      cmd === "restore_backup"
+        ? (log.push([cmd, args]), { accounts: 1, added: 3, skippedDuplicates: 1, settingsRestored: ["budgets", "user_rules"] })
+        : base(cmd, args);
+    render(Transactions, { invoke, today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    const before = log.filter(([c]) => c === "transactions").length;
+    const file = new File(['{"app":"Golden","backupVersion":1}'], "golden-backup.json", { type: "application/json" });
+    await fireEvent.change(screen.getByLabelText("Backup file"), { target: { files: [file] } });
+    expect((await screen.findByRole("status")).textContent).toBe("Restored 3 transactions (1 were already here) and your budgets, category rules.");
+    expect((log.find(([c]) => c === "restore_backup")![1] as { bytes: number[] }).bytes.length).toBeGreaterThan(10);
+    await vi.waitFor(() => expect(log.filter(([c]) => c === "transactions").length).toBeGreaterThan(before));
+  });
+  it("shows the app's reason when a backup is refused", async () => {
+    const base = fake([]);
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === "restore_backup") throw "That file isn't a Golden backup.";
+      return base(cmd, args);
+    };
+    render(Transactions, { invoke, today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    const file = new File(["nope"], "x.json");
+    await fireEvent.change(screen.getByLabelText("Backup file"), { target: { files: [file] } });
+    expect((await screen.findByRole("alert")).textContent).toMatch(/isn't a Golden backup/);
+  });
   it("shows a friendly message when there is nothing to list", async () => {
     render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? [] : []) });
     expect((await screen.findByText(/Import a statement first/)).textContent).toBeTruthy();

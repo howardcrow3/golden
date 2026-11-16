@@ -76,3 +76,94 @@ fn file_is_written_numbered_and_works_after_the_trial() {
     assert_eq!(back["transactions"].as_array().unwrap().len(), 3);
     std::fs::remove_dir_all(&dir).ok();
 }
+
+fn blank() -> App {
+    App::in_memory().unwrap().with_clock(|| d(2026, 11, 16))
+}
+
+#[test]
+fn restore_rebuilds_a_fresh_install() {
+    let src = loaded();
+    src.set_budget("Food", 40_000).unwrap();
+    let text = src.backup_json().unwrap();
+    let mut fresh = blank();
+    let r = fresh.restore_backup(&text).unwrap();
+    assert_eq!((r.accounts, r.added, r.skipped_duplicates), (1, 3, 0));
+    assert_eq!(r.settings_restored, ["budgets"]);
+    assert_eq!(fresh.budgets().unwrap().monthly["Food"], 40_000);
+    // Same transactions and categories (row ids are new in a fresh database).
+    let key = |app: &App| -> Vec<_> {
+        app.transactions("2019-01-01", "2026-12-31", false)
+            .unwrap()
+            .into_iter()
+            .map(|t| (t.day, t.payee, t.amount_cents, t.category, t.account))
+            .collect()
+    };
+    assert_eq!(key(&fresh), key(&src));
+}
+
+#[test]
+fn restoring_twice_changes_nothing() {
+    let text = loaded().backup_json().unwrap();
+    let mut app = blank();
+    app.restore_backup(&text).unwrap();
+    let r = app.restore_backup(&text).unwrap();
+    assert_eq!((r.added, r.skipped_duplicates), (0, 3));
+    assert!(r.settings_restored.is_empty());
+}
+
+#[test]
+fn restore_never_overwrites_existing_settings() {
+    let src = loaded();
+    src.set_budget("Food", 40_000).unwrap();
+    let text = src.backup_json().unwrap();
+    let mut app = blank();
+    app.set_budget("Food", 999).unwrap();
+    let r = app.restore_backup(&text).unwrap();
+    assert!(r.settings_restored.is_empty());
+    assert_eq!(app.budgets().unwrap().monthly["Food"], 999);
+}
+
+#[test]
+fn restore_round_trips_remembered_category_rules() {
+    let mut src = loaded();
+    let todo = src.transactions("2019-01-01", "2026-12-31", true).unwrap();
+    // The CSV's "SMITH, JONES" line is uncategorized; teach a rule and back up.
+    let id = todo.first().map(|t| t.id).unwrap();
+    src.set_category(id, "Gifts", true).unwrap();
+    let mut fresh = blank();
+    let r = fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert!(r.settings_restored.contains(&"user_rules".to_string()));
+}
+
+#[test]
+fn bad_files_are_refused_with_a_readable_reason() {
+    let mut app = blank();
+    assert!(app
+        .restore_backup("not json")
+        .unwrap_err()
+        .contains("isn't a Golden backup"));
+    assert!(app
+        .restore_backup("{\"app\":\"Other\"}")
+        .unwrap_err()
+        .contains("isn't a Golden backup"));
+    let future = r#"{"app":"Golden","backupVersion":9}"#;
+    assert!(app
+        .restore_backup(future)
+        .unwrap_err()
+        .contains("version 9"));
+    let no_amount = r#"{"app":"Golden","backupVersion":1,"accounts":[{"name":"A","kind":"checking"}],"transactions":[{"account":"A","day":"2026-01-01"}]}"#;
+    assert!(app
+        .restore_backup(no_amount)
+        .unwrap_err()
+        .contains("amount"));
+}
+
+#[test]
+fn restore_is_blocked_after_the_trial() {
+    let text = loaded().backup_json().unwrap();
+    let mut app = blank();
+    app.restore_backup(&text).unwrap();
+    app.db().set_setting("first_run", "2026-01-01").unwrap();
+    assert!(app.restore_backup(&text).is_err());
+}
