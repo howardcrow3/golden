@@ -21,6 +21,15 @@ pub struct StateRules {
     pub std_single: Money,
     pub std_joint: Money,
     pub joint_multiplier: f64,
+    /// Explicit joint-filer brackets, when the state publishes them. Used
+    /// instead of scaling the single brackets by `joint_multiplier`.
+    #[serde(default)]
+    pub joint_brackets: Option<BracketTable>,
+    /// Non-refundable personal credits subtracted from the tax.
+    #[serde(default)]
+    pub credit_single: Money,
+    #[serde(default)]
+    pub credit_joint: Money,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -60,7 +69,9 @@ impl StateTaxYear {
         }
         let joint = fs == FilingStatus::MarriedJoint;
         let taxable = (income - if joint { r.std_joint } else { r.std_single }).max(Money::ZERO);
-        let table = if joint && r.joint_multiplier != 1.0 {
+        let table = if let (true, Some(jb)) = (joint, r.joint_brackets.as_ref()) {
+            jb.clone()
+        } else if joint && r.joint_multiplier != 1.0 {
             BracketTable::new(
                 r.brackets
                     .0
@@ -74,7 +85,12 @@ impl StateTaxYear {
         } else {
             r.brackets.clone()
         };
-        Some(table.tax(taxable))
+        let credit = if joint {
+            r.credit_joint
+        } else {
+            r.credit_single
+        };
+        Some((table.tax(taxable) - credit).max(Money::ZERO))
     }
 }
 
@@ -157,9 +173,45 @@ mod tests {
     }
 
     #[test]
+    fn exact_states_match_published_schedules() {
+        let y = StateTaxYear::y2026();
+        // Missouri: federal-sized deduction, 0% to $1,348, top 4.7%.
+        // $100k single: taxable 83,900, tax 262.86 on the ramp plus 4.7% of the rest.
+        let mo = y
+            .income_tax("MO", FilingStatus::Single, m(100_000))
+            .unwrap();
+        assert_eq!(mo, Money::from_cents(376_267));
+        // Alabama: explicit joint brackets differ from single.
+        let single = y.income_tax("AL", FilingStatus::Single, m(50_000)).unwrap();
+        let joint = y
+            .income_tax("AL", FilingStatus::MarriedJoint, m(50_000))
+            .unwrap();
+        assert!(joint < single, "{joint} {single}");
+        // Delaware: credit lowers tax, never below zero.
+        assert_eq!(
+            y.income_tax("DE", FilingStatus::Single, m(3_000)),
+            Some(Money::ZERO)
+        );
+        for c in [
+            "AL", "DC", "DE", "HI", "KS", "ME", "MO", "MT", "ND", "NE", "NJ", "NM", "OK", "OR",
+            "RI", "SC", "WI", "WV",
+        ] {
+            assert!(!y.rules(c).unwrap().approximate, "{c}");
+        }
+    }
+
+    #[test]
+    fn partially_modelled_states_stay_flagged() {
+        let y = StateTaxYear::y2026();
+        for c in ["AR", "CT", "MD", "MN", "NY", "VT"] {
+            assert!(y.rules(c).unwrap().approximate, "{c}");
+        }
+    }
+
+    #[test]
     fn approximate_states_are_flagged() {
         let y = StateTaxYear::y2026();
-        assert!(y.rules("KS").unwrap().approximate);
+        assert!(y.rules("NY").unwrap().approximate);
         assert!(!y.rules("PA").unwrap().approximate);
         assert!(!y.rules("TX").unwrap().approximate);
     }

@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn approximate_state_flagged() {
         assert!(
-            estimate(&req(5_000_000, FilingStatus::Single, "KS"))
+            estimate(&req(5_000_000, FilingStatus::Single, "NY"))
                 .unwrap()
                 .state_is_estimate
         );
