@@ -389,3 +389,16 @@ export async function suggestAllocation(yearlySavingsCents: number, invoke?: Inv
 export async function setOpeningBalance(accountId: number, cents: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_opening_balance", { accountId, cents });
 }
+
+export interface Recurring {
+  payee: string;
+  cadence: string;
+  typicalCents: number;
+  timesSeen: number;
+  lastSeen: string;
+  nextExpected: string;
+  yearlyCents: number;
+}
+export async function getRecurring(from: string, to: string, invoke?: Invoke): Promise<Recurring[]> {
+  return (await (await resolve(invoke))("recurring", { from, to })) as Recurring[];
+}

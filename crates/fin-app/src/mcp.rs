@@ -23,6 +23,8 @@ fn tools() -> Value {
          "inputSchema":s(json!({"day":{"type":"string"},"grain":{"type":"string","enum":["week","month","quarter","year"]}}),&["day","grain"])},
         {"name":"forecast","description":"Monthly projection from the household's own history.",
          "inputSchema":s(json!({"months":{"type":"integer","minimum":1,"maximum":60}}),&["months"])},
+        {"name":"recurring","description":"Recurring payments and paychecks found in a date range, biggest yearly amount first.",
+         "inputSchema":s(json!({"from":{"type":"string"},"to":{"type":"string"}}),&["from","to"])},
         {"name":"suggest_allocation","description":"Suggested split of a yearly savings amount (cents).",
          "inputSchema":s(json!({"yearlySavingsCents":{"type":"integer","minimum":0}}),&["yearlySavingsCents"])}
     ])
@@ -47,6 +49,7 @@ fn call(app: &App, name: &str, a: &Value) -> Result<Value, String> {
             a.get("income").and_then(Value::as_bool).unwrap_or(false),
         )?),
         "budget_status" => ser(app.budget_status(text(a, "day")?, text(a, "grain")?)?),
+        "recurring" => ser(app.recurring(text(a, "from")?, text(a, "to")?)?),
         "forecast" => {
             let m = a
                 .get("months")
