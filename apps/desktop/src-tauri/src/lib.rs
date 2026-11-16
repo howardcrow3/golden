@@ -256,6 +256,21 @@ fn recurring(
 }
 
 #[tauri::command]
+fn debt_plan(state: Shared, extra_cents: i64) -> Result<fin_app::debts::DebtPlan, String> {
+    lock(&state)?.debt_plan(extra_cents)
+}
+
+#[tauri::command]
+fn set_debt_terms(
+    state: Shared,
+    name: String,
+    apr_bp: i64,
+    min_cents: i64,
+) -> Result<(), String> {
+    lock(&state)?.set_debt_terms(&name, apr_bp, min_cents)
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -330,6 +345,8 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            debt_plan,
+            set_debt_terms,
             recurring,
             set_opening_balance,
             read_paystub,

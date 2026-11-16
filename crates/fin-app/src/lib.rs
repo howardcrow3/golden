@@ -6,6 +6,7 @@ pub mod backup;
 pub mod balance;
 pub mod budget;
 pub mod chat;
+pub mod debts;
 pub mod export;
 pub mod forecast;
 pub mod household;

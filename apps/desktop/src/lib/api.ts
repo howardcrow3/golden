@@ -402,3 +402,35 @@ export interface Recurring {
 export async function getRecurring(from: string, to: string, invoke?: Invoke): Promise<Recurring[]> {
   return (await (await resolve(invoke))("recurring", { from, to })) as Recurring[];
 }
+
+export interface DebtRow {
+  name: string;
+  balanceCents: number;
+  aprBp: number;
+  minCents: number;
+  hasTerms: boolean;
+}
+export interface PaidOff {
+  name: string;
+  month: number;
+}
+export interface Payoff {
+  feasible: boolean;
+  months: number;
+  totalInterestCents: number;
+  totalPaidCents: number;
+  order: PaidOff[];
+}
+export interface DebtPlan {
+  debts: DebtRow[];
+  extraCents: number;
+  avalanche: Payoff | null;
+  snowball: Payoff | null;
+  minimumsOnly: Payoff | null;
+}
+export async function getDebtPlan(extraCents: number, invoke?: Invoke): Promise<DebtPlan> {
+  return (await (await resolve(invoke))("debt_plan", { extraCents })) as DebtPlan;
+}
+export async function setDebtTerms(name: string, aprBp: number, minCents: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_debt_terms", { name, aprBp, minCents });
+}
