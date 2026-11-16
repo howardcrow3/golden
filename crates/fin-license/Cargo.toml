@@ -14,6 +14,8 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 rand = { version = "0.8", optional = true }
+hmac = "0.12"
+sha2 = "0.10"
 
 [features]
 # Seller-side command line tool: `cargo run -p fin-license --features tool --bin golden-license`.
