@@ -37,6 +37,6 @@ Working today: statement import (CSV/OFX) with auto-filing into a statement libr
 Known gaps:
 
 - Six states (AR, CT, MD, MN, NY, VT) are flagged approximate; see the notes in `crates/fin-plan/data/states_2026.json`.
-- `apps/desktop/src-tauri/license_public_key.txt` is empty, so licence activation is off until you run `cargo run -p fin-license --features tool --bin golden-license -- keygen`, keep the secret key offline and commit the public key.
-- Installers are unsigned (no Apple notarization or Windows certificate yet).
+- `apps/desktop/src-tauri/license_public_key.txt` is empty, so licence activation is off until the keypair is generated; see [signing and licensing setup](docs/signing-and-licensing-setup.md).
+- Installers are unsigned (no Apple notarization or Windows certificate yet); the same doc lists the steps.
 - The what-if chat is rule-based; the AI layer is not integrated yet.
