@@ -8,6 +8,7 @@
   import RecurringList from "./RecurringList.svelte";
   import Debts from "./Debts.svelte";
   import Insights from "./Insights.svelte";
+  import Goals from "./Goals.svelte";
 
   // Sample household until real data is imported.
   const monthlyBudget = 650_000;
@@ -32,6 +33,7 @@
 <Insights />
 <BalanceSheet />
 <RecurringList />
+<Goals />
 <Debts />
 <Forecast />
 
