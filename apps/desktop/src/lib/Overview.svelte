@@ -4,6 +4,7 @@
   import CashFlow from "./CashFlow.svelte";
   import Budgets from "./Budgets.svelte";
   import Forecast from "./Forecast.svelte";
+  import BalanceSheet from "./BalanceSheet.svelte";
 
   // Sample household until real data is imported.
   const monthlyBudget = 650_000;
@@ -25,6 +26,7 @@
   <div class="big num" data-testid="budget">{formatCents(budget, { whole: true })}</div>
 </section>
 
+<BalanceSheet />
 <Forecast />
 
 <Budgets {grain} />

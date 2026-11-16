@@ -2,6 +2,7 @@
 //! rules and the ledger together and returns plain serializable shapes. The Tauri shell only
 //! forwards calls here, so everything is testable without a window.
 pub mod backup;
+pub mod balance;
 pub mod budget;
 pub mod chat;
 pub mod export;
