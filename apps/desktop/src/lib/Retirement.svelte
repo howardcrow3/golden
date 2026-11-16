@@ -1,51 +1,29 @@
 <script lang="ts">
   import { getHousehold, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
-  import { formatCents, formatPercent, parseDollars } from "./money";
+  import { formatCents, formatPercent } from "./money";
+  import { fromForm, newPerson, newStream, removePerson, toForm, type Form } from "./household";
   import Assumptions from "./Assumptions.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
-  let h = $state<Household | null>(null);
-  let dollars = $state({ salary: "", spending: "", cash: "", taxable: "", traditional: "", roth: "", ss: "", contribution: "" });
+  let f = $state<Form | null>(null);
   let result = $state<QuickPlanResult | null>(null);
   let error = $state("");
   let busy = $state(false);
-
-  const fields = [
-    ["salary", "Salary", "salaryCents"],
-    ["contribution", "Pre-tax 401(k) saving per year", "contributionCents"],
-    ["spending", "Spending per year", "spendingCents"],
-    ["cash", "Cash", "cashCents"],
-    ["taxable", "Taxable investments", "taxableCents"],
-    ["traditional", "Traditional 401(k)/IRA", "traditionalCents"],
-    ["roth", "Roth", "rothCents"],
-    ["ss", "Social Security per year", "ssAnnualCents"],
-  ] as const;
-
-  function fill(x: Household) {
-    h = x;
-    for (const [k, , c] of fields) dollars[k] = formatCents(x[c], { whole: true }).replace("$", "");
-  }
+  const thisYear = new Date().getFullYear();
 
   $effect(() => {
     getHousehold(invoke)
-      .then(fill)
+      .then((h: Household) => (f = toForm(h)))
       .catch((e) => (error = e instanceof Error ? e.message : String(e)));
   });
 
   async function run() {
-    if (!h) return;
+    if (!f) return;
     busy = true;
     error = "";
     try {
-      const next: Household = { ...h };
-      for (const [k, label, c] of fields) {
-        const cents = parseDollars(dollars[k]);
-        if (cents === null) throw new Error(`${label}: enter a dollar amount.`);
-        next[c] = cents;
-      }
-      await saveHousehold(next, invoke);
-      h = next;
+      await saveHousehold(fromForm(f), invoke);
       result = await runPlan(400, invoke);
     } catch (e) {
       result = null;
@@ -71,23 +49,61 @@
 <h1>Retirement</h1>
 <p class="sub">Your household, saved on this computer. Change a number, then run the plan.</p>
 
-{#if h}
-<form class="card controls" onsubmit={(e) => { e.preventDefault(); run(); }}>
-  <label>Birth date <input bind:value={h.birthDate} aria-label="Birth date" placeholder="YYYY-MM-DD" /></label>
-  <label>Retire at <input type="number" bind:value={h.retireAge} min="18" max="90" aria-label="Retire at" /></label>
-  <label>State <input bind:value={h.state} maxlength="2" size="3" aria-label="State" /></label>
-  <label>Filing
-    <select bind:value={h.filing} aria-label="Filing status">
-      <option value="single">Single</option>
-      <option value="married_joint">Married filing jointly</option>
-      <option value="married_separate">Married filing separately</option>
-      <option value="head_of_household">Head of household</option>
-    </select>
-  </label>
-  {#each fields as [k, label]}
-    <label>{label} <input bind:value={dollars[k]} aria-label={label} inputmode="numeric" /></label>
-  {/each}
-  <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>
+{#if f}
+<form onsubmit={(e) => { e.preventDefault(); run(); }}>
+  <section class="card" aria-label="People">
+    <h2>People</h2>
+    {#each f.people as p, i}
+      <div class="controls">
+        <label>Name <input bind:value={p.name} aria-label={`Name ${i + 1}`} /></label>
+        <label>Birth date <input bind:value={p.birthDate} aria-label={`Birth date ${i + 1}`} placeholder="YYYY-MM-DD" /></label>
+        <label>Retire at <input type="number" bind:value={p.retireAge} min="18" max="100" aria-label={`Retire at ${i + 1}`} /></label>
+        <label>Social Security per year <input bind:value={p.ss} aria-label={`Social Security ${i + 1}`} inputmode="numeric" /></label>
+        {#if i > 0}<button type="button" onclick={() => (f = removePerson(f!, i))} aria-label={`Remove ${p.name || `person ${i + 1}`}`}>Remove</button>{/if}
+      </div>
+    {/each}
+    {#if f.people.length < 4}<button type="button" onclick={() => f!.people.push(newPerson())}>Add person</button>{/if}
+  </section>
+
+  <section class="card" aria-label="Income">
+    <h2>Income</h2>
+    <p class="hint">Leave the years empty to earn until that person retires. For a bonus or a stock vest, use "Add one-time income".</p>
+    {#each f.streams as s, i}
+      <div class="controls">
+        <label>What <input bind:value={s.label} aria-label={`Income name ${i + 1}`} /></label>
+        <label>Who
+          <select bind:value={s.person} aria-label={`Income owner ${i + 1}`}>
+            {#each f.people as p, pi}<option value={pi}>{p.name || `Person ${pi + 1}`}</option>{/each}
+          </select>
+        </label>
+        <label>Per year <input bind:value={s.amount} aria-label={`Income amount ${i + 1}`} inputmode="numeric" /></label>
+        <label>First year <input bind:value={s.start} aria-label={`First year ${i + 1}`} size="5" placeholder="now" /></label>
+        <label>Last year <input bind:value={s.end} aria-label={`Last year ${i + 1}`} size="5" placeholder="retirement" /></label>
+        <label>401(k) saving <input bind:value={s.contribution} aria-label={`401(k) saving ${i + 1}`} inputmode="numeric" /></label>
+        <button type="button" onclick={() => f!.streams.splice(i, 1)} aria-label={`Remove income ${i + 1}`}>Remove</button>
+      </div>
+    {/each}
+    <button type="button" onclick={() => f!.streams.push(newStream(false, thisYear))}>Add income</button>
+    <button type="button" onclick={() => f!.streams.push(newStream(true, thisYear))}>Add one-time income</button>
+  </section>
+
+  <section class="card controls" aria-label="Household">
+    <label>State <input bind:value={f.state} maxlength="2" size="3" aria-label="State" /></label>
+    <label>Filing
+      <select bind:value={f.filing} aria-label="Filing status">
+        <option value="single">Single</option>
+        <option value="married_joint">Married filing jointly</option>
+        <option value="married_separate">Married filing separately</option>
+        <option value="head_of_household">Head of household</option>
+      </select>
+    </label>
+    <label>Spending per year <input bind:value={f.spending} aria-label="Spending per year" inputmode="numeric" /></label>
+    <label>Cash <input bind:value={f.cash} aria-label="Cash" inputmode="numeric" /></label>
+    <label>Taxable investments <input bind:value={f.taxable} aria-label="Taxable investments" inputmode="numeric" /></label>
+    <label>Traditional 401(k)/IRA <input bind:value={f.traditional} aria-label="Traditional 401(k)/IRA" inputmode="numeric" /></label>
+    <label>Roth <input bind:value={f.roth} aria-label="Roth" inputmode="numeric" /></label>
+    <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>
+  </section>
 </form>
 {/if}
 
@@ -110,7 +126,8 @@
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }
-  .controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
+  .controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
   input[type="number"] { width: 130px; }
   input { width: 150px; }

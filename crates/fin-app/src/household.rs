@@ -2,8 +2,10 @@
 //! Stored as JSON in the settings table.
 use crate::App;
 use chrono::{Datelike, NaiveDate};
+use fin_core::{Money, Person};
 use fin_plan::params::Assumptions;
-use fin_plan::quickplan::QuickPlanRequest;
+use fin_plan::projection::{Accounts, IncomeStream, PlanInput, SocialSecurity};
+use fin_plan::tax::FilingStatus;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -11,28 +13,112 @@ const KEY: &str = "household";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Household {
+pub struct PersonRow {
+    pub name: String,
     pub birth_date: String,
     pub retire_age: i32,
+    /// Estimated Social Security per year in today's dollars (at the assumed claim age).
+    pub ss_annual_cents: i64,
+}
+
+/// One source of earned income. Leave the years empty for "from now until that person retires";
+/// set both to the same year for a one-time amount (a bonus, a stock vest, a sale).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamRow {
+    pub label: String,
+    /// Index into `people`.
+    pub person: usize,
+    pub annual_cents: i64,
+    #[serde(default)]
+    pub start_year: Option<i32>,
+    #[serde(default)]
+    pub end_year: Option<i32>,
+    #[serde(default)]
+    pub contribution_cents: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Household {
+    pub people: Vec<PersonRow>,
+    pub streams: Vec<StreamRow>,
     pub filing: String,
     pub state: String,
-    pub salary_cents: i64,
-    pub contribution_cents: i64,
     pub spending_cents: i64,
     pub cash_cents: i64,
     pub taxable_cents: i64,
     pub traditional_cents: i64,
     pub roth_cents: i64,
-    pub ss_annual_cents: i64,
     /// Chosen option label per assumption key; missing means "the likeliest".
     #[serde(default)]
     pub picks: BTreeMap<String, String>,
 }
 
+/// The first version of the saved profile (one person, one salary); still read so earlier
+/// installs keep their data.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LegacyHousehold {
+    birth_date: String,
+    retire_age: i32,
+    filing: String,
+    state: String,
+    salary_cents: i64,
+    contribution_cents: i64,
+    spending_cents: i64,
+    cash_cents: i64,
+    taxable_cents: i64,
+    traditional_cents: i64,
+    roth_cents: i64,
+    ss_annual_cents: i64,
+    #[serde(default)]
+    picks: BTreeMap<String, String>,
+}
+
+impl From<LegacyHousehold> for Household {
+    fn from(l: LegacyHousehold) -> Household {
+        Household {
+            people: vec![PersonRow {
+                name: "You".into(),
+                birth_date: l.birth_date,
+                retire_age: l.retire_age,
+                ss_annual_cents: l.ss_annual_cents,
+            }],
+            streams: if l.salary_cents > 0 {
+                vec![StreamRow {
+                    label: "Salary".into(),
+                    person: 0,
+                    annual_cents: l.salary_cents,
+                    start_year: None,
+                    end_year: None,
+                    contribution_cents: l.contribution_cents,
+                }]
+            } else {
+                vec![]
+            },
+            filing: l.filing,
+            state: l.state,
+            spending_cents: l.spending_cents,
+            cash_cents: l.cash_cents,
+            taxable_cents: l.taxable_cents,
+            traditional_cents: l.traditional_cents,
+            roth_cents: l.roth_cents,
+            picks: l.picks,
+        }
+    }
+}
+
+fn age_of(birth: &str, today: NaiveDate) -> Result<(NaiveDate, i32), String> {
+    let b = NaiveDate::parse_from_str(birth, "%Y-%m-%d")
+        .map_err(|_| "Enter birth dates as YYYY-MM-DD.".to_string())?;
+    Ok((b, fin_core::person::age_on(b, today)))
+}
+
 impl Household {
     /// A placeholder household so a first-time user sees a working plan to edit.
     pub fn sample() -> Household {
-        Household {
+        LegacyHousehold {
             birth_date: "1981-06-15".into(),
             retire_age: 62,
             filing: "married_joint".into(),
@@ -47,41 +133,92 @@ impl Household {
             ss_annual_cents: 3_800_000,
             picks: BTreeMap::new(),
         }
+        .into()
     }
 
-    pub fn age_on(&self, today: NaiveDate) -> Result<i32, String> {
-        let b = NaiveDate::parse_from_str(&self.birth_date, "%Y-%m-%d")
-            .map_err(|_| "Enter your birth date as YYYY-MM-DD.".to_string())?;
-        let mut age = today.year() - b.year();
-        if (today.month(), today.day()) < (b.month(), b.day()) {
-            age -= 1;
+    pub fn from_json(json: &str) -> Result<Household, String> {
+        match serde_json::from_str::<Household>(json) {
+            Ok(h) => Ok(h),
+            Err(_) => serde_json::from_str::<LegacyHousehold>(json)
+                .map(Household::from)
+                .map_err(|e| e.to_string()),
         }
-        Ok(age)
+    }
+
+    /// First person's age (the plan runs to their horizon age).
+    pub fn age_on(&self, today: NaiveDate) -> Result<i32, String> {
+        let p = self.people.first().ok_or("Add at least one person.")?;
+        Ok(age_of(&p.birth_date, today)?.1)
     }
 
     pub fn validate(&self, today: NaiveDate) -> Result<(), String> {
-        let age = self.age_on(today)?;
-        if !(18..=100).contains(&age) {
-            return Err("Birth date should make you between 18 and 100.".into());
+        if self.people.is_empty() || self.people.len() > 4 {
+            return Err("A household needs between one and four people.".into());
         }
-        if self.retire_age < age {
-            return Err("Retirement age must be at or after your current age.".into());
+        for p in &self.people {
+            let name = if p.name.trim().is_empty() {
+                "A person"
+            } else {
+                p.name.trim()
+            };
+            let (_, age) = age_of(&p.birth_date, today)?;
+            if !(18..=100).contains(&age) {
+                return Err(format!(
+                    "{name}: birth date should make them between 18 and 100."
+                ));
+            }
+            if p.retire_age < age {
+                return Err(format!(
+                    "{name}: retirement age must be at or after their current age."
+                ));
+            }
+            if p.retire_age > 100 {
+                return Err(format!("{name}: retirement age is too high."));
+            }
+            if p.ss_annual_cents < 0 {
+                return Err("Amounts cannot be negative.".into());
+            }
+        }
+        if self.streams.len() > 20 {
+            return Err("That is more income sources than Golden can plan with (20).".into());
+        }
+        for s in &self.streams {
+            if s.person >= self.people.len() {
+                return Err(format!("{}: choose which person earns it.", s.label));
+            }
+            if s.annual_cents < 0 || s.contribution_cents < 0 {
+                return Err("Amounts cannot be negative.".into());
+            }
+            if let (Some(a), Some(b)) = (s.start_year, s.end_year) {
+                if b < a {
+                    return Err(format!(
+                        "{}: the last year is before the first year.",
+                        s.label
+                    ));
+                }
+            }
+            for y in [s.start_year, s.end_year].into_iter().flatten() {
+                if y < today.year() - 1 || y > today.year() + 80 {
+                    return Err(format!(
+                        "{}: pick years between now and {}.",
+                        s.label,
+                        today.year() + 80
+                    ));
+                }
+            }
         }
         if self.state.len() != 2 || !self.state.chars().all(|c| c.is_ascii_alphabetic()) {
             return Err("State should be a two-letter code like TX.".into());
         }
-        if ![
-            self.salary_cents,
-            self.contribution_cents,
+        if [
             self.spending_cents,
             self.cash_cents,
             self.taxable_cents,
             self.traditional_cents,
             self.roth_cents,
-            self.ss_annual_cents,
         ]
         .iter()
-        .all(|c| *c >= 0)
+        .any(|c| *c < 0)
         {
             return Err("Amounts cannot be negative.".into());
         }
@@ -93,6 +230,71 @@ impl Household {
             }
         }
         Ok(())
+    }
+
+    /// Build the engine's plan: every person, every income stream, Social Security per person.
+    pub fn plan_input(&self, today: NaiveDate) -> Result<PlanInput, String> {
+        self.validate(today)?;
+        let year = today.year();
+        let filing: FilingStatus =
+            serde_json::from_value(serde_json::Value::String(self.filing.clone()))
+                .map_err(|_| "Choose a filing status.".to_string())?;
+        let mut people = vec![];
+        let mut retire_year = vec![];
+        let mut ss = vec![];
+        for (i, p) in self.people.iter().enumerate() {
+            let (birth, age) = age_of(&p.birth_date, today)?;
+            people.push(Person {
+                id: format!("p{i}"),
+                name: p.name.trim().to_string(),
+                birth_date: birth,
+                is_dependent: false,
+            });
+            // Last year of work: the year before they reach retirement age.
+            retire_year.push(year + (p.retire_age - age) - 1);
+            if p.ss_annual_cents > 0 {
+                ss.push(SocialSecurity {
+                    person: i,
+                    annual_benefit: Money::from_cents(p.ss_annual_cents),
+                    claim_age: 67,
+                });
+            }
+        }
+        let mut streams = vec![];
+        for s in &self.streams {
+            let start = s.start_year.unwrap_or(year);
+            let end = s.end_year.unwrap_or(retire_year[s.person]);
+            if end < start || s.annual_cents == 0 {
+                continue; // already retired, or nothing earned
+            }
+            streams.push(IncomeStream {
+                label: s.label.clone(),
+                person: s.person,
+                annual_gross: Money::from_cents(s.annual_cents),
+                start_year: start,
+                end_year: end,
+                traditional_contribution: Money::from_cents(
+                    s.contribution_cents.min(s.annual_cents),
+                ),
+            });
+        }
+        Ok(PlanInput {
+            start_year: year,
+            people,
+            filing,
+            state: self.state.to_ascii_uppercase(),
+            accounts: Accounts {
+                cash: Money::from_cents(self.cash_cents),
+                taxable: Money::from_cents(self.taxable_cents),
+                taxable_gain_share: 0.3,
+                traditional: Money::from_cents(self.traditional_cents),
+                roth: Money::from_cents(self.roth_cents),
+            },
+            streams,
+            social_security: ss,
+            annual_spending: Money::from_cents(self.spending_cents),
+            horizon_age: 95,
+        })
     }
 }
 
@@ -119,7 +321,7 @@ pub struct AssumptionRow {
 impl App {
     pub fn household(&self) -> Result<Household, String> {
         match self.db.get_setting(KEY).map_err(|e| e.to_string())? {
-            Some(json) => serde_json::from_str(&json).map_err(|e| e.to_string()),
+            Some(json) => Household::from_json(&json),
             None => Ok(Household::sample()),
         }
     }
@@ -177,16 +379,9 @@ impl App {
         Ok(rows)
     }
 
-    /// The saved household as an engine request, with age worked out from the birth date.
-    pub fn plan_request(&self, today: NaiveDate, runs: usize) -> Result<QuickPlanRequest, String> {
+    /// The saved household as an engine plan plus its what-if picks.
+    pub fn plan(&self, today: NaiveDate) -> Result<(PlanInput, BTreeMap<String, String>), String> {
         let h = self.household()?;
-        h.validate(today)?;
-        let mut v = serde_json::to_value(&h).map_err(|e| e.to_string())?;
-        let o = v.as_object_mut().ok_or("household is not an object")?;
-        o.remove("birthDate");
-        o.insert("currentYear".into(), today.year().into());
-        o.insert("age".into(), h.age_on(today)?.into());
-        o.insert("runs".into(), runs.into());
-        serde_json::from_value(v).map_err(|e| e.to_string())
+        Ok((h.plan_input(today)?, h.picks))
     }
 }

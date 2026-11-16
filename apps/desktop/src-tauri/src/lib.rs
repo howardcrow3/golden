@@ -81,8 +81,8 @@ fn assumptions(state: Shared) -> Result<Vec<AssumptionRow>, String> {
 /// Run the saved household through the plan. The lock is released before the CPU-heavy part.
 #[tauri::command]
 async fn run_plan(state: Shared<'_>, runs: usize) -> Result<QuickPlanResult, String> {
-    let req = lock(&state)?.plan_request(today(), runs)?;
-    tauri::async_runtime::spawn_blocking(move || quickplan::run(&req))
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::run_plan(&plan, &picks, runs))
         .await
         .map_err(|e| e.to_string())?
 }

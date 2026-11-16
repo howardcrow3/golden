@@ -120,12 +120,15 @@ describe("License", () => {
 
 import Retirement from "./Retirement.svelte";
 import Assumptions from "./Assumptions.svelte";
+import type { Household } from "./api";
+import { fromForm, newStream, removePerson, toForm } from "./household";
 import { assumptionName, optionText } from "./assumptions";
 
 const household = {
-  birthDate: "1981-06-15", retireAge: 62, filing: "married_joint", state: "TX",
-  salaryCents: 18_000_000, contributionCents: 2_350_000, spendingCents: 9_000_000, cashCents: 3_000_000,
-  taxableCents: 15_000_000, traditionalCents: 60_000_000, rothCents: 12_000_000, ssAnnualCents: 3_800_000, picks: {},
+  people: [{ name: "You", birthDate: "1981-06-15", retireAge: 62, ssAnnualCents: 3_800_000 }],
+  streams: [{ label: "Salary", person: 0, annualCents: 18_000_000, startYear: null, endYear: null, contributionCents: 2_350_000 }],
+  filing: "married_joint", state: "TX", spendingCents: 9_000_000, cashCents: 3_000_000,
+  taxableCents: 15_000_000, traditionalCents: 60_000_000, rothCents: 12_000_000, picks: {},
 };
 const planResult = {
   successRate: 0.87, depletedYear: null, p10Cents: 1, p50Cents: 2, p90Cents: 3,
@@ -171,6 +174,41 @@ describe("Retirement", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/Cash: enter a dollar amount/);
     expect(calls).not.toContain("save_household");
   });
+  it("adds a second person and a one-time income, and saves both", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      if (cmd === "household") return household;
+      if (cmd === "assumptions") return rows;
+      if (cmd === "run_plan") return planResult;
+      return undefined;
+    };
+    render(Retirement, { invoke });
+    await screen.findByLabelText("Spending per year");
+    await fireEvent.click(screen.getByRole("button", { name: "Add person" }));
+    await fireEvent.input(screen.getByLabelText("Name 2"), { target: { value: "Sam" } });
+    await fireEvent.input(screen.getByLabelText("Birth date 2"), { target: { value: "1983-02-10" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Add one-time income" }));
+    await fireEvent.input(screen.getByLabelText("Income name 2"), { target: { value: "Stock vest" } });
+    await fireEvent.input(screen.getByLabelText("Income amount 2"), { target: { value: "400,000" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Save and run plan" }));
+    await screen.findByTestId("success");
+    const saved = (calls.find(([c]) => c === "save_household")![1] as { household: Household }).household;
+    expect(saved.people.map((p) => p.name)).toEqual(["You", "Sam"]);
+    expect(saved.streams[1]).toMatchObject({ label: "Stock vest", annualCents: 40_000_000, startYear: new Date().getFullYear() + 1, endYear: new Date().getFullYear() + 1 });
+  });
+  it("names the field with a bad year and saves nothing", async () => {
+    const calls: string[] = [];
+    const invoke = async (cmd: string) => {
+      calls.push(cmd);
+      return cmd === "household" ? household : rows;
+    };
+    render(Retirement, { invoke });
+    await fireEvent.input(await screen.findByLabelText("First year 1"), { target: { value: "soon" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Save and run plan" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Salary first year: enter a four-digit year/);
+    expect(calls).not.toContain("save_household");
+  });
   it("explains that the data lives in the desktop app when run in a browser", async () => {
     render(Retirement);
     expect((await screen.findAllByRole("alert"))[0].textContent).toMatch(/desktop app/);
@@ -196,5 +234,29 @@ describe("Assumptions", () => {
     expect(assumptionName("horizon_age")).toBe("Plan until age");
     expect(assumptionName("some_new_key")).toBe("some new key");
     expect(optionText(rows[0].options[0])).toBe("Cautious · 25% likely");
+  });
+});
+
+describe("household form helpers", () => {
+  const h = household as unknown as Household;
+  it("round-trips a household through the form", () => {
+    expect(fromForm(toForm(h))).toEqual(h);
+  });
+  it("reports which money field is wrong", () => {
+    const f = toForm(h);
+    f.people[0].ss = "abc";
+    expect(() => fromForm(f)).toThrow(/You Social Security: enter a dollar amount/);
+  });
+  it("one-time income starts and ends in the same future year", () => {
+    expect(newStream(true, 2026)).toMatchObject({ start: "2027", end: "2027" });
+    expect(newStream(false, 2026)).toMatchObject({ start: "", end: "" });
+  });
+  it("removing a person drops their income and re-points later ones", () => {
+    const f = toForm(h);
+    f.people.push({ name: "Sam", birthDate: "1983-02-10", retireAge: 60, ss: "0" }, { name: "Lee", birthDate: "1990-01-01", retireAge: 65, ss: "0" });
+    f.streams.push({ label: "Sam pay", person: 1, amount: "1", start: "", end: "", contribution: "0" }, { label: "Lee pay", person: 2, amount: "1", start: "", end: "", contribution: "0" });
+    const g = removePerson(f, 1);
+    expect(g.people.map((p) => p.name)).toEqual(["You", "Lee"]);
+    expect(g.streams.map((s) => [s.label, s.person])).toEqual([["Salary", 0], ["Lee pay", 1]]);
   });
 });
