@@ -219,6 +219,76 @@ impl Db {
         Ok(summary)
     }
 
+    pub fn get_txn(&self, id: i64) -> Result<Txn> {
+        self.conn
+            .query_row(
+                "SELECT t.id, t.account_id, t.day, t.cents, t.payee, t.memo, c.name, t.stream
+                 FROM txn t LEFT JOIN category c ON c.id=t.category_id WHERE t.id=?1",
+                [id],
+                |r| {
+                    Ok(Txn {
+                        id: r.get(0)?,
+                        account: AccountId(r.get(1)?),
+                        day: r.get(2)?,
+                        amount: Money::from_cents(r.get(3)?),
+                        payee: r.get(4)?,
+                        memo: r.get(5)?,
+                        category: r.get(6)?,
+                        stream: r.get(7)?,
+                    })
+                },
+            )
+            .optional()?
+            .ok_or_else(|| DbError::NotFound(format!("transaction {id}")))
+    }
+
+    /// Set (or clear, with `None`) a transaction's category.
+    pub fn set_txn_category(&self, id: i64, category: Option<&str>) -> Result<()> {
+        let cat = match category {
+            Some(c) if !c.trim().is_empty() => Some(self.category_id(c.trim())?),
+            _ => None,
+        };
+        let n = self.conn.execute(
+            "UPDATE txn SET category_id=?1 WHERE id=?2",
+            params![cat, id],
+        )?;
+        if n == 0 {
+            return Err(DbError::NotFound(format!("transaction {id}")));
+        }
+        Ok(())
+    }
+
+    /// Transactions with no category yet, oldest first.
+    pub fn uncategorized_txns(&self) -> Result<Vec<Txn>> {
+        let mut st = self.conn.prepare(
+            "SELECT t.id, t.account_id, t.day, t.cents, t.payee, t.memo, c.name, t.stream
+             FROM txn t LEFT JOIN category c ON c.id=t.category_id
+             WHERE t.category_id IS NULL ORDER BY t.day, t.id",
+        )?;
+        let rows = st.query_map([], |r| {
+            Ok(Txn {
+                id: r.get(0)?,
+                account: AccountId(r.get(1)?),
+                day: r.get(2)?,
+                amount: Money::from_cents(r.get(3)?),
+                payee: r.get(4)?,
+                memo: r.get(5)?,
+                category: r.get(6)?,
+                stream: r.get(7)?,
+            })
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// Names of every category in the ledger, sorted.
+    pub fn category_names(&self) -> Result<Vec<String>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT name FROM category ORDER BY name")?;
+        let rows = st.query_map([], |r| r.get::<_, String>(0))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     pub fn txn_count(&self) -> Result<i64> {
         Ok(self
             .conn

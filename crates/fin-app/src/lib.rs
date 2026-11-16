@@ -6,6 +6,7 @@ pub mod household;
 pub mod keystore;
 pub mod library;
 pub mod licensing;
+pub mod transactions;
 
 use chrono::NaiveDate;
 use fin_core::{Grain, PeriodKey};
@@ -97,14 +98,16 @@ pub fn parse_day(s: &str) -> Result<NaiveDate, String> {
 
 impl App {
     pub fn new(db: Db) -> App {
-        App {
+        let mut app = App {
             db,
             rules: RuleSet::starter(),
             public_key: None,
             clock: today_local,
             interpreter: Box::new(chat::RuleInterpreter),
             library_root: None,
-        }
+        };
+        app.load_saved_rules();
+        app
     }
 
     /// The app's licence-verification key (bundled at build time).
