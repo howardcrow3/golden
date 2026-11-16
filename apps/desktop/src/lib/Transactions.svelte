@@ -12,10 +12,21 @@
   let loaded = $state(false);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
-  function range(): [string, string] {
+  function lastYear(): string {
     const from = new Date(today);
     from.setUTCFullYear(from.getUTCFullYear() - 1);
-    return [iso(from), iso(today)];
+    return iso(from);
+  }
+  // Defaults to the last twelve months; both ends can be changed.
+  // svelte-ignore state_referenced_locally
+  let fromDay = $state(lastYear());
+  // svelte-ignore state_referenced_locally
+  let toDay = $state(iso(today));
+  const DAY = /^\d{4}-\d{2}-\d{2}$/;
+  function range(): [string, string] {
+    if (!DAY.test(fromDay) || !DAY.test(toDay)) throw new Error("Pick a start and end date.");
+    if (fromDay > toDay) throw new Error("The start date must be on or before the end date.");
+    return [fromDay, toDay];
   }
 
   async function load() {
@@ -30,7 +41,9 @@
     }
   }
   $effect(() => {
-    onlyTodo; // reload when the filter changes
+    onlyTodo; // reload when the filter or dates change
+    fromDay;
+    toDay;
     load();
   });
 
@@ -60,9 +73,11 @@
 </script>
 
 <h1>Transactions</h1>
-<p class="sub">The last twelve months, newest first. Pick a category to fix a line.</p>
+<p class="sub">Newest first; the last twelve months unless you change the dates. Pick a category to fix a line.</p>
 
 <div class="bar">
+  <label class="check">From <input type="date" bind:value={fromDay} aria-label="From date" /></label>
+  <label class="check">To <input type="date" bind:value={toDay} aria-label="To date" /></label>
   <label class="check"><input type="checkbox" bind:checked={onlyTodo} /> Only lines that need a category</label>
   <label class="check"><input type="checkbox" bind:checked={remember} /> Remember this merchant for next time</label>
   <button type="button" onclick={exportCsv}>Export CSV</button>
