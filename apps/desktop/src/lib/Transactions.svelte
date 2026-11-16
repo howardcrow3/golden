@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { categoryChoices, listTransactions, setCategory, type Invoke, type TxnRow } from "./api";
+  import { categoryChoices, exportTransactions, listTransactions, setCategory, type Invoke, type TxnRow } from "./api";
   import { formatCents } from "./money";
 
   let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
@@ -34,6 +34,17 @@
     load();
   });
 
+  async function exportCsv() {
+    note = "";
+    try {
+      const [from, to] = range();
+      const path = await exportTransactions(from, to, invoke);
+      note = `Exported to ${path}`;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   async function change(row: TxnRow, value: string) {
     const v = value.trim();
     if (!v || v === row.category) return;
@@ -54,6 +65,7 @@
 <div class="bar">
   <label class="check"><input type="checkbox" bind:checked={onlyTodo} /> Only lines that need a category</label>
   <label class="check"><input type="checkbox" bind:checked={remember} /> Remember this merchant for next time</label>
+  <button type="button" onclick={exportCsv}>Export CSV</button>
 </div>
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}

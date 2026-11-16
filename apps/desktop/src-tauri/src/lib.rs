@@ -66,6 +66,14 @@ fn set_category(state: Shared, id: i64, category: String, remember: bool) -> Res
     lock(&state)?.set_category(id, &category, remember)
 }
 
+/// Write a CSV of the transactions between two dates into the Exports folder and return its path.
+#[tauri::command]
+fn export_transactions(app: tauri::AppHandle, state: Shared, from: String, to: String) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("Exports");
+    let path = lock(&state)?.export_transactions(&dir, &from, &to)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn license_status(state: Shared) -> Result<LicenseStatus, String> {
     lock(&state)?.license_status(today())
@@ -180,6 +188,7 @@ pub fn run() {
             app_info,
             import_statement,
             import_file,
+            export_transactions,
             transactions,
             category_choices,
             set_category,
