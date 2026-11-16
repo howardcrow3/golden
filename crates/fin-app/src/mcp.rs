@@ -28,6 +28,8 @@ fn tools() -> Value {
         {"name":"debt_plan","description":"Payoff time and interest for the debts that have a rate and minimum, with a monthly extra payment (cents).",
          "inputSchema":s(json!({"extraCents":{"type":"integer","minimum":0}}),&["extraCents"])},
         {"name":"insights","description":"Plain-language observations about the last full month.","inputSchema":s(json!({}),&[])},
+        {"name":"net_worth_history","description":"Net worth at each of the last N month-ends (cents), oldest first.",
+         "inputSchema":s(json!({"months":{"type":"integer","minimum":1,"maximum":120}}),&["months"])},
         {"name":"suggest_allocation","description":"Suggested split of a yearly savings amount (cents).",
          "inputSchema":s(json!({"yearlySavingsCents":{"type":"integer","minimum":0}}),&["yearlySavingsCents"])}
     ])
@@ -57,6 +59,15 @@ fn call(app: &App, name: &str, a: &Value) -> Result<Value, String> {
                 .and_then(Value::as_i64)
                 .ok_or("Missing number argument \"extraCents\".")?,
         )?),
+        "net_worth_history" => {
+            let m = a
+                .get("months")
+                .and_then(Value::as_u64)
+                .ok_or("Missing number argument \"months\".")?;
+            ser(app.net_worth_history(
+                u32::try_from(m).map_err(|_| "Choose between 1 and 120 months.")?,
+            )?)
+        }
         "insights" => ser(app.insights()?),
         "recurring" => ser(app.recurring(text(a, "from")?, text(a, "to")?)?),
         "forecast" => {

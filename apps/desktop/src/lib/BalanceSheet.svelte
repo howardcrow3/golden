@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getBalanceSheet, listAccounts, setOpeningBalance, type AccountRow, type BalanceSheet, type Invoke } from "./api";
+  import { getBalanceSheet, getNetWorthHistory, listAccounts, setOpeningBalance, type AccountRow, type BalanceSheet, type NetWorthPoint, type Invoke } from "./api";
   import { formatCents, parseDollars } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -7,6 +7,7 @@
   let available = $state(false);
 
   let accounts = $state<AccountRow[]>([]);
+  let history = $state<NetWorthPoint[]>([]);
   let editing = $state(false);
   let drafts = $state<Record<number, string>>({});
   let error = $state("");
@@ -15,6 +16,7 @@
     try {
       data = await getBalanceSheet(invoke);
       accounts = await listAccounts(invoke);
+      history = await getNetWorthHistory(12, invoke).catch(() => []);
       available = true;
     } catch {
       data = null;
@@ -24,6 +26,14 @@
   $effect(() => {
     load();
   });
+
+  /** Points for a 300 x 50 trend line of month-end net worth. */
+  export function trend(points: NetWorthPoint[]): string {
+    const v = points.map((p) => p.netWorthCents);
+    const lo = Math.min(...v);
+    const span = Math.max(...v) - lo || 1;
+    return v.map((x, i) => `${Math.round((i / (v.length - 1 || 1)) * 300)},${Math.round(48 - ((x - lo) / span) * 46)}`).join(" ");
+  }
 
   function startEditing() {
     drafts = Object.fromEntries(accounts.map((a) => [a.id, (a.openingCents / 100).toFixed(2)]));
@@ -51,6 +61,11 @@
   <section class="card" data-testid="balance-sheet">
     <h2>What you're worth</h2>
     <p class="big num" class:neg={data.netWorthCents < 0} data-testid="net-worth">{formatCents(data.netWorthCents, { whole: true })}</p>
+    {#if history.length > 1}
+      <svg viewBox="0 0 300 50" class="trend" role="img" aria-label={`Net worth by month, ${history[0].month} to ${history[history.length - 1].month}`} data-testid="net-worth-trend">
+        <polyline points={trend(history)} fill="none" stroke="currentColor" stroke-width="2" />
+      </svg>
+    {/if}
     <div class="cols">
       <div>
         <h3>You have <span class="num">{formatCents(data.assetsCents, { whole: true })}</span></h3>
@@ -90,6 +105,7 @@
   .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--line); }
   .muted { color: var(--muted); margin: 8px 0 0; }
   .neg { color: var(--bad); }
+  .trend { width: 100%; max-width: 420px; height: 50px; color: var(--accent, #c9a227); margin: 4px 0 12px; }
   .err { color: var(--bad); }
   .link { background: none; border: none; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; }
 </style>

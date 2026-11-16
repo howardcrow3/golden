@@ -16,11 +16,18 @@ const accountsRows = [
   { id: 2, name: "Visa", kind: "credit", balanceCents: -30000, openingCents: 0 },
 ];
 
+const history = [
+  { month: "2026-09", netWorthCents: 100000 },
+  { month: "2026-10", netWorthCents: 150000 },
+  { month: "2026-11", netWorthCents: 170000 },
+];
+
 function fake(calls: [string, unknown][]) {
   return async (cmd: string, args?: unknown) => {
     calls.push([cmd, args]);
     if (cmd === "accounts") return accountsRows;
     if (cmd === "set_opening_balance") return null;
+    if (cmd === "net_worth_history") return history;
     return sheet;
   };
 }
@@ -74,5 +81,11 @@ describe("BalanceSheet", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Visa"));
     expect(screen.getByTestId("opening-editor")).toBeTruthy();
     expect(calls.some(([c]) => c === "set_opening_balance")).toBe(false);
+  });
+
+  it("draws a month-by-month trend when there is history", async () => {
+    render(BalanceSheet, { invoke: fake([]) });
+    await waitFor(() => expect(screen.getByTestId("net-worth-trend")).toBeTruthy());
+    expect(screen.getByTestId("net-worth-trend").getAttribute("aria-label")).toContain("2026-09 to 2026-11");
   });
 });

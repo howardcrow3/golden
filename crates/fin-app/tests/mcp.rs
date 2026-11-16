@@ -213,3 +213,14 @@ fn insights_are_offered_and_work() {
     assert_eq!(r["result"]["isError"], false);
     assert!(payload(&r).is_array());
 }
+
+#[test]
+fn net_worth_history_is_offered_and_checks_its_input() {
+    let a = app();
+    let r = call(&a, "net_worth_history", json!({"months": 3}));
+    assert_eq!(payload(&r).as_array().unwrap().len(), 3);
+    assert_eq!(
+        call(&a, "net_worth_history", json!({"months": 0}))["result"]["isError"],
+        true
+    );
+}
