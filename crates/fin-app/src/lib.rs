@@ -4,6 +4,7 @@
 pub mod chat;
 pub mod household;
 pub mod keystore;
+pub mod library;
 pub mod licensing;
 
 use chrono::NaiveDate;
@@ -22,6 +23,10 @@ pub struct ImportReport {
     pub skipped_duplicates: usize,
     pub uncategorized: usize,
     pub total_cents: i64,
+    /// Last transaction date in the file (YYYY-MM-DD), if any.
+    pub period_end: Option<String>,
+    /// Where the original file was filed in the statement library, relative to its folder.
+    pub filed_as: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -56,6 +61,7 @@ pub struct App {
     pub(crate) public_key: Option<ed25519_dalek::VerifyingKey>,
     pub(crate) clock: fn() -> NaiveDate,
     pub(crate) interpreter: Box<dyn chat::Interpreter>,
+    library_root: Option<std::path::PathBuf>,
 }
 
 fn today_local() -> NaiveDate {
@@ -72,6 +78,18 @@ fn grain_of(s: &str) -> Result<Grain, String> {
     }
 }
 
+fn kind_label(kind: &str) -> &'static str {
+    match kind {
+        "checking" => "Checking",
+        "savings" => "Savings",
+        "credit" => "Credit card",
+        "investment" => "Brokerage",
+        "retirement" => "Retirement",
+        "loan" => "Loan",
+        _ => "Statement",
+    }
+}
+
 /// Parse a `YYYY-MM-DD` string from the UI.
 pub fn parse_day(s: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").map_err(|_| format!("not a date: {s}"))
@@ -85,6 +103,7 @@ impl App {
             public_key: None,
             clock: today_local,
             interpreter: Box::new(chat::RuleInterpreter),
+            library_root: None,
         }
     }
 
@@ -153,7 +172,54 @@ impl App {
             skipped_duplicates: summary.skipped,
             uncategorized,
             total_cents: fin_ingest::total(&parsed).cents(),
+            period_end: parsed
+                .iter()
+                .map(|t| t.day)
+                .max()
+                .map(|d| d.format("%Y-%m-%d").to_string()),
+            filed_as: None,
         })
+    }
+
+    /// Where original statements are filed (None disables filing).
+    pub fn with_library(mut self, root: Option<std::path::PathBuf>) -> App {
+        self.library_root = root;
+        self
+    }
+
+    pub fn library_root(&self) -> Option<&std::path::Path> {
+        self.library_root.as_deref()
+    }
+
+    /// Import a file the person picked: read it into the ledger, then file the original in the
+    /// statement library named by account, month and type. Nothing is filed when it adds nothing
+    /// new or when the import fails.
+    pub fn import_file(
+        &mut self,
+        original_name: &str,
+        bytes: &[u8],
+        account: &str,
+        kind: &str,
+    ) -> Result<ImportReport, String> {
+        let mut report = self.import_statement(bytes, account, kind)?;
+        if let (Some(root), Some(end), true) =
+            (&self.library_root, &report.period_end, report.added > 0)
+        {
+            let meta = fin_ingest::library::StatementMeta {
+                institution: account.trim().to_string(),
+                kind: kind_label(kind).to_string(),
+                last4: None,
+                period_end: parse_day(end)?,
+                extension: std::path::Path::new(original_name)
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "csv".into()),
+            };
+            report.filed_as = Some(library::file_statement(root, bytes, &meta).map_err(|e| {
+                format!("The transactions were imported, but filing the original failed: {e}")
+            })?);
+        }
+        Ok(report)
     }
 
     pub fn accounts(&self) -> Result<Vec<AccountRow>, String> {

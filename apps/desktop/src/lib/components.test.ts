@@ -38,10 +38,11 @@ import CashFlow from "./CashFlow.svelte";
 
 describe("Import", () => {
   it("sends the file to the engine and shows the report", async () => {
-    const calls: unknown[] = [];
+    const calls: [string, Record<string, unknown> | undefined][] = [];
     const invoke = async (cmd: string, args?: Record<string, unknown>) => {
       calls.push([cmd, args]);
-      return { account: "Checking", parsed: 3, added: 2, skippedDuplicates: 1, uncategorized: 1, totalCents: -1234 };
+      if (cmd === "library_folder") return "/data/Statements";
+      return { account: "Checking", parsed: 3, added: 2, skippedDuplicates: 1, uncategorized: 1, totalCents: -1234, periodEnd: "2026-10-31", filedAs: "2026/Checking/2026-10 Checking statement.csv" };
     };
     render(Import, { invoke });
     const file = new File(["Date,Description,Amount\n"], "oct.csv", { type: "text/csv" });
@@ -50,8 +51,12 @@ describe("Import", () => {
     expect(report.textContent).toMatch(/2 added, 1 already imported/);
     expect(report.textContent).toMatch(/-\$12\.34/);
     expect(report.textContent).toMatch(/1 need a category/);
-    const [cmd, args] = calls[0] as [string, { account: string; kind: string }];
-    expect(cmd).toBe("import_statement");
+    expect(report.textContent).toMatch(/Filed as 2026\/Checking\/2026-10 Checking statement\.csv/);
+    expect((await screen.findByTestId("folder")).textContent).toBe("/data/Statements");
+    const [cmd, rawArgs] = calls.find(([c]) => c === "import_file")!;
+    const args = rawArgs as { name: string; account: string; kind: string };
+    expect(cmd).toBe("import_file");
+    expect(args.name).toBe("oct.csv");
     expect(args.account).toBe("Checking");
   });
   it("shows the engine's error with the file name", async () => {

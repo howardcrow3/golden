@@ -41,6 +41,16 @@ fn import_statement(state: Shared, bytes: Vec<u8>, account: String, kind: String
 }
 
 #[tauri::command]
+fn import_file(state: Shared, name: String, bytes: Vec<u8>, account: String, kind: String) -> Result<ImportReport, String> {
+    lock(&state)?.import_file(&name, &bytes, &account, &kind)
+}
+
+#[tauri::command]
+fn library_folder(state: Shared) -> Result<Option<String>, String> {
+    Ok(lock(&state)?.library_root().map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 fn license_status(state: Shared) -> Result<LicenseStatus, String> {
     lock(&state)?.license_status(today())
 }
@@ -143,7 +153,9 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
-            app.manage(Mutex::new(Core::new(db).with_public_key(bundled_public_key())));
+            app.manage(Mutex::new(Core::new(db)
+                .with_public_key(bundled_public_key())
+                .with_library(Some(fin_app::library::default_root(&dir)))));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -151,6 +163,8 @@ pub fn run() {
             quick_plan,
             app_info,
             import_statement,
+            import_file,
+            library_folder,
             household,
             save_household,
             set_pick,

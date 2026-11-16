@@ -81,6 +81,8 @@ export interface ImportReport {
   skippedDuplicates: number;
   uncategorized: number;
   totalCents: number;
+  periodEnd: string | null;
+  filedAs: string | null;
 }
 export interface AccountRow {
   id: number;
@@ -208,4 +210,12 @@ export async function whatIf(text: string, runs: number, invoke?: Invoke): Promi
 }
 export async function keepWhatIf(changes: Change[], invoke?: Invoke): Promise<Household> {
   return (await (await resolve(invoke))("keep_whatif", { changes })) as Household;
+}
+
+export async function importFile(name: string, bytes: Uint8Array, account: string, kind: string, invoke?: Invoke): Promise<ImportReport> {
+  const call = await resolve(invoke);
+  return (await call("import_file", { name, bytes: Array.from(bytes), account, kind })) as ImportReport;
+}
+export async function libraryFolder(invoke?: Invoke): Promise<string | null> {
+  return (await (await resolve(invoke))("library_folder")) as string | null;
 }
