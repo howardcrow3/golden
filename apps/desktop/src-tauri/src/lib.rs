@@ -234,6 +234,14 @@ fn apply_paystub(
 }
 
 #[tauri::command]
+fn suggest_allocation(
+    state: Shared,
+    yearly_savings_cents: i64,
+) -> Result<fin_app::allocate::Allocation, String> {
+    lock(&state)?.suggest_allocation(yearly_savings_cents)
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -288,6 +296,7 @@ pub fn run() {
             forecast,
             balance_sheet,
             read_paystub,
+            suggest_allocation,
             apply_paystub,
             set_budget,
             set_category,

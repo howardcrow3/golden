@@ -371,3 +371,16 @@ export async function readPaystub(text: string, invoke?: Invoke): Promise<Paystu
 export async function applyPaystub(text: string, person: number, invoke?: Invoke): Promise<StreamRow> {
   return (await (await resolve(invoke))("apply_paystub", { text, person })) as StreamRow;
 }
+
+export interface AllocationStep {
+  name: string;
+  cents: number;
+  why: string;
+}
+export interface Allocation {
+  yearlySavingsCents: number;
+  steps: AllocationStep[];
+}
+export async function suggestAllocation(yearlySavingsCents: number, invoke?: Invoke): Promise<Allocation> {
+  return (await (await resolve(invoke))("suggest_allocation", { yearlySavingsCents })) as Allocation;
+}
