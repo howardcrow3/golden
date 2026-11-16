@@ -376,6 +376,17 @@ describe("Transactions", () => {
     await fireEvent.change(input, { target: { value: "  " } });
     expect(log.some(([c]) => c === "set_category")).toBe(false);
   });
+  it("exports a CSV and shows where it was saved", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    const base = fake(log);
+    const invoke = async (cmd: string, args?: Record<string, unknown>) =>
+      cmd === "export_transactions" ? (log.push([cmd, args]), "/data/Exports/golden-transactions.csv") : base(cmd, args);
+    render(Transactions, { invoke, today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Exported to /data/Exports/golden-transactions.csv");
+    expect(log.find(([c]) => c === "export_transactions")![1]).toEqual({ from: "2025-11-16", to: "2026-11-16" });
+  });
   it("shows a friendly message when there is nothing to list", async () => {
     render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? [] : []) });
     expect((await screen.findByText(/Import a statement first/)).textContent).toBeTruthy();

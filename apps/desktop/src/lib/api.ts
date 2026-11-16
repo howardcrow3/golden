@@ -242,3 +242,6 @@ export async function categoryChoices(invoke?: Invoke): Promise<string[]> {
 export async function setCategory(id: number, category: string, remember: boolean, invoke?: Invoke): Promise<Recategorized> {
   return (await (await resolve(invoke))("set_category", { id, category, remember })) as Recategorized;
 }
+export async function exportTransactions(from: string, to: string, invoke?: Invoke): Promise<string> {
+  return (await (await resolve(invoke))("export_transactions", { from, to })) as string;
+}
