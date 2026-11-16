@@ -1,4 +1,5 @@
 //! Tauri shell: a thin command layer over the pure-Rust crates (all logic and tests live there).
+use fin_app::budget::BudgetRow;
 use fin_app::chat::{Change, WhatIfReply};
 use fin_app::household::{AssumptionRow, Household};
 use fin_app::licensing::LicenseStatus;
@@ -148,6 +149,16 @@ fn cash_flow(state: Shared, from: String, to: String, grain: String) -> Result<V
 }
 
 #[tauri::command]
+fn budget_status(state: Shared, day: String, grain: String) -> Result<Vec<BudgetRow>, String> {
+    lock(&state)?.budget_status(&day, &grain)
+}
+
+#[tauri::command]
+fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(), String> {
+    lock(&state)?.set_budget(&category, monthly_cents).map(|_| ())
+}
+
+#[tauri::command]
 fn categories(state: Shared, day: String, grain: String, income: bool) -> Result<Vec<CategoryRow>, String> {
     lock(&state)?.categories_str(&day, &grain, income)
 }
@@ -191,6 +202,8 @@ pub fn run() {
             export_transactions,
             transactions,
             category_choices,
+            budget_status,
+            set_budget,
             set_category,
             library_folder,
             household,
