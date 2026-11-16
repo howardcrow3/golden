@@ -197,3 +197,11 @@ fn recurring_is_offered_and_works() {
     assert_eq!(r["result"]["isError"], false);
     assert!(payload(&r).is_array());
 }
+
+#[test]
+fn debt_plan_is_offered_and_works() {
+    let a = app();
+    let r = call(&a, "debt_plan", json!({"extraCents": 0}));
+    assert_eq!(r["result"]["isError"], false);
+    assert!(payload(&r)["debts"].is_array());
+}
