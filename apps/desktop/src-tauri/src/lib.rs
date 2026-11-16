@@ -276,6 +276,21 @@ fn insights(state: Shared) -> Result<Vec<fin_app::insights::Insight>, String> {
 }
 
 #[tauri::command]
+fn goals(state: Shared) -> Result<Vec<fin_app::goals::GoalRow>, String> {
+    lock(&state)?.goals()
+}
+
+#[tauri::command]
+fn set_goal(state: Shared, goal: fin_app::goals::Goal) -> Result<(), String> {
+    lock(&state)?.set_goal(goal)
+}
+
+#[tauri::command]
+fn remove_goal(state: Shared, name: String) -> Result<(), String> {
+    lock(&state)?.remove_goal(&name)
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -350,6 +365,9 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            goals,
+            set_goal,
+            remove_goal,
             insights,
             debt_plan,
             set_debt_terms,

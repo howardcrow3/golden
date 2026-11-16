@@ -442,3 +442,26 @@ export interface Insight {
 export async function getInsights(invoke?: Invoke): Promise<Insight[]> {
   return (await (await resolve(invoke))("insights")) as Insight[];
 }
+
+export interface Goal {
+  name: string;
+  targetCents: number;
+  savedCents: number;
+  byDate: string;
+}
+export interface GoalRow extends Goal {
+  monthsLeft: number;
+  monthlyNeededCents: number;
+  percent: number;
+  status: "done" | "on_track" | "behind" | "past_due" | "unknown";
+  typicalMonthlyCents: number | null;
+}
+export async function getGoals(invoke?: Invoke): Promise<GoalRow[]> {
+  return (await (await resolve(invoke))("goals")) as GoalRow[];
+}
+export async function setGoal(goal: Goal, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_goal", { goal });
+}
+export async function removeGoal(name: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("remove_goal", { name });
+}

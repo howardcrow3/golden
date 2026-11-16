@@ -9,6 +9,7 @@ pub mod chat;
 pub mod debts;
 pub mod export;
 pub mod forecast;
+pub mod goals;
 pub mod household;
 pub mod insights;
 pub mod keystore;
