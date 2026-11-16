@@ -1,4 +1,5 @@
 //! Tauri shell: a thin command layer over the pure-Rust crates (all logic and tests live there).
+use fin_app::licensing::LicenseStatus;
 use fin_app::{AccountRow, App as Core, CategoryRow, ImportReport, PeriodRow};
 use fin_app::keystore::{open_private, KeyStore};
 use std::sync::Mutex;
@@ -35,6 +36,25 @@ fn lock<'a>(s: &'a Shared<'_>) -> Result<std::sync::MutexGuard<'a, Core>, String
 #[tauri::command]
 fn import_statement(state: Shared, bytes: Vec<u8>, account: String, kind: String) -> Result<ImportReport, String> {
     lock(&state)?.import_statement(&bytes, &account, &kind)
+}
+
+#[tauri::command]
+fn license_status(state: Shared) -> Result<LicenseStatus, String> {
+    lock(&state)?.license_status(today())
+}
+
+#[tauri::command]
+fn activate_license(state: Shared, token: String) -> Result<LicenseStatus, String> {
+    lock(&state)?.activate_license(&token, today())
+}
+
+fn today() -> chrono::NaiveDate {
+    chrono::Local::now().date_naive()
+}
+
+/// The seller's public key, bundled at build time. Empty until the first key is generated.
+fn bundled_public_key() -> Option<fin_license::VerifyingKey> {
+    fin_license::parse_public_key(include_str!("../license_public_key.txt")).ok()
 }
 
 #[tauri::command]
@@ -77,7 +97,7 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
-            app.manage(Mutex::new(Core::new(db)));
+            app.manage(Mutex::new(Core::new(db).with_public_key(bundled_public_key())));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -85,6 +105,8 @@ pub fn run() {
             quick_plan,
             app_info,
             import_statement,
+            license_status,
+            activate_license,
             accounts,
             cash_flow,
             categories

@@ -13,6 +13,17 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
+rand = { version = "0.8", optional = true }
+
+[features]
+# Seller-side command line tool: `cargo run -p fin-license --features tool --bin golden-license`.
+tool = ["dep:rand", "ed25519-dalek/rand_core"]
+
+[[bin]]
+name = "golden-license"
+path = "src/bin/golden-license.rs"
+required-features = ["tool"]
+
 [dev-dependencies]
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand = "0.8"

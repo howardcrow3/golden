@@ -2,6 +2,7 @@
 //! instant week/month/quarter/year totals.
 pub mod ledger;
 pub mod migrations;
+pub mod settings;
 
 use rusqlite::Connection;
 use std::path::Path;

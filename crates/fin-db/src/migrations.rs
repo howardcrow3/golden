@@ -50,6 +50,13 @@ const MIGRATIONS: &[&str] = &[
         dependent  INTEGER NOT NULL DEFAULT 0
     );
     "#,
+    // 3: small key/value settings (trial start, licence token).
+    r#"
+    CREATE TABLE setting (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
