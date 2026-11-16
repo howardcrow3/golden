@@ -299,6 +299,13 @@ fn net_worth_history(
 }
 
 #[tauri::command]
+fn withholding_check(
+    state: Shared,
+) -> Result<fin_app::withholding::WithholdingCheck, String> {
+    lock(&state)?.withholding_check()
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -373,6 +380,7 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            withholding_check,
             net_worth_history,
             goals,
             set_goal,

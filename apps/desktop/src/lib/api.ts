@@ -473,3 +473,19 @@ export interface NetWorthPoint {
 export async function getNetWorthHistory(months: number, invoke?: Invoke): Promise<NetWorthPoint[]> {
   return (await (await resolve(invoke))("net_worth_history", { months })) as NetWorthPoint[];
 }
+
+export interface Gap {
+  estimatedCents: number;
+  withheldCents: number;
+  differenceCents: number;
+}
+export interface WithholdingCheck {
+  taxableWagesCents: number;
+  federal: Gap;
+  state: Gap;
+  missing: string[];
+  stateIsEstimate: boolean;
+}
+export async function getWithholdingCheck(invoke?: Invoke): Promise<WithholdingCheck> {
+  return (await (await resolve(invoke))("withholding_check")) as WithholdingCheck;
+}
