@@ -187,3 +187,25 @@ export async function getAssumptions(invoke?: Invoke): Promise<AssumptionRow[]> 
 export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
   return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
 }
+
+export type Change =
+  | { kind: "setPick"; key: string; label: string }
+  | { kind: "retireAt"; person: number; age: number }
+  | { kind: "spending"; cents: number }
+  | { kind: "moveTo"; state: string }
+  | { kind: "oneTime"; label: string; person: number; cents: number; year: number };
+
+export interface WhatIfReply {
+  understood: boolean;
+  message: string;
+  changes: Change[];
+  descriptions: string[];
+  before: QuickPlanResult | null;
+  after: QuickPlanResult | null;
+}
+export async function whatIf(text: string, runs: number, invoke?: Invoke): Promise<WhatIfReply> {
+  return (await (await resolve(invoke))("whatif", { text, runs })) as WhatIfReply;
+}
+export async function keepWhatIf(changes: Change[], invoke?: Invoke): Promise<Household> {
+  return (await (await resolve(invoke))("keep_whatif", { changes })) as Household;
+}

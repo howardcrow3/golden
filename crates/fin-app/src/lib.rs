@@ -1,6 +1,7 @@
 //! Application service: the one place the UI talks to. It wires file import, categorization
 //! rules and the ledger together and returns plain serializable shapes. The Tauri shell only
 //! forwards calls here, so everything is testable without a window.
+pub mod chat;
 pub mod household;
 pub mod keystore;
 pub mod licensing;
@@ -54,6 +55,7 @@ pub struct App {
     rules: RuleSet,
     pub(crate) public_key: Option<ed25519_dalek::VerifyingKey>,
     pub(crate) clock: fn() -> NaiveDate,
+    pub(crate) interpreter: Box<dyn chat::Interpreter>,
 }
 
 fn today_local() -> NaiveDate {
@@ -82,6 +84,7 @@ impl App {
             rules: RuleSet::starter(),
             public_key: None,
             clock: today_local,
+            interpreter: Box::new(chat::RuleInterpreter),
         }
     }
 

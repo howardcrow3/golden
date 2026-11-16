@@ -1,4 +1,5 @@
 //! Tauri shell: a thin command layer over the pure-Rust crates (all logic and tests live there).
+use fin_app::chat::{Change, WhatIfReply};
 use fin_app::household::{AssumptionRow, Household};
 use fin_app::licensing::LicenseStatus;
 use fin_app::{AccountRow, App as Core, CategoryRow, ImportReport, PeriodRow};
@@ -87,6 +88,21 @@ async fn run_plan(state: Shared<'_>, runs: usize) -> Result<QuickPlanResult, Str
         .map_err(|e| e.to_string())?
 }
 
+/// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
+#[tauri::command]
+async fn whatif(state: Shared<'_>, text: String, runs: usize) -> Result<WhatIfReply, String> {
+    let prep = lock(&state)?.prepare_whatif(&text, today())?;
+    tauri::async_runtime::spawn_blocking(move || prep.run(runs))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Keep a what-if: save its changes into the household.
+#[tauri::command]
+fn keep_whatif(state: Shared, changes: Vec<Change>) -> Result<Household, String> {
+    lock(&state)?.apply_changes(&changes)
+}
+
 #[tauri::command]
 fn accounts(state: Shared) -> Result<Vec<AccountRow>, String> {
     lock(&state)?.accounts()
@@ -140,6 +156,8 @@ pub fn run() {
             set_pick,
             assumptions,
             run_plan,
+            whatif,
+            keep_whatif,
             license_status,
             activate_license,
             accounts,
