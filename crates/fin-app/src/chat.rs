@@ -117,7 +117,7 @@ pub trait Interpreter: Send {
 /// Deterministic phrase understanding: no model, no network.
 pub struct RuleInterpreter;
 
-const STATES: &[(&str, &str)] = &[
+pub(crate) const STATES: &[(&str, &str)] = &[
     ("alabama", "AL"),
     ("alaska", "AK"),
     ("arizona", "AZ"),

@@ -13,6 +13,7 @@ pub mod keystore;
 pub mod library;
 pub mod licensing;
 pub mod mcp;
+pub mod model;
 pub mod paystub;
 pub mod transactions;
 
