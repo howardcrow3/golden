@@ -15,6 +15,7 @@ pub mod licensing;
 pub mod mcp;
 pub mod model;
 pub mod paystub;
+pub mod recurring;
 pub mod transactions;
 
 use chrono::NaiveDate;

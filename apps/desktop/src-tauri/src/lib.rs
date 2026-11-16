@@ -247,6 +247,15 @@ fn set_opening_balance(state: Shared, account_id: i64, cents: i64) -> Result<(),
 }
 
 #[tauri::command]
+fn recurring(
+    state: Shared,
+    from: String,
+    to: String,
+) -> Result<Vec<fin_app::recurring::Recurring>, String> {
+    lock(&state)?.recurring(&from, &to)
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -321,6 +330,7 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            recurring,
             set_opening_balance,
             read_paystub,
             suggest_allocation,

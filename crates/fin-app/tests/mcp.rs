@@ -185,3 +185,15 @@ fn data_dir_follows_each_os() {
     );
     assert_eq!(data_dir("macos", "x", |_| None), None);
 }
+
+#[test]
+fn recurring_is_offered_and_works() {
+    let a = app();
+    let r = call(
+        &a,
+        "recurring",
+        json!({"from":"2026-01-01","to":"2026-12-31"}),
+    );
+    assert_eq!(r["result"]["isError"], false);
+    assert!(payload(&r).is_array());
+}
