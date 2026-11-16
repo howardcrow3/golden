@@ -2,8 +2,9 @@
   import Overview from "./lib/Overview.svelte";
   import TaxCalculator from "./lib/TaxCalculator.svelte";
   import Retirement from "./lib/Retirement.svelte";
+  import Import from "./lib/Import.svelte";
 
-  const pages = ["Overview", "Retirement", "Tax estimate"] as const;
+  const pages = ["Overview", "Import", "Retirement", "Tax estimate"] as const;
   let page = $state<(typeof pages)[number]>("Overview");
 </script>
 
@@ -16,7 +17,7 @@
     <div class="mode">Private mode · nothing leaves this computer</div>
   </nav>
   <main>
-    {#if page === "Overview"}<Overview />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview />{:else if page === "Import"}<Import />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
   </main>
 </div>
 

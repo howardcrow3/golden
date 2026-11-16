@@ -87,3 +87,21 @@ fn learned_category_applies_to_next_import() {
         .iter()
         .any(|c| c.category == "Hobbies" && c.cents == 1_000));
 }
+
+#[test]
+fn string_dates_from_the_ui() {
+    let mut app = App::in_memory().unwrap();
+    app.import_statement(CSV.as_bytes(), "Checking", "checking")
+        .unwrap();
+    let rows = app
+        .cash_flow_str("2026-10-01", "2026-11-30", "month")
+        .unwrap();
+    assert_eq!(rows.len(), 2);
+    assert!(app
+        .cash_flow_str("10/01/2026", "2026-11-30", "month")
+        .is_err());
+    assert!(!app
+        .categories_str("2026-10-10", "month", true)
+        .unwrap()
+        .is_empty());
+}

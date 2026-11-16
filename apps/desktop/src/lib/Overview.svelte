@@ -1,6 +1,7 @@
 <script lang="ts">
   import { GRAINS, GRAIN_LABEL, convertBudget, type Grain } from "./grain";
   import { formatCents } from "./money";
+  import CashFlow from "./CashFlow.svelte";
 
   // Sample household until real data is imported.
   const monthlyBudget = 650_000;
@@ -21,6 +22,8 @@
   <h2>Spending budget per {grain}</h2>
   <div class="big num" data-testid="budget">{formatCents(budget, { whole: true })}</div>
 </section>
+
+<CashFlow {grain} />
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }
