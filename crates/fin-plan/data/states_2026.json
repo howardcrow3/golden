@@ -1,6 +1,6 @@
 {
  "year": 2026,
- "source": "State revenue departments; flagged states are approximate. Verify before relying on exact figures.",
+ "source": "Tax Foundation, State Individual Income Tax Rates and Brackets, 2026 (state revenue departments). States flagged approximate model a simplified schedule; see notes.",
  "states": {
   "AK": {
    "name": "Alaska",
@@ -14,33 +14,61 @@
   },
   "AL": {
    "name": "Alabama",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.02
+    ],
+    [
+     50000,
+     0.04
+    ],
+    [
+     300000,
      0.05
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 450000,
+   "std_joint": 1150000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Standard deduction and personal exemption combined; Alabama's income-based deduction phase-down is not modelled.",
+   "joint_brackets": [
+    [
+     0,
+     0.02
+    ],
+    [
+     100000,
+     0.04
+    ],
+    [
+     600000,
+     0.05
+    ]
+   ]
   },
   "AR": {
    "name": "Arkansas",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.02
+    ],
+    [
+     460000,
      0.039
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 247000,
+   "std_joint": 494000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "notes": "Brackets use 2025 inflation-adjusted widths (2026 widths unpublished at source time).",
+   "credit_single": 2900,
+   "credit_joint": 5800
   },
   "AZ": {
    "name": "Arizona",
@@ -156,41 +184,121 @@
      0.0699
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
-   "joint_multiplier": 2.0,
+   "std_single": 1500000,
+   "std_joint": 2400000,
+   "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": ""
+   "notes": "Personal exemption phase-out and the tax-recapture add-back are not modelled.",
+   "joint_brackets": [
+    [
+     0,
+     0.02
+    ],
+    [
+     2000000,
+     0.045
+    ],
+    [
+     10000000,
+     0.055
+    ],
+    [
+     20000000,
+     0.06
+    ],
+    [
+     40000000,
+     0.065
+    ],
+    [
+     50000000,
+     0.069
+    ],
+    [
+     100000000,
+     0.0699
+    ]
+   ]
   },
   "DC": {
    "name": "District of Columbia",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.07
+     0.04
+    ],
+    [
+     1000000,
+     0.06
+    ],
+    [
+     4000000,
+     0.065
+    ],
+    [
+     6000000,
+     0.085
+    ],
+    [
+     25000000,
+     0.0925
+    ],
+    [
+     50000000,
+     0.0975
+    ],
+    [
+     100000000,
+     0.1075
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Same schedule for all filers."
   },
   "DE": {
    "name": "Delaware",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.055
+     0.0
+    ],
+    [
+     200000,
+     0.022
+    ],
+    [
+     500000,
+     0.039
+    ],
+    [
+     1000000,
+     0.048
+    ],
+    [
+     2000000,
+     0.052
+    ],
+    [
+     2500000,
+     0.0555
+    ],
+    [
+     6000000,
+     0.066
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 325000,
+   "std_joint": 650000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Personal credit $110 per filer.",
+   "credit_single": 11000,
+   "credit_joint": 22000
   },
   "FL": {
    "name": "Florida",
@@ -219,18 +327,112 @@
   },
   "HI": {
    "name": "Hawaii",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.075
+     0.014
+    ],
+    [
+     960000,
+     0.032
+    ],
+    [
+     1440000,
+     0.055
+    ],
+    [
+     1920000,
+     0.064
+    ],
+    [
+     2400000,
+     0.068
+    ],
+    [
+     3600000,
+     0.072
+    ],
+    [
+     4800000,
+     0.076
+    ],
+    [
+     12500000,
+     0.079
+    ],
+    [
+     17500000,
+     0.0825
+    ],
+    [
+     22500000,
+     0.09
+    ],
+    [
+     27500000,
+     0.1
+    ],
+    [
+     32500000,
+     0.11
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 554400,
+   "std_joint": 1108800,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Standard deduction plus personal exemption combined.",
+   "joint_brackets": [
+    [
+     0,
+     0.014
+    ],
+    [
+     1920000,
+     0.032
+    ],
+    [
+     2880000,
+     0.055
+    ],
+    [
+     3840000,
+     0.064
+    ],
+    [
+     4800000,
+     0.068
+    ],
+    [
+     7200000,
+     0.072
+    ],
+    [
+     9600000,
+     0.076
+    ],
+    [
+     25000000,
+     0.079
+    ],
+    [
+     35000000,
+     0.0825
+    ],
+    [
+     45000000,
+     0.09
+    ],
+    [
+     55000000,
+     0.1
+    ],
+    [
+     65000000,
+     0.11
+    ]
+   ]
   },
   "IA": {
    "name": "Iowa",
@@ -294,18 +496,32 @@
   },
   "KS": {
    "name": "Kansas",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.052000000000000005
+     0.052
+    ],
+    [
+     2300000,
+     0.0558
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1276500,
+   "std_joint": 2656000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Standard deduction plus personal exemption combined.",
+   "joint_brackets": [
+    [
+     0,
+     0.052
+    ],
+    [
+     4600000,
+     0.0558
+    ]
+   ]
   },
   "KY": {
    "name": "Kentucky",
@@ -391,28 +607,100 @@
     [
      25000000,
      0.0575
-    ]
-   ],
-   "std_single": 335000,
-   "std_joint": 670000,
-   "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "State only; county tax not included."
-  },
-  "ME": {
-   "name": "Maine",
-   "kind": "flat",
-   "brackets": [
+    ],
     [
-     0,
+     50000000,
+     0.0625
+    ],
+    [
+     100000000,
      0.065
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 655000,
+   "std_joint": 1310000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "notes": "Deduction is a percentage of income with min/max and the exemption phases out at higher incomes; county income tax is not included.",
+   "joint_brackets": [
+    [
+     0,
+     0.02
+    ],
+    [
+     100000,
+     0.03
+    ],
+    [
+     200000,
+     0.04
+    ],
+    [
+     300000,
+     0.0475
+    ],
+    [
+     15000000,
+     0.05
+    ],
+    [
+     17500000,
+     0.0525
+    ],
+    [
+     22500000,
+     0.055
+    ],
+    [
+     30000000,
+     0.0575
+    ],
+    [
+     60000000,
+     0.0625
+    ],
+    [
+     120000000,
+     0.065
+    ]
+   ]
+  },
+  "ME": {
+   "name": "Maine",
+   "kind": "progressive",
+   "brackets": [
+    [
+     0,
+     0.058
+    ],
+    [
+     2739900,
+     0.0675
+    ],
+    [
+     6484900,
+     0.0715
+    ]
+   ],
+   "std_single": 1365000,
+   "std_joint": 2730000,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled.",
+   "joint_brackets": [
+    [
+     0,
+     0.058
+    ],
+    [
+     5484900,
+     0.0675
+    ],
+    [
+     12974900,
+     0.0715
+    ]
+   ]
   },
   "MI": {
    "name": "Michigan",
@@ -438,38 +726,84 @@
      0.0535
     ],
     [
-     3257000,
+     3331000,
      0.068
     ],
     [
-     10699000,
+     10943000,
      0.0785
     ],
     [
-     19863000,
-     0.09849999999999999
+     20315000,
+     0.0985
     ]
    ],
-   "std_single": 1495000,
-   "std_joint": 2990000,
-   "joint_multiplier": 1.4,
+   "std_single": 1530000,
+   "std_joint": 3060000,
+   "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": ""
+   "notes": "Standard deduction phase-out at higher incomes is not modelled.",
+   "joint_brackets": [
+    [
+     0,
+     0.0535
+    ],
+    [
+     4870000,
+     0.068
+    ],
+    [
+     19348000,
+     0.0785
+    ],
+    [
+     33793000,
+     0.0985
+    ]
+   ]
   },
   "MO": {
    "name": "Missouri",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.0
+    ],
+    [
+     134800,
+     0.02
+    ],
+    [
+     269600,
+     0.025
+    ],
+    [
+     404400,
+     0.03
+    ],
+    [
+     539200,
+     0.035
+    ],
+    [
+     674000,
+     0.04
+    ],
+    [
+     808800,
      0.045
+    ],
+    [
+     943600,
+     0.047
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Same schedule for all filers; follows the federal standard deduction."
   },
   "MS": {
    "name": "Mississippi",
@@ -488,18 +822,32 @@
   },
   "MT": {
    "name": "Montana",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.059000000000000004
+     0.047
+    ],
+    [
+     4750000,
+     0.0565
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Follows the federal standard deduction.",
+   "joint_brackets": [
+    [
+     0,
+     0.047
+    ],
+    [
+     9500000,
+     0.0565
+    ]
+   ]
   },
   "NC": {
    "name": "North Carolina",
@@ -518,33 +866,79 @@
   },
   "ND": {
    "name": "North Dakota",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.0
+    ],
+    [
+     4847500,
      0.0195
+    ],
+    [
+     24482500,
+     0.025
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Follows the federal standard deduction.",
+   "joint_brackets": [
+    [
+     0,
+     0.0
+    ],
+    [
+     8097500,
+     0.0195
+    ],
+    [
+     29807500,
+     0.025
+    ]
+   ]
   },
   "NE": {
    "name": "Nebraska",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.0246
+    ],
+    [
+     413000,
+     0.0351
+    ],
+    [
+     2476000,
      0.0455
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 885000,
+   "std_joint": 1770000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Personal exemption credit $176 per filer.",
+   "joint_brackets": [
+    [
+     0,
+     0.0246
+    ],
+    [
+     825000,
+     0.0351
+    ],
+    [
+     4953000,
+     0.0455
+    ]
+   ],
+   "credit_single": 17600,
+   "credit_joint": 35200
   },
   "NH": {
    "name": "New Hampshire",
@@ -562,7 +956,7 @@
    "brackets": [
     [
      0,
-     0.013999999999999999
+     0.014
     ],
     [
      2000000,
@@ -574,7 +968,7 @@
     ],
     [
      4000000,
-     0.05525
+     0.0553
     ],
     [
      7500000,
@@ -589,26 +983,106 @@
      0.1075
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 100000,
+   "std_joint": 200000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Joint brackets approximated; no standard deduction."
+   "approximate": false,
+   "notes": "Personal exemption only; no standard deduction.",
+   "joint_brackets": [
+    [
+     0,
+     0.014
+    ],
+    [
+     2000000,
+     0.0175
+    ],
+    [
+     5000000,
+     0.0245
+    ],
+    [
+     7000000,
+     0.035
+    ],
+    [
+     8000000,
+     0.0553
+    ],
+    [
+     15000000,
+     0.0637
+    ],
+    [
+     50000000,
+     0.0897
+    ],
+    [
+     100000000,
+     0.1075
+    ]
+   ]
   },
   "NM": {
    "name": "New Mexico",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.015
+    ],
+    [
+     550000,
+     0.032
+    ],
+    [
+     1650000,
+     0.043
+    ],
+    [
+     3350000,
+     0.047
+    ],
+    [
+     6650000,
      0.049
+    ],
+    [
+     21000000,
+     0.059
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Follows the federal standard deduction.",
+   "joint_brackets": [
+    [
+     0,
+     0.015
+    ],
+    [
+     800000,
+     0.032
+    ],
+    [
+     2500000,
+     0.043
+    ],
+    [
+     5000000,
+     0.047
+    ],
+    [
+     10000000,
+     0.049
+    ],
+    [
+     31500000,
+     0.059
+    ]
+   ]
   },
   "NV": {
    "name": "Nevada",
@@ -626,27 +1100,27 @@
    "brackets": [
     [
      0,
-     0.04
+     0.039
     ],
     [
      850000,
-     0.045
+     0.044
     ],
     [
      1170000,
-     0.0525
+     0.0515
     ],
     [
      1390000,
-     0.055
+     0.054
     ],
     [
      8065000,
-     0.06
+     0.059
     ],
     [
      21540000,
-     0.06849999999999999
+     0.0685
     ],
     [
      107755000,
@@ -654,7 +1128,7 @@
     ],
     [
      500000000,
-     0.10300000000000001
+     0.103
     ],
     [
      2500000000,
@@ -663,9 +1137,47 @@
    ],
    "std_single": 800000,
    "std_joint": 1605000,
-   "joint_multiplier": 2.0,
+   "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Joint brackets approximated by doubling single."
+   "notes": "The tax-benefit recapture for incomes above $107,650 is not modelled; NYC and Yonkers taxes are not included.",
+   "joint_brackets": [
+    [
+     0,
+     0.039
+    ],
+    [
+     1715000,
+     0.044
+    ],
+    [
+     2360000,
+     0.0515
+    ],
+    [
+     2790000,
+     0.054
+    ],
+    [
+     16155000,
+     0.059
+    ],
+    [
+     32320000,
+     0.0685
+    ],
+    [
+     215535000,
+     0.0965
+    ],
+    [
+     500000000,
+     0.103
+    ],
+    [
+     2500000000,
+     0.109
+    ]
+   ]
   },
   "OH": {
    "name": "Ohio",
@@ -688,18 +1200,48 @@
   },
   "OK": {
    "name": "Oklahoma",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.0
+    ],
+    [
+     375000,
+     0.025
+    ],
+    [
+     490000,
+     0.035
+    ],
+    [
+     720000,
      0.045
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 735000,
+   "std_joint": 1470000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Standard deduction plus personal exemption combined.",
+   "joint_brackets": [
+    [
+     0,
+     0.0
+    ],
+    [
+     750000,
+     0.025
+    ],
+    [
+     980000,
+     0.035
+    ],
+    [
+     1440000,
+     0.045
+    ]
+   ]
   },
   "OR": {
    "name": "Oregon",
@@ -710,11 +1252,11 @@
      0.0475
     ],
     [
-     440000,
+     455000,
      0.0675
     ],
     [
-     1100000,
+     1140000,
      0.0875
     ],
     [
@@ -722,11 +1264,31 @@
      0.099
     ]
    ],
-   "std_single": 274500,
-   "std_joint": 549500,
-   "joint_multiplier": 2.0,
-   "approximate": true,
-   "notes": ""
+   "std_single": 291000,
+   "std_joint": 582000,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "Personal exemption credit $256 per filer; the federal-tax subtraction is not modelled.",
+   "joint_brackets": [
+    [
+     0,
+     0.0475
+    ],
+    [
+     910000,
+     0.0675
+    ],
+    [
+     2280000,
+     0.0875
+    ],
+    [
+     25000000,
+     0.099
+    ]
+   ],
+   "credit_single": 25600,
+   "credit_joint": 51200
   },
   "PA": {
    "name": "Pennsylvania",
@@ -745,33 +1307,49 @@
   },
   "RI": {
    "name": "Rhode Island",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.0375
+    ],
+    [
+     8205000,
      0.0475
+    ],
+    [
+     18645000,
+     0.0599
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1645000,
+   "std_joint": 3290000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled."
   },
   "SC": {
    "name": "South Carolina",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
+     0.0
+    ],
+    [
+     364000,
+     0.03
+    ],
+    [
+     1823000,
      0.06
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 835000,
+   "std_joint": 1670000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Same schedule for all filers."
   },
   "SD": {
    "name": "South Dakota",
@@ -847,18 +1425,48 @@
   },
   "VT": {
    "name": "Vermont",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.065
+     0.0335
+    ],
+    [
+     4940000,
+     0.066
+    ],
+    [
+     11970000,
+     0.076
+    ],
+    [
+     24970000,
+     0.0875
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1295000,
+   "std_joint": 2590000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "notes": "Brackets use 2025 inflation-adjusted widths (2026 widths unpublished at source time).",
+   "joint_brackets": [
+    [
+     0,
+     0.0335
+    ],
+    [
+     8250000,
+     0.066
+    ],
+    [
+     19945000,
+     0.076
+    ],
+    [
+     30400000,
+     0.0875
+    ]
+   ]
   },
   "WA": {
    "name": "Washington",
@@ -879,38 +1487,72 @@
      0.035
     ],
     [
-     1432000,
-     0.044000000000000004
+     1511000,
+     0.044
     ],
     [
-     2864000,
+     5195000,
      0.053
     ],
     [
-     31531000,
+     33272000,
      0.0765
     ]
    ],
-   "std_single": 1300000,
-   "std_joint": 2400000,
-   "joint_multiplier": 1.33,
-   "approximate": true,
-   "notes": ""
+   "std_single": 1466000,
+   "std_joint": 2724000,
+   "joint_multiplier": 1.0,
+   "approximate": false,
+   "notes": "Sliding-scale standard deduction is shown at its maximum.",
+   "joint_brackets": [
+    [
+     0,
+     0.035
+    ],
+    [
+     2015000,
+     0.044
+    ],
+    [
+     6926000,
+     0.053
+    ],
+    [
+     44363000,
+     0.0765
+    ]
+   ]
   },
   "WV": {
    "name": "West Virginia",
-   "kind": "flat",
+   "kind": "progressive",
    "brackets": [
     [
      0,
-     0.045
+     0.0222
+    ],
+    [
+     1000000,
+     0.0296
+    ],
+    [
+     2500000,
+     0.0333
+    ],
+    [
+     4000000,
+     0.0444
+    ],
+    [
+     6000000,
+     0.0482
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 200000,
+   "std_joint": 400000,
    "joint_multiplier": 1.0,
-   "approximate": true,
-   "notes": "Approximate: single effective rate in place of the full bracket schedule. Refine before relying on it."
+   "approximate": false,
+   "notes": "Personal exemption only; no standard deduction."
   },
   "WY": {
    "name": "Wyoming",
