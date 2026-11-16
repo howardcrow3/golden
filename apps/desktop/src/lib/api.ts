@@ -331,3 +331,19 @@ export interface Forecast {
 export async function getForecast(months: number, invoke?: Invoke): Promise<Forecast> {
   return (await (await resolve(invoke))("forecast", { months })) as Forecast;
 }
+
+export interface SheetLine {
+  name: string;
+  kind: string;
+  cents: number;
+}
+export interface BalanceSheet {
+  assets: SheetLine[];
+  debts: SheetLine[];
+  assetsCents: number;
+  debtsCents: number;
+  netWorthCents: number;
+}
+export async function getBalanceSheet(invoke?: Invoke): Promise<BalanceSheet> {
+  return (await (await resolve(invoke))("balance_sheet")) as BalanceSheet;
+}

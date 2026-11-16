@@ -215,6 +215,11 @@ fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(),
 }
 
 #[tauri::command]
+fn balance_sheet(state: Shared) -> Result<fin_app::balance::BalanceSheet, String> {
+    lock(&state)?.balance_sheet()
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -267,6 +272,7 @@ pub fn run() {
             category_choices,
             budget_status,
             forecast,
+            balance_sheet,
             set_budget,
             set_category,
             library_folder,
