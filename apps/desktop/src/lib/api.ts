@@ -13,7 +13,7 @@ export interface TaxEstimate {
   stateIsEstimate: boolean;
 }
 
-type Invoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+export type Invoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 /** True when running inside the Tauri shell (as opposed to a plain browser during UI development). */
 export function inTauri(): boolean {
@@ -72,4 +72,50 @@ export async function quickPlan(req: QuickPlanRequest, invoke?: Invoke): Promise
   const call = invoke ?? (inTauri() ? await tauriInvoke() : null);
   if (!call) throw new Error("The planning engine runs inside the Golden desktop app.");
   return (await call("quick_plan", { req })) as QuickPlanResult;
+}
+
+export interface ImportReport {
+  account: string;
+  parsed: number;
+  added: number;
+  skippedDuplicates: number;
+  uncategorized: number;
+  totalCents: number;
+}
+export interface AccountRow {
+  id: number;
+  name: string;
+  kind: string;
+  balanceCents: number;
+}
+export interface PeriodRow {
+  period: string;
+  incomeCents: number;
+  spendingCents: number;
+  netCents: number;
+  count: number;
+}
+export interface CategoryRow {
+  category: string;
+  cents: number;
+}
+
+async function resolve(invoke?: Invoke): Promise<Invoke> {
+  const call = invoke ?? (inTauri() ? await tauriInvoke() : null);
+  if (!call) throw new Error("Your data lives in the Golden desktop app.");
+  return call;
+}
+
+export async function importStatement(bytes: Uint8Array, account: string, kind: string, invoke?: Invoke): Promise<ImportReport> {
+  const call = await resolve(invoke);
+  return (await call("import_statement", { bytes: Array.from(bytes), account, kind })) as ImportReport;
+}
+export async function listAccounts(invoke?: Invoke): Promise<AccountRow[]> {
+  return (await (await resolve(invoke))("accounts")) as AccountRow[];
+}
+export async function cashFlow(from: string, to: string, grain: string, invoke?: Invoke): Promise<PeriodRow[]> {
+  return (await (await resolve(invoke))("cash_flow", { from, to, grain })) as PeriodRow[];
+}
+export async function categories(day: string, grain: string, income: boolean, invoke?: Invoke): Promise<CategoryRow[]> {
+  return (await (await resolve(invoke))("categories", { day, grain, income })) as CategoryRow[];
 }

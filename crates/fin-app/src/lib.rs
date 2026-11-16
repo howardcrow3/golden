@@ -60,6 +60,11 @@ fn grain_of(s: &str) -> Result<Grain, String> {
     }
 }
 
+/// Parse a `YYYY-MM-DD` string from the UI.
+pub fn parse_day(s: &str) -> Result<NaiveDate, String> {
+    NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").map_err(|_| format!("not a date: {s}"))
+}
+
 impl App {
     pub fn new(db: Db) -> App {
         App {
@@ -184,6 +189,25 @@ impl App {
                 cents: m.cents(),
             })
             .collect())
+    }
+
+    /// String-date variants for the Tauri layer.
+    pub fn cash_flow_str(
+        &self,
+        from: &str,
+        to: &str,
+        grain: &str,
+    ) -> Result<Vec<PeriodRow>, String> {
+        self.cash_flow(parse_day(from)?, parse_day(to)?, grain)
+    }
+
+    pub fn categories_str(
+        &self,
+        day: &str,
+        grain: &str,
+        income: bool,
+    ) -> Result<Vec<CategoryRow>, String> {
+        self.categories(parse_day(day)?, grain, income)
     }
 
     /// Teach the app a merchant's category for future imports.
