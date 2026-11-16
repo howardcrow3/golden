@@ -387,6 +387,30 @@ describe("Transactions", () => {
     expect((await screen.findByRole("status")).textContent).toBe("Exported to /data/Exports/golden-transactions.csv");
     expect(log.find(([c]) => c === "export_transactions")![1]).toEqual({ from: "2025-11-16", to: "2026-11-16" });
   });
+  it("lists and exports the dates the person picked", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    const base = fake(log);
+    const invoke = async (cmd: string, args?: Record<string, unknown>) =>
+      cmd === "export_transactions" ? (log.push([cmd, args]), "/data/x.csv") : base(cmd, args);
+    render(Transactions, { invoke, today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.input(screen.getByLabelText("From date"), { target: { value: "2026-01-01" } });
+    await fireEvent.input(screen.getByLabelText("To date"), { target: { value: "2026-06-30" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    await screen.findByText(/Exported to/);
+    expect(log.find(([c]) => c === "export_transactions")![1]).toEqual({ from: "2026-01-01", to: "2026-06-30" });
+    const lists = log.filter(([c]) => c === "transactions");
+    expect(lists[lists.length - 1][1]).toMatchObject({ from: "2026-01-01", to: "2026-06-30" });
+  });
+  it("refuses an end date before the start date and does not export", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    render(Transactions, { invoke: fake(log), today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.input(screen.getByLabelText("To date"), { target: { value: "2020-01-01" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/start date must be on or before/);
+    expect(log.some(([c]) => c === "export_transactions")).toBe(false);
+  });
   it("shows a friendly message when there is nothing to list", async () => {
     render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? [] : []) });
     expect((await screen.findByText(/Import a statement first/)).textContent).toBeTruthy();
