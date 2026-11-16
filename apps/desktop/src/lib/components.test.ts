@@ -260,3 +260,62 @@ describe("household form helpers", () => {
     expect(g.streams.map((s) => [s.label, s.person])).toEqual([["Salary", 0], ["Lee pay", 1]]);
   });
 });
+
+import WhatIf from "./WhatIf.svelte";
+
+describe("WhatIf", () => {
+  const reply = (understood = true) => ({
+    understood,
+    message: understood ? "Here is what changes: Retire at 65." : "I couldn't turn that into a change yet.",
+    changes: understood ? [{ kind: "retireAt", person: 0, age: 65 }] : [],
+    descriptions: understood ? ["You retires at 65"] : [],
+    before: understood ? { ...planResult, successRate: 0.7 } : null,
+    after: understood ? { ...planResult, successRate: 0.85 } : null,
+  });
+  it("shows before and after, and keeps the change on request", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      return cmd === "whatif" ? reply() : household;
+    };
+    render(WhatIf, { invoke });
+    await fireEvent.input(screen.getByLabelText("What if question"), { target: { value: "retire at 65" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    expect((await screen.findByTestId("before")).textContent).toBe("70%");
+    expect(screen.getByTestId("after").textContent).toBe("85%");
+    expect(screen.getByText("up 15 points")).toBeTruthy();
+    expect(calls.some(([c]) => c === "keep_whatif")).toBe(false); // preview saves nothing
+    await fireEvent.click(screen.getByRole("button", { name: "Keep this change" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/Saved to your plan/);
+    const kept = calls.find(([c]) => c === "keep_whatif")![1] as { changes: unknown[] };
+    expect(kept.changes).toEqual([{ kind: "retireAt", person: 0, age: 65 }]);
+  });
+  it("dismissing changes nothing", async () => {
+    const calls: string[] = [];
+    const invoke = async (cmd: string) => {
+      calls.push(cmd);
+      return reply();
+    };
+    render(WhatIf, { invoke });
+    await fireEvent.click(screen.getByRole("button", { name: "Spend $80k a year" }));
+    await fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/Nothing was changed/);
+    expect(calls).toEqual(["whatif"]);
+  });
+  it("shows the help text and no buttons when nothing was understood", async () => {
+    render(WhatIf, { invoke: async () => reply(false) });
+    await fireEvent.click(screen.getByRole("button", { name: "What if the market crashes?" }));
+    expect((await screen.findByTestId("turn")).textContent).toMatch(/couldn't turn that into a change/);
+    expect(screen.queryByRole("button", { name: "Keep this change" })).toBeNull();
+  });
+  it("shows an engine error", async () => {
+    render(WhatIf, { invoke: async () => { throw new Error("That change doesn't work: nope"); } });
+    await fireEvent.input(screen.getByLabelText("What if question"), { target: { value: "retire at 40" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/doesn't work/);
+  });
+  it("ignores an empty question", () => {
+    render(WhatIf, { invoke: async () => reply() });
+    expect((screen.getByRole("button", { name: "Ask" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
