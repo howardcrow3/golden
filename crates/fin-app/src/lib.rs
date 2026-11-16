@@ -21,6 +21,7 @@ pub mod model;
 pub mod paystub;
 pub mod recurring;
 pub mod transactions;
+pub mod withholding;
 
 use chrono::NaiveDate;
 use fin_core::{Grain, PeriodKey};

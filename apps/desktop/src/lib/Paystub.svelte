@@ -2,7 +2,7 @@
   import { applyPaystub, readPaystub, type Invoke, type PaystubSummary } from "./api";
   import { formatCents } from "./money";
 
-  let { invoke }: { invoke?: Invoke } = $props();
+  let { invoke, onapplied }: { invoke?: Invoke; onapplied?: () => void } = $props();
   let text = $state("");
   let summary = $state<PaystubSummary | null>(null);
   let error = $state("");
@@ -23,6 +23,7 @@
     error = "";
     try {
       const row = await applyPaystub(text, 0, invoke);
+      onapplied?.();
       done = `Added "${row.label}" at ${formatCents(row.annualCents, { whole: true })} a year to your plan.`;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

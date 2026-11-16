@@ -7,7 +7,14 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
-const INCLUDED_SETTINGS: [&str; 5] = ["household", "budgets", "user_rules", "goals", "debt_terms"];
+const INCLUDED_SETTINGS: [&str; 6] = [
+    "household",
+    "budgets",
+    "user_rules",
+    "goals",
+    "debt_terms",
+    "withholding",
+];
 
 impl App {
     /// Every account, transaction and saved setting, as pretty JSON.

@@ -2,6 +2,8 @@
   import { importFile, libraryFolder, setLibraryFolder, type ImportReport, type Invoke } from "./api";
   import { formatCents } from "./money";
   import Paystub from "./Paystub.svelte";
+  import Withholding from "./Withholding.svelte";
+  let bump = $state(0);
 
   let { invoke }: { invoke?: Invoke } = $props();
   let account = $state("Checking");
@@ -99,7 +101,8 @@
   </section>
 {/each}
 
-<Paystub {invoke} />
+<Paystub {invoke} onapplied={() => bump++} />
+{#key bump}<Withholding {invoke} />{/key}
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }

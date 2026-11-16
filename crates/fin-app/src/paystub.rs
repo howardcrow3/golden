@@ -108,6 +108,14 @@ impl App {
             None => h.streams.push(row.clone()),
         }
         self.save_household(&h)?;
+        // Remember what this job withholds a year, for the withholding check.
+        crate::withholding::record(
+            self,
+            &label,
+            person,
+            p.federal_tax_cents * p.periods_per_year,
+            p.state_tax_cents * p.periods_per_year,
+        )?;
         Ok(row)
     }
 }
