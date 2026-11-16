@@ -302,3 +302,7 @@ export async function getPricing(invoke?: Invoke): Promise<Pricing> {
     return DEFAULT_PRICING;
   }
 }
+
+export async function setLibraryFolder(path: string, invoke?: Invoke): Promise<string> {
+  return (await (await resolve(invoke))("set_library_folder", { path })) as string;
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { importFile, libraryFolder, type ImportReport, type Invoke } from "./api";
+  import { importFile, libraryFolder, setLibraryFolder, type ImportReport, type Invoke } from "./api";
   import { formatCents } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -12,6 +12,21 @@
   $effect(() => {
     libraryFolder(invoke).then((p) => (folder = p)).catch(() => (folder = null));
   });
+
+  let editing = $state(false);
+  let draft = $state("");
+  let folderNote = $state("");
+  async function saveFolder(path: string) {
+    error = "";
+    folderNote = "";
+    try {
+      folder = await setLibraryFolder(path, invoke);
+      editing = false;
+      folderNote = path.trim() ? "New imports will be filed here. Files already filed stay where they are." : "Back to the default folder.";
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
 
   function readBytes(f: File): Promise<Uint8Array> {
     return new Promise((resolve, reject) => {
@@ -43,6 +58,22 @@
 <h1>Import statements</h1>
 <p class="sub">CSV, OFX or QFX files from your bank. Files stay on this computer. Importing a file twice adds nothing.{#if folder} Originals are filed by year, type and month in <span data-testid="folder">{folder}</span>.{/if}</p>
 
+{#if folder}
+  <p class="sub">
+    {#if !editing}
+      <button type="button" class="link" onclick={() => { draft = folder ?? ""; editing = true; }}>Change statement folder</button>
+    {:else}
+      <label>Statement folder (full path)
+        <input bind:value={draft} aria-label="Statement folder" />
+      </label>
+      <button type="button" onclick={() => saveFolder(draft)}>Use this folder</button>
+      <button type="button" onclick={() => saveFolder("")}>Use the default</button>
+      <button type="button" onclick={() => (editing = false)}>Cancel</button>
+    {/if}
+  </p>
+  {#if folderNote}<p role="status">{folderNote}</p>{/if}
+{/if}
+
 <section class="card form">
   <label>Account name <input bind:value={account} aria-label="Account name" /></label>
   <label>Type
@@ -73,4 +104,5 @@
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
   .report { margin-bottom: 8px; }
   .err { color: var(--bad); }
+  .link { background: none; border: none; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; }
 </style>

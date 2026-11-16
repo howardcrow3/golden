@@ -36,6 +36,38 @@ describe("TaxCalculator", () => {
 import Import from "./Import.svelte";
 import CashFlow from "./CashFlow.svelte";
 
+describe("Import folder", () => {
+  it("changes the statement folder and shows the new one", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      return cmd === "library_folder" ? "/data/Statements" : cmd === "set_library_folder" ? (args as { path: string }).path : [];
+    };
+    render(Import, { invoke });
+    await screen.findByTestId("folder");
+    await fireEvent.click(screen.getByRole("button", { name: "Change statement folder" }));
+    const box = screen.getByLabelText("Statement folder") as HTMLInputElement;
+    expect(box.value).toBe("/data/Statements");
+    await fireEvent.input(box, { target: { value: "/Users/me/Statements" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Use this folder" }));
+    expect((await screen.findByTestId("folder")).textContent).toBe("/Users/me/Statements");
+    expect(screen.getByRole("status").textContent).toMatch(/Files already filed stay where they are/);
+    expect(calls.find(([c]) => c === "set_library_folder")![1]).toEqual({ path: "/Users/me/Statements" });
+  });
+  it("shows the app's reason when the folder is refused", async () => {
+    const invoke = async (cmd: string) => {
+      if (cmd === "library_folder") return "/data/Statements";
+      throw "Enter the full path of the folder";
+    };
+    render(Import, { invoke });
+    await screen.findByTestId("folder");
+    await fireEvent.click(screen.getByRole("button", { name: "Change statement folder" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Use this folder" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/full path/);
+    expect(screen.getByTestId("folder").textContent).toBe("/data/Statements");
+  });
+});
+
 describe("Import", () => {
   it("sends the file to the engine and shows the report", async () => {
     const calls: [string, Record<string, unknown> | undefined][] = [];

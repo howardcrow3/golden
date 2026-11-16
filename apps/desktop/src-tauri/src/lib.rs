@@ -47,6 +47,12 @@ fn import_file(state: Shared, name: String, bytes: Vec<u8>, account: String, kin
     lock(&state)?.import_file(&name, &bytes, &account, &kind)
 }
 
+/// Choose the statement library folder ("" goes back to the default); returns the folder now in use.
+#[tauri::command]
+fn set_library_folder(state: Shared, path: String) -> Result<String, String> {
+    lock(&state)?.set_library_folder(&path)
+}
+
 #[tauri::command]
 fn library_folder(state: Shared) -> Result<Option<String>, String> {
     Ok(lock(&state)?.library_root().map(|p| p.to_string_lossy().to_string()))
@@ -229,6 +235,7 @@ pub fn run() {
             set_budget,
             set_category,
             library_folder,
+            set_library_folder,
             household,
             save_household,
             set_pick,
