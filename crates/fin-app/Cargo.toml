@@ -1,0 +1,19 @@
+[package]
+name = "fin-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fin-core = { path = "../fin-core" }
+fin-db = { path = "../fin-db", default-features = false }
+fin-ingest = { path = "../fin-ingest" }
+fin-ledger = { path = "../fin-ledger" }
+serde.workspace = true
+chrono.workspace = true
+
+[features]
+default = ["plain"]
+plain = ["fin-db/plain"]
+sqlcipher = ["fin-db/sqlcipher"]

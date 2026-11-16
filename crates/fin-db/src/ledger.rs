@@ -69,6 +69,35 @@ impl Db {
         Ok(AccountId(self.conn.last_insert_rowid()))
     }
 
+    /// Find an account by exact name, creating it when missing.
+    pub fn find_or_add_account(&self, name: &str, kind: &str) -> Result<AccountId> {
+        if let Some(id) = self
+            .conn
+            .query_row("SELECT id FROM account WHERE name=?1", [name], |r| r.get(0))
+            .optional()?
+        {
+            return Ok(AccountId(id));
+        }
+        self.add_account(name, kind, None, None)
+    }
+
+    /// All open accounts with their current balance, oldest first.
+    pub fn accounts(&self) -> Result<Vec<(AccountId, String, String, Money)>> {
+        let mut st = self.conn.prepare(
+            "SELECT a.id, a.name, a.kind, coalesce(sum(t.cents),0) FROM account a
+             LEFT JOIN txn t ON t.account_id=a.id WHERE a.closed=0 GROUP BY a.id ORDER BY a.id",
+        )?;
+        let rows = st.query_map([], |r| {
+            Ok((
+                AccountId(r.get(0)?),
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                Money::from_cents(r.get(3)?),
+            ))
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     fn category_id(&self, name: &str) -> Result<i64> {
         if let Some(id) = self
             .conn
