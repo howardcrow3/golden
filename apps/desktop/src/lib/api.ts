@@ -260,3 +260,7 @@ export async function budgetStatus(day: string, grain: string, invoke?: Invoke):
 export async function setBudget(category: string, monthlyCents: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_budget", { category, monthlyCents });
 }
+
+export async function exportBackup(invoke?: Invoke): Promise<string> {
+  return (await (await resolve(invoke))("export_backup")) as string;
+}
