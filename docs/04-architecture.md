@@ -157,6 +157,6 @@ Financial data raises the bar above CeeVee in three places: the database is encr
 | Retirement answer trusted more than it should be | Show the range, not one number; assumptions panel on every result; back-test the projection on the household's own history |
 | Allocation suggestions read as advice | Rules shown with every number, "suggested" wording, footer; legal review before any sale |
 | Extracting the shared crates slows CeeVee | Do it in week 1 behind CeeVee's existing tests; no behaviour change |
-| Plaid bills every month per linked account, but the app is a one-time purchase | Decided: choosing Plaid adds an annual subscription, sold as an upsell on top of the one-time price, metered at the relay; Private mode stays a one-time purchase |
+| Plaid bills every month per linked account, but the app is a one-time purchase | Decided: choosing Plaid adds a recurring subscription (monthly since 2026-11-16), sold as an upsell on top of the one-time price, metered at the relay; Private mode stays a one-time purchase |
 | State tax rules change every year across 51 jurisdictions | Rules as signed data files with golden tests per state, updated outside app releases; a licensed tax-data source considered if upkeep runs high |
 | MCP clients send data to hosted models | Off by default, Summary scope by default, plain warning, call log |

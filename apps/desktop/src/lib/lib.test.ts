@@ -80,3 +80,14 @@ describe("quickPlan api", () => {
     await expect(quickPlan({} as never)).rejects.toThrow(/desktop app/);
   });
 });
+
+import pricingFile from "../../../../crates/fin-license/data/pricing.json";
+import { DEFAULT_PRICING } from "./api";
+describe("default pricing", () => {
+  it("matches the Rust data file", () => {
+    expect(DEFAULT_PRICING.currency).toBe(pricingFile.currency);
+    expect(DEFAULT_PRICING.coreCents).toBe(pricingFile.coreCents);
+    expect(DEFAULT_PRICING.plaidCents).toBe(pricingFile.plaidCents);
+    expect(DEFAULT_PRICING.plaidInterval).toBe(pricingFile.plaidInterval);
+  });
+});

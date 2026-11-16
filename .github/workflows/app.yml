@@ -46,6 +46,9 @@ jobs:
         working-directory: apps/desktop
       - name: Build (pull requests only build)
         if: github.event_name != 'push'
+        env:
+          GOLDEN_PRICE_ID: ${{ secrets.GOLDEN_PRICE_ID }}
+          GOLDEN_PLAID_PRICE_ID: ${{ secrets.GOLDEN_PLAID_PRICE_ID }}
         working-directory: apps/desktop
         run: npm run tauri -- build ${{ matrix.args }}
       - name: Build and publish nightly release
@@ -53,6 +56,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOLDEN_PRICE_ID: ${{ secrets.GOLDEN_PRICE_ID }}
+          GOLDEN_PLAID_PRICE_ID: ${{ secrets.GOLDEN_PLAID_PRICE_ID }}
         with:
           projectPath: apps/desktop
           args: ${{ matrix.args }}
