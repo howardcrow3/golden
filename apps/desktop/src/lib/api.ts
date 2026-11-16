@@ -119,3 +119,16 @@ export async function cashFlow(from: string, to: string, grain: string, invoke?:
 export async function categories(day: string, grain: string, income: boolean, invoke?: Invoke): Promise<CategoryRow[]> {
   return (await (await resolve(invoke))("categories", { day, grain, income })) as CategoryRow[];
 }
+
+export interface LicenseStatus {
+  state: "trial" | "licensed" | "expired";
+  daysLeft: number | null;
+  canEdit: boolean;
+  plaidActive: boolean;
+}
+export async function licenseStatus(invoke?: Invoke): Promise<LicenseStatus> {
+  return (await (await resolve(invoke))("license_status")) as LicenseStatus;
+}
+export async function activateLicense(token: string, invoke?: Invoke): Promise<LicenseStatus> {
+  return (await (await resolve(invoke))("activate_license", { token })) as LicenseStatus;
+}

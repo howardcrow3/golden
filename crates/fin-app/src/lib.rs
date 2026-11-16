@@ -2,6 +2,7 @@
 //! rules and the ledger together and returns plain serializable shapes. The Tauri shell only
 //! forwards calls here, so everything is testable without a window.
 pub mod keystore;
+pub mod licensing;
 
 use chrono::NaiveDate;
 use fin_core::{Grain, PeriodKey};
@@ -50,6 +51,12 @@ pub struct CategoryRow {
 pub struct App {
     db: Db,
     rules: RuleSet,
+    pub(crate) public_key: Option<ed25519_dalek::VerifyingKey>,
+    pub(crate) clock: fn() -> NaiveDate,
+}
+
+fn today_local() -> NaiveDate {
+    chrono::Local::now().date_naive()
 }
 
 fn grain_of(s: &str) -> Result<Grain, String> {
@@ -72,7 +79,21 @@ impl App {
         App {
             db,
             rules: RuleSet::starter(),
+            public_key: None,
+            clock: today_local,
         }
+    }
+
+    /// The app's licence-verification key (bundled at build time).
+    pub fn with_public_key(mut self, key: Option<ed25519_dalek::VerifyingKey>) -> App {
+        self.public_key = key;
+        self
+    }
+
+    /// Replace the date source (tests).
+    pub fn with_clock(mut self, clock: fn() -> NaiveDate) -> App {
+        self.clock = clock;
+        self
     }
 
     pub fn in_memory() -> Result<App, String> {
@@ -91,6 +112,7 @@ impl App {
         account: &str,
         kind: &str,
     ) -> Result<ImportReport, String> {
+        self.require_edit()?;
         let account = account.trim();
         if account.is_empty() {
             return Err("Give the account a name.".into());

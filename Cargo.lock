@@ -340,11 +340,14 @@ name = "fin-app"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "ed25519-dalek",
  "fin-core",
  "fin-db",
  "fin-ingest",
  "fin-ledger",
+ "fin-license",
  "getrandom 0.2.17",
+ "rand 0.8.8",
  "serde",
  "tempfile",
 ]

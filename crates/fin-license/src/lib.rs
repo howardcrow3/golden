@@ -3,9 +3,11 @@
 //! Private mode never needs to phone home.
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
 use base64::Engine;
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier};
 use fin_core::NaiveDate;
 use serde::{Deserialize, Serialize};
+
+pub use ed25519_dalek::VerifyingKey;
 
 pub const TRIAL_DAYS: i64 = 14;
 /// The major version of the app this build belongs to; a licence covers one major version.
@@ -32,6 +34,30 @@ pub enum LicenseError {
     WrongProduct,
     #[error("licence covers version {0}, this is version {1}")]
     WrongMajor(u32, u32),
+}
+
+/// Parse a base64 public key (as printed by `golden-license keygen`).
+pub fn parse_public_key(b64: &str) -> Result<VerifyingKey, LicenseError> {
+    let bytes: [u8; 32] = B64
+        .decode(b64.trim())
+        .map_err(|_| LicenseError::Malformed)?
+        .try_into()
+        .map_err(|_| LicenseError::Malformed)?;
+    VerifyingKey::from_bytes(&bytes).map_err(|_| LicenseError::Malformed)
+}
+
+/// Parse a base64 secret key (seller side only).
+pub fn parse_signing_key(b64: &str) -> Result<SigningKey, LicenseError> {
+    let bytes: [u8; 32] = B64
+        .decode(b64.trim())
+        .map_err(|_| LicenseError::Malformed)?
+        .try_into()
+        .map_err(|_| LicenseError::Malformed)?;
+    Ok(SigningKey::from_bytes(&bytes))
+}
+
+pub fn encode_key(bytes: &[u8; 32]) -> String {
+    B64.encode(bytes)
 }
 
 /// Create a signed licence token (used by the store backend and tests, never shipped in the app).
@@ -134,6 +160,20 @@ mod tests {
         let sk = SigningKey::generate(&mut OsRng);
         let vk = sk.verifying_key();
         (sk, vk)
+    }
+
+    #[test]
+    fn keys_round_trip_through_text() {
+        let sk = SigningKey::generate(&mut OsRng);
+        let pk_text = encode_key(&sk.verifying_key().to_bytes());
+        let sk_text = encode_key(&sk.to_bytes());
+        assert_eq!(parse_public_key(&pk_text).unwrap(), sk.verifying_key());
+        assert_eq!(
+            parse_signing_key(&sk_text).unwrap().to_bytes(),
+            sk.to_bytes()
+        );
+        assert!(parse_public_key("nope").is_err());
+        assert!(parse_public_key("").is_err());
     }
 
     #[test]

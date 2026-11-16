@@ -3,9 +3,18 @@
   import TaxCalculator from "./lib/TaxCalculator.svelte";
   import Retirement from "./lib/Retirement.svelte";
   import Import from "./lib/Import.svelte";
+  import License from "./lib/License.svelte";
+  import { licenseStatus, type LicenseStatus } from "./lib/api";
 
-  const pages = ["Overview", "Import", "Retirement", "Tax estimate"] as const;
+  const pages = ["Overview", "Import", "Retirement", "Tax estimate", "Licence"] as const;
   let page = $state<(typeof pages)[number]>("Overview");
+  let lic = $state<LicenseStatus | null>(null);
+  $effect(() => {
+    licenseStatus().then((s) => (lic = s)).catch(() => (lic = null));
+  });
+  let badge = $derived(
+    lic === null ? "" : lic.state === "trial" ? `Trial · ${lic.daysLeft} days left` : lic.state === "expired" ? "Trial ended · read-only" : "Licensed",
+  );
 </script>
 
 <div class="shell">
@@ -14,10 +23,12 @@
     {#each pages as p}
       <button aria-pressed={page === p} onclick={() => (page = p)}>{p}</button>
     {/each}
+    <div class="spacer"></div>
+    {#if badge}<div class="badge" data-testid="badge">{badge}</div>{/if}
     <div class="mode">Private mode · nothing leaves this computer</div>
   </nav>
   <main>
-    {#if page === "Overview"}<Overview />{:else if page === "Import"}<Import />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview />{:else if page === "Import"}<Import />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else}<TaxCalculator />{/if}
   </main>
 </div>
 
@@ -27,6 +38,8 @@
   nav button { text-align: left; border-color: transparent; background: transparent; }
   nav button[aria-pressed="true"] { border-color: var(--gold); background: var(--ivory); }
   .brand { font-weight: 600; font-size: 18px; margin-bottom: 18px; }
-  .mode { margin-top: auto; font-size: 12px; color: var(--muted); }
+  .spacer { flex: 1; }
+  .badge { font-size: 12px; border: 1px solid var(--gold); padding: 6px 8px; }
+  .mode { margin-top: 12px; font-size: 12px; color: var(--muted); }
   main { padding: 32px 40px; max-width: 1100px; }
 </style>

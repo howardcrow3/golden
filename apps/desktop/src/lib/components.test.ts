@@ -98,3 +98,36 @@ describe("CashFlow", () => {
     expect(screen.queryByTestId("cashflow")).toBeNull();
   });
 });
+
+import License from "./License.svelte";
+
+describe("License", () => {
+  const trial = { state: "trial", daysLeft: 9, canEdit: true, plaidActive: false };
+  it("shows the trial countdown", async () => {
+    render(License, { invoke: async () => trial });
+    expect((await screen.findByTestId("status")).textContent).toBe("Trial: 9 days left.");
+  });
+  it("activates a key and shows the new status", async () => {
+    const invoke = async (cmd: string) =>
+      cmd === "activate_license" ? { state: "licensed", daysLeft: null, canEdit: true, plaidActive: true } : trial;
+    render(License, { invoke });
+    await fireEvent.input(screen.getByLabelText("Licence key"), { target: { value: "abc.def" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Activate" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/accepted/);
+    expect(screen.getByTestId("status").textContent).toMatch(/Licensed, with bank connections/);
+  });
+  it("shows why a key was refused", async () => {
+    const invoke = async (cmd: string) => {
+      if (cmd === "activate_license") throw new Error("licence signature is not valid");
+      return trial;
+    };
+    render(License, { invoke });
+    await fireEvent.input(screen.getByLabelText("Licence key"), { target: { value: "x.y" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Activate" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/signature is not valid/);
+  });
+  it("keeps Activate disabled until something is pasted", () => {
+    render(License, { invoke: async () => trial });
+    expect((screen.getByRole("button", { name: "Activate" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
