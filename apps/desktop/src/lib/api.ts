@@ -219,3 +219,26 @@ export async function importFile(name: string, bytes: Uint8Array, account: strin
 export async function libraryFolder(invoke?: Invoke): Promise<string | null> {
   return (await (await resolve(invoke))("library_folder")) as string | null;
 }
+
+export interface TxnRow {
+  id: number;
+  day: string;
+  payee: string;
+  memo: string;
+  amountCents: number;
+  category: string | null;
+  account: string;
+}
+export interface Recategorized {
+  category: string;
+  alsoUpdated: number;
+}
+export async function listTransactions(from: string, to: string, onlyUncategorized: boolean, invoke?: Invoke): Promise<TxnRow[]> {
+  return (await (await resolve(invoke))("transactions", { from, to, onlyUncategorized })) as TxnRow[];
+}
+export async function categoryChoices(invoke?: Invoke): Promise<string[]> {
+  return (await (await resolve(invoke))("category_choices")) as string[];
+}
+export async function setCategory(id: number, category: string, remember: boolean, invoke?: Invoke): Promise<Recategorized> {
+  return (await (await resolve(invoke))("set_category", { id, category, remember })) as Recategorized;
+}

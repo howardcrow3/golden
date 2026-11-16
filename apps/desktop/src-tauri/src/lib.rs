@@ -2,6 +2,7 @@
 use fin_app::chat::{Change, WhatIfReply};
 use fin_app::household::{AssumptionRow, Household};
 use fin_app::licensing::LicenseStatus;
+use fin_app::transactions::{Recategorized, TxnRow};
 use fin_app::{AccountRow, App as Core, CategoryRow, ImportReport, PeriodRow};
 use fin_app::keystore::{open_private, KeyStore};
 use std::sync::Mutex;
@@ -48,6 +49,21 @@ fn import_file(state: Shared, name: String, bytes: Vec<u8>, account: String, kin
 #[tauri::command]
 fn library_folder(state: Shared) -> Result<Option<String>, String> {
     Ok(lock(&state)?.library_root().map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+fn transactions(state: Shared, from: String, to: String, only_uncategorized: bool) -> Result<Vec<TxnRow>, String> {
+    lock(&state)?.transactions(&from, &to, only_uncategorized)
+}
+
+#[tauri::command]
+fn category_choices(state: Shared) -> Result<Vec<String>, String> {
+    lock(&state)?.category_choices()
+}
+
+#[tauri::command]
+fn set_category(state: Shared, id: i64, category: String, remember: bool) -> Result<Recategorized, String> {
+    lock(&state)?.set_category(id, &category, remember)
 }
 
 #[tauri::command]
@@ -164,6 +180,9 @@ pub fn run() {
             app_info,
             import_statement,
             import_file,
+            transactions,
+            category_choices,
+            set_category,
             library_folder,
             household,
             save_household,

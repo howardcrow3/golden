@@ -324,3 +324,60 @@ describe("WhatIf", () => {
     expect((screen.getByRole("button", { name: "Ask" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+import Transactions from "./Transactions.svelte";
+
+describe("Transactions", () => {
+  const txns = [
+    { id: 2, day: "2026-10-09", payee: "MYSTERY VENDOR 22", memo: "", amountCents: -1000, category: null, account: "Checking" },
+    { id: 1, day: "2026-10-01", payee: "ACME PAYROLL", memo: "", amountCents: 500000, category: "Salary", account: "Checking" },
+  ];
+  function fake(log: [string, Record<string, unknown> | undefined][], also = 1) {
+    return async (cmd: string, args?: Record<string, unknown>) => {
+      log.push([cmd, args]);
+      if (cmd === "transactions") return (args as { onlyUncategorized: boolean }).onlyUncategorized ? txns.slice(0, 1) : txns;
+      if (cmd === "category_choices") return ["Groceries", "Salary"];
+      return { category: "Hobbies", alsoUpdated: also };
+    };
+  }
+  it("lists transactions with amounts and categories", async () => {
+    render(Transactions, { invoke: fake([]), today: new Date("2026-11-16T00:00:00Z") });
+    expect(await screen.findByText("ACME PAYROLL")).toBeTruthy();
+    expect(screen.getByText("$5,000.00")).toBeTruthy();
+    expect(screen.getByText("-$10.00")).toBeTruthy();
+    expect((screen.getByLabelText("Category for ACME PAYROLL on 2026-10-01") as HTMLInputElement).value).toBe("Salary");
+  });
+  it("sends a recategorization with the remember choice and reports the extra lines", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    render(Transactions, { invoke: fake(log, 2) });
+    const input = await screen.findByLabelText("Category for MYSTERY VENDOR 22 on 2026-10-09");
+    await fireEvent.change(input, { target: { value: "Hobbies" } });
+    expect((await screen.findByRole("status")).textContent).toMatch(/Filed under Hobbies, and 2 more/);
+    const call = log.find(([c]) => c === "set_category")![1] as { id: number; category: string; remember: boolean };
+    expect(call).toEqual({ id: 2, category: "Hobbies", remember: true });
+  });
+  it("can turn off remembering and filter to lines that need a category", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    render(Transactions, { invoke: fake(log) });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.click(screen.getByLabelText("Remember this merchant for next time"));
+    await fireEvent.click(screen.getByLabelText("Only lines that need a category"));
+    await screen.findByLabelText("Category for MYSTERY VENDOR 22 on 2026-10-09");
+    expect(screen.queryByText("ACME PAYROLL")).toBeNull();
+    await fireEvent.change(screen.getByLabelText("Category for MYSTERY VENDOR 22 on 2026-10-09"), { target: { value: "Hobbies" } });
+    await screen.findByRole("status");
+    expect((log.find(([c]) => c === "set_category")![1] as { remember: boolean }).remember).toBe(false);
+  });
+  it("does nothing when the category is unchanged or empty", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    render(Transactions, { invoke: fake(log) });
+    const input = await screen.findByLabelText("Category for ACME PAYROLL on 2026-10-01");
+    await fireEvent.change(input, { target: { value: "Salary" } });
+    await fireEvent.change(input, { target: { value: "  " } });
+    expect(log.some(([c]) => c === "set_category")).toBe(false);
+  });
+  it("shows a friendly message when there is nothing to list", async () => {
+    render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? [] : []) });
+    expect((await screen.findByText(/Import a statement first/)).textContent).toBeTruthy();
+  });
+});

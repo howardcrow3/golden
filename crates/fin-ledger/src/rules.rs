@@ -85,6 +85,27 @@ impl RuleSet {
         r
     }
 
+    /// The rules the person taught the app, for saving.
+    pub fn user_rules(&self) -> Vec<Rule> {
+        self.rules.iter().filter(|r| r.user).cloned().collect()
+    }
+
+    /// Restore previously saved user rules (replacing any with the same pattern).
+    pub fn load_user_rules(&mut self, saved: Vec<Rule>) {
+        for r in saved {
+            self.rules.retain(|x| !(x.user && x.contains == r.contains));
+            self.rules.push(Rule { user: true, ..r });
+        }
+    }
+
+    /// Every category name the built-in and learned rules can produce, sorted.
+    pub fn category_names(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.rules.iter().map(|r| r.category.clone()).collect();
+        v.sort();
+        v.dedup();
+        v
+    }
+
     pub fn add_user_rule(&mut self, contains: &str, category: &str) {
         self.rules
             .retain(|r| !(r.user && r.contains == contains.to_lowercase()));
@@ -128,6 +149,20 @@ mod tests {
 
     fn out(d: i64) -> Money {
         Money::from_dollars(-d)
+    }
+
+    #[test]
+    fn user_rules_save_and_restore() {
+        let mut a = RuleSet::starter();
+        a.learn("MYSTERY VENDOR 22", "Hobbies");
+        let saved = a.user_rules();
+        assert_eq!(saved.len(), 1);
+        let json = serde_json::to_string(&saved).unwrap();
+        let mut b = RuleSet::starter();
+        b.load_user_rules(serde_json::from_str(&json).unwrap());
+        assert_eq!(b.categorize("MYSTERY VENDOR 31", out(4)), Some("Hobbies"));
+        assert!(b.category_names().contains(&"Hobbies".to_string()));
+        assert!(b.category_names().contains(&"Groceries".to_string()));
     }
 
     #[test]
