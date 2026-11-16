@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { importStatement, type ImportReport, type Invoke } from "./api";
+  import { importFile, libraryFolder, type ImportReport, type Invoke } from "./api";
   import { formatCents } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -8,6 +8,10 @@
   let reports = $state<ImportReport[]>([]);
   let error = $state("");
   let busy = $state(false);
+  let folder = $state<string | null>(null);
+  $effect(() => {
+    libraryFolder(invoke).then((p) => (folder = p)).catch(() => (folder = null));
+  });
 
   function readBytes(f: File): Promise<Uint8Array> {
     return new Promise((resolve, reject) => {
@@ -26,7 +30,7 @@
     for (const f of files) {
       try {
         const bytes = await readBytes(f);
-        reports = [...reports, await importStatement(bytes, account, kind, invoke)];
+        reports = [...reports, await importFile(f.name, bytes, account, kind, invoke)];
       } catch (err) {
         error = `${f.name}: ${err instanceof Error ? err.message : String(err)}`;
       }
@@ -37,7 +41,7 @@
 </script>
 
 <h1>Import statements</h1>
-<p class="sub">CSV, OFX or QFX files from your bank. Files stay on this computer. Importing a file twice adds nothing.</p>
+<p class="sub">CSV, OFX or QFX files from your bank. Files stay on this computer. Importing a file twice adds nothing.{#if folder} Originals are filed by year, type and month in <span data-testid="folder">{folder}</span>.{/if}</p>
 
 <section class="card form">
   <label>Account name <input bind:value={account} aria-label="Account name" /></label>
@@ -59,7 +63,7 @@
 {#each reports as r}
   <section class="card report" data-testid="report">
     <b>{r.account}</b>: {r.added} added, {r.skippedDuplicates} already imported
-    ({r.parsed} lines, net {formatCents(r.totalCents)}){#if r.uncategorized > 0}; {r.uncategorized} need a category{/if}.
+    ({r.parsed} lines, net {formatCents(r.totalCents)}){#if r.uncategorized > 0}; {r.uncategorized} need a category{/if}.{#if r.filedAs} Filed as <span class="filed">{r.filedAs}</span>.{/if}
   </section>
 {/each}
 

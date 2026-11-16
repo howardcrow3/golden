@@ -36,11 +36,15 @@ fn clean(s: &str) -> String {
 
 /// "2026-10 Chase Checking 4821 statement.pdf"
 pub fn file_name(m: &StatementMeta) -> String {
-    let mut parts = vec![
-        m.period_end.format("%Y-%m").to_string(),
-        clean(&m.institution),
-        clean(&m.kind),
-    ];
+    let institution = clean(&m.institution);
+    let kind = clean(&m.kind);
+    // "Chase Checking" + "Checking" should not read "Chase Checking Checking".
+    let kind_repeated =
+        !kind.is_empty() && institution.to_lowercase().contains(&kind.to_lowercase());
+    let mut parts = vec![m.period_end.format("%Y-%m").to_string(), institution];
+    if !kind_repeated {
+        parts.push(kind);
+    }
     if let Some(l) = &m.last4 {
         parts.push(clean(l));
     }
@@ -100,6 +104,15 @@ mod tests {
             period_end: NaiveDate::from_ymd_opt(2026, 10, 31).unwrap(),
             extension: "PDF".into(),
         }
+    }
+
+    #[test]
+    fn does_not_repeat_the_kind_when_the_account_name_has_it() {
+        let m = StatementMeta {
+            institution: "Chase Checking".into(),
+            ..meta()
+        };
+        assert_eq!(file_name(&m), "2026-10 Chase Checking 4821 statement.pdf");
     }
 
     #[test]
