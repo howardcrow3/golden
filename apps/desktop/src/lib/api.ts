@@ -245,3 +245,18 @@ export async function setCategory(id: number, category: string, remember: boolea
 export async function exportTransactions(from: string, to: string, invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("export_transactions", { from, to })) as string;
 }
+
+export interface BudgetRow {
+  category: string;
+  budgetCents: number;
+  spentCents: number;
+  remainingCents: number;
+}
+/** Monthly budget in cents by category; "*" is the overall budget. */
+export const TOTAL_BUDGET = "*";
+export async function budgetStatus(day: string, grain: string, invoke?: Invoke): Promise<BudgetRow[]> {
+  return (await (await resolve(invoke))("budget_status", { day, grain })) as BudgetRow[];
+}
+export async function setBudget(category: string, monthlyCents: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_budget", { category, monthlyCents });
+}

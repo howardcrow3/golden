@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import Overview from "./Overview.svelte";
 import TaxCalculator from "./TaxCalculator.svelte";
@@ -390,5 +390,63 @@ describe("Transactions", () => {
   it("shows a friendly message when there is nothing to list", async () => {
     render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? [] : []) });
     expect((await screen.findByText(/Import a statement first/)).textContent).toBeTruthy();
+  });
+});
+
+describe("Budgets", async () => {
+  const { default: Budgets } = await import("./Budgets.svelte");
+  const today = new Date("2026-10-20T12:00:00Z");
+  const row = (category: string, budgetCents: number, spentCents: number) => ({
+    category,
+    budgetCents,
+    spentCents,
+    remainingCents: budgetCents - spentCents,
+  });
+
+  it("shows spending against each budget and flags overspending", async () => {
+    const invoke = async (cmd: string) =>
+      cmd === "budget_status" ? [row("Total", 100000, 10648), row("Subscriptions", 2000, 2648)] : ["Food", "Subscriptions"];
+    render(Budgets, { grain: "month", today, invoke });
+    const rows = await screen.findAllByTestId("budget-row");
+    expect(rows).toHaveLength(2);
+    expect(rows[1].textContent).toContain("$26 of $20");
+    expect(rows[1].textContent).toContain("$6 over");
+    expect(rows[0].textContent).toContain("$894 left");
+    expect(screen.getByRole("progressbar", { name: "Subscriptions used" }).getAttribute("aria-valuenow")).toBe("100");
+  });
+
+  it("saves a monthly budget in cents and reloads", async () => {
+    const calls: [string, Record<string, unknown>?][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      return cmd === "budget_status" ? [] : cmd === "category_choices" ? ["Food"] : undefined;
+    };
+    render(Budgets, { grain: "month", today, invoke });
+    await screen.findByText(/No budgets yet/);
+    await fireEvent.change(screen.getByLabelText("Category"), { target: { value: "Food" } });
+    await fireEvent.input(screen.getByLabelText("Per month"), { target: { value: "$450.50" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Set budget" }));
+    await vi.waitFor(() => expect(calls.some(([c]) => c === "set_budget")).toBe(true));
+    expect(calls.find(([c]) => c === "set_budget")![1]).toEqual({ category: "Food", monthlyCents: 45050 });
+    await vi.waitFor(() => expect(calls.filter(([c]) => c === "budget_status").length).toBe(2));
+  });
+
+  it("rejects a non-numeric amount without calling the app", async () => {
+    const calls: string[] = [];
+    const invoke = async (cmd: string) => {
+      calls.push(cmd);
+      return cmd === "budget_status" ? [] : [];
+    };
+    render(Budgets, { grain: "month", today, invoke });
+    await screen.findByText(/No budgets yet/);
+    await fireEvent.input(screen.getByLabelText("Per month"), { target: { value: "lots" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Set budget" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/dollar amount/);
+    expect(calls).not.toContain("set_budget");
+  });
+
+  it("stays out of the way in a plain browser", () => {
+    render(Budgets, { grain: "month", today });
+    expect(screen.queryByTestId("budgets")).toBeNull();
   });
 });
