@@ -411,6 +411,17 @@ describe("Transactions", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/start date must be on or before/);
     expect(log.some(([c]) => c === "export_transactions")).toBe(false);
   });
+  it("backs up everything and shows where the file went", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    const base = fake(log);
+    const invoke = async (cmd: string, args?: Record<string, unknown>) =>
+      cmd === "export_backup" ? (log.push([cmd, args]), "/data/Exports/golden-backup-2026-11-16.json") : base(cmd, args);
+    render(Transactions, { invoke, today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.click(screen.getByRole("button", { name: "Back up everything" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Backup saved to /data/Exports/golden-backup-2026-11-16.json");
+    expect(log.some(([c]) => c === "export_backup")).toBe(true);
+  });
   it("shows a friendly message when there is nothing to list", async () => {
     render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? [] : []) });
     expect((await screen.findByText(/Import a statement first/)).textContent).toBeTruthy();

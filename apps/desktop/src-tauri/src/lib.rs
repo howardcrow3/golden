@@ -75,6 +75,14 @@ fn export_transactions(app: tauri::AppHandle, state: Shared, from: String, to: S
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Write a full JSON copy of everything the person has entered into the Exports folder.
+#[tauri::command]
+fn export_backup(app: tauri::AppHandle, state: Shared) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("Exports");
+    let path = lock(&state)?.export_backup(&dir)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn license_status(state: Shared) -> Result<LicenseStatus, String> {
     lock(&state)?.license_status(today())
@@ -200,6 +208,7 @@ pub fn run() {
             import_statement,
             import_file,
             export_transactions,
+            export_backup,
             transactions,
             category_choices,
             budget_status,
