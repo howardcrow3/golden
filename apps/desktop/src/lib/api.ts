@@ -465,3 +465,11 @@ export async function setGoal(goal: Goal, invoke?: Invoke): Promise<void> {
 export async function removeGoal(name: string, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("remove_goal", { name });
 }
+
+export interface NetWorthPoint {
+  month: string;
+  netWorthCents: number;
+}
+export async function getNetWorthHistory(months: number, invoke?: Invoke): Promise<NetWorthPoint[]> {
+  return (await (await resolve(invoke))("net_worth_history", { months })) as NetWorthPoint[];
+}

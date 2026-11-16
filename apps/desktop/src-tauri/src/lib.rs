@@ -291,6 +291,14 @@ fn remove_goal(state: Shared, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn net_worth_history(
+    state: Shared,
+    months: u32,
+) -> Result<Vec<fin_app::history::NetWorthPoint>, String> {
+    lock(&state)?.net_worth_history(months)
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -365,6 +373,7 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            net_worth_history,
             goals,
             set_goal,
             remove_goal,
