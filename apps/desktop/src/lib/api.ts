@@ -132,3 +132,47 @@ export async function licenseStatus(invoke?: Invoke): Promise<LicenseStatus> {
 export async function activateLicense(token: string, invoke?: Invoke): Promise<LicenseStatus> {
   return (await (await resolve(invoke))("activate_license", { token })) as LicenseStatus;
 }
+
+export interface Household {
+  birthDate: string;
+  retireAge: number;
+  filing: TaxRequest["filing"];
+  state: string;
+  salaryCents: number;
+  contributionCents: number;
+  spendingCents: number;
+  cashCents: number;
+  taxableCents: number;
+  traditionalCents: number;
+  rothCents: number;
+  ssAnnualCents: number;
+  picks: Record<string, string>;
+}
+export interface OptionRow {
+  label: string;
+  value: number;
+  likelihood: number;
+  probability: number;
+  source: string;
+}
+export interface AssumptionRow {
+  key: string;
+  options: OptionRow[];
+  active: string;
+  picked: boolean;
+}
+export async function getHousehold(invoke?: Invoke): Promise<Household> {
+  return (await (await resolve(invoke))("household")) as Household;
+}
+export async function saveHousehold(household: Household, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("save_household", { household });
+}
+export async function setPick(key: string, label: string, invoke?: Invoke): Promise<Household> {
+  return (await (await resolve(invoke))("set_pick", { key, label })) as Household;
+}
+export async function getAssumptions(invoke?: Invoke): Promise<AssumptionRow[]> {
+  return (await (await resolve(invoke))("assumptions")) as AssumptionRow[];
+}
+export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
+  return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
+}
