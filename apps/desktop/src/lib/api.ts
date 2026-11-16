@@ -314,3 +314,20 @@ export async function setLibraryFolder(path: string, invoke?: Invoke): Promise<s
 export async function openCheckout(plan: "core" | "plaid", invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("open_checkout", { plan });
 }
+
+export interface ForecastMonth {
+  month: string;
+  incomeCents: number;
+  spendingCents: number;
+  netCents: number;
+  balanceCents: number;
+}
+export interface Forecast {
+  startBalanceCents: number;
+  historyMonths: number;
+  seasonalIncome: boolean;
+  months: ForecastMonth[];
+}
+export async function getForecast(months: number, invoke?: Invoke): Promise<Forecast> {
+  return (await (await resolve(invoke))("forecast", { months })) as Forecast;
+}

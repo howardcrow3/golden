@@ -603,3 +603,52 @@ describe("Budgets", async () => {
     expect(screen.queryByTestId("budgets")).toBeNull();
   });
 });
+
+describe("Forecast", async () => {
+  const { default: ForecastCard } = await import("./Forecast.svelte");
+  const month = (m: string, inc: number, sp: number, bal: number) => ({ month: m, incomeCents: inc, spendingCents: sp, netCents: inc - sp, balanceCents: bal });
+  const data = {
+    startBalanceCents: 900000,
+    historyMonths: 12,
+    seasonalIncome: true,
+    months: [month("2026-11", 0, 0, 900000), month("2026-12", 1000000, 200000, 1700000), month("2027-01", 100000, 300000, 1500000)],
+  };
+
+  it("shows the projected months, the starting position and how it was worked out", async () => {
+    render(ForecastCard, { invoke: async () => data });
+    const rows = await screen.findAllByTestId("forecast-row");
+    expect(rows).toHaveLength(3);
+    expect(rows[1].textContent).toContain("2026-12");
+    expect(rows[1].textContent).toContain("$10,000");
+    expect(screen.getByTestId("forecast").textContent).toMatch(/last 12 months of statements, with income placed on the months it usually arrives/);
+    expect(screen.getByTestId("forecast").textContent).toContain("$9,000");
+    expect(screen.getByRole("img", { name: "Projected position by month" })).toBeTruthy();
+  });
+
+  it("marks months that lose money", async () => {
+    render(ForecastCard, { invoke: async () => data });
+    const rows = await screen.findAllByTestId("forecast-row");
+    expect(rows[2].querySelectorAll(".neg").length).toBe(1);
+  });
+
+  it("explains when there is not enough history", async () => {
+    render(ForecastCard, {
+      invoke: async () => {
+        throw "Import at least one full month of statements to see a projection.";
+      },
+    });
+    expect((await screen.findByTestId("forecast-note")).textContent).toMatch(/Import at least one full month/);
+  });
+
+  it("stays out of the way in a plain browser", () => {
+    render(ForecastCard, {});
+    expect(screen.queryByTestId("forecast")).toBeNull();
+  });
+
+  it("asks the app for the requested number of months", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    render(ForecastCard, { months: 24, invoke: async (c: string, a?: Record<string, unknown>) => (calls.push([c, a]), data) });
+    await screen.findAllByTestId("forecast-row");
+    expect(calls[0]).toEqual(["forecast", { months: 24 }]);
+  });
+});

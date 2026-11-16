@@ -215,6 +215,11 @@ fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(),
 }
 
 #[tauri::command]
+fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
+    lock(&state)?.forecast(months)
+}
+
+#[tauri::command]
 fn categories(state: Shared, day: String, grain: String, income: bool) -> Result<Vec<CategoryRow>, String> {
     lock(&state)?.categories_str(&day, &grain, income)
 }
@@ -261,6 +266,7 @@ pub fn run() {
             transactions,
             category_choices,
             budget_status,
+            forecast,
             set_budget,
             set_category,
             library_folder,

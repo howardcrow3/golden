@@ -5,6 +5,7 @@ pub mod backup;
 pub mod budget;
 pub mod chat;
 pub mod export;
+pub mod forecast;
 pub mod household;
 pub mod keystore;
 pub mod library;
