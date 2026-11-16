@@ -89,6 +89,7 @@ export interface AccountRow {
   name: string;
   kind: string;
   balanceCents: number;
+  openingCents: number;
 }
 export interface PeriodRow {
   period: string;
@@ -383,4 +384,8 @@ export interface Allocation {
 }
 export async function suggestAllocation(yearlySavingsCents: number, invoke?: Invoke): Promise<Allocation> {
   return (await (await resolve(invoke))("suggest_allocation", { yearlySavingsCents })) as Allocation;
+}
+
+export async function setOpeningBalance(accountId: number, cents: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_opening_balance", { accountId, cents });
 }

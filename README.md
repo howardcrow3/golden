@@ -32,7 +32,7 @@ cd apps/desktop && npm ci && npm test && npm run tauri dev
 
 ## Status
 
-Working today: statement import (CSV/OFX) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
+Working today: balance sheet with starting balances, paystub reading, monthly projection, budgets, backup/restore, savings allocation suggestions, a read-only assistant (MCP) server, statement import (CSV/OFX) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
 
 Known gaps:
 
