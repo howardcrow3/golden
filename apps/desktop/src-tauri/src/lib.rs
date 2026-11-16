@@ -270,7 +270,28 @@ fn app_info() -> serde_json::Value {
     serde_json::json!({ "name": "Golden", "version": env!("CARGO_PKG_VERSION"), "mode": "private" })
 }
 
+fn run_mcp() -> Result<(), String> {
+    let dir = fin_app::mcp::data_dir(std::env::consts::OS, "com.highturtle.golden", |k| std::env::var(k).ok())
+        .ok_or("could not find the Golden data folder")?;
+    if !dir.join("golden.db").exists() {
+        return Err("Golden has no data yet. Open the app and import a statement first.".into());
+    }
+    let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
+    let app = Core::new(db).with_public_key(bundled_public_key());
+    let stdin = std::io::stdin();
+    fin_app::mcp::serve(&app, stdin.lock(), std::io::stdout()).map_err(|e| e.to_string())
+}
+
 pub fn run() {
+    // `golden --mcp` serves the read-only assistant protocol on stdin/stdout instead of opening
+    // a window, using the same encrypted database as the app.
+    if std::env::args().any(|a| a == "--mcp") {
+        if let Err(e) = run_mcp() {
+            eprintln!("golden --mcp: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     tauri::Builder::default()
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
