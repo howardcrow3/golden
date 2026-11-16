@@ -81,10 +81,31 @@ impl Db {
         self.add_account(name, kind, None, None)
     }
 
+    /// Set what an account held before its first imported statement.
+    pub fn set_opening(&self, id: AccountId, cents: i64) -> Result<()> {
+        let n = self.conn.execute(
+            "UPDATE account SET opening_cents=?1 WHERE id=?2",
+            params![cents, id.0],
+        )?;
+        if n == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows.into());
+        }
+        Ok(())
+    }
+
+    /// Opening balance per open account.
+    pub fn openings(&self) -> Result<Vec<(AccountId, i64)>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT id, opening_cents FROM account WHERE closed=0 ORDER BY id")?;
+        let rows = st.query_map([], |r| Ok((AccountId(r.get(0)?), r.get::<_, i64>(1)?)))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     /// All open accounts with their current balance, oldest first.
     pub fn accounts(&self) -> Result<Vec<(AccountId, String, String, Money)>> {
         let mut st = self.conn.prepare(
-            "SELECT a.id, a.name, a.kind, coalesce(sum(t.cents),0) FROM account a
+            "SELECT a.id, a.name, a.kind, a.opening_cents + coalesce(sum(t.cents),0) FROM account a
              LEFT JOIN txn t ON t.account_id=a.id WHERE a.closed=0 GROUP BY a.id ORDER BY a.id",
         )?;
         let rows = st.query_map([], |r| {

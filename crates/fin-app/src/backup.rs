@@ -20,11 +20,9 @@ impl App {
             .map(|(id, n, _, _)| (id.0, n))
             .collect();
         let accounts: Vec<Value> = self
-            .db
-            .accounts()
-            .map_err(|e| e.to_string())?
+            .accounts()?
             .into_iter()
-            .map(|(_, name, kind, bal)| json!({"name": name, "kind": kind, "balanceCents": bal.cents()}))
+            .map(|a| json!({"name": a.name, "kind": a.kind, "balanceCents": a.balance_cents, "openingCents": a.opening_cents}))
             .collect();
         let mut txns = self
             .db
@@ -101,10 +99,23 @@ impl App {
                 .as_str()
                 .ok_or("A backed-up account has no name.")?;
             let kind = a["kind"].as_str().unwrap_or("checking");
+            let existed = self
+                .db
+                .accounts()
+                .map_err(|e| e.to_string())?
+                .iter()
+                .any(|(_, n, _, _)| n == name);
             let id = self
                 .db
                 .find_or_add_account(name, kind)
                 .map_err(|e| e.to_string())?;
+            // A starting balance comes back only for accounts this copy didn't have: never
+            // overwrite what someone has typed here.
+            if !existed {
+                if let Some(c) = a["openingCents"].as_i64() {
+                    self.db.set_opening(id, c).map_err(|e| e.to_string())?;
+                }
+            }
             ids.insert(name.to_string(), id);
         }
         let mut rows = vec![];

@@ -57,6 +57,8 @@ const MIGRATIONS: &[&str] = &[
         value TEXT NOT NULL
     );
     "#,
+    // Opening balance: what the account held before the first imported statement.
+    "ALTER TABLE account ADD COLUMN opening_cents INTEGER NOT NULL DEFAULT 0;",
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

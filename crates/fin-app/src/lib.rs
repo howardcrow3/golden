@@ -45,6 +45,8 @@ pub struct AccountRow {
     pub name: String,
     pub kind: String,
     pub balance_cents: i64,
+    /// What the account held before its first imported statement (included in the balance).
+    pub opening_cents: i64,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -243,6 +245,13 @@ impl App {
     }
 
     pub fn accounts(&self) -> Result<Vec<AccountRow>, String> {
+        let openings: std::collections::HashMap<i64, i64> = self
+            .db
+            .openings()
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .map(|(id, c)| (id.0, c))
+            .collect();
         Ok(self
             .db
             .accounts()
@@ -253,8 +262,21 @@ impl App {
                 name,
                 kind,
                 balance_cents: bal.cents(),
+                opening_cents: openings.get(&id.0).copied().unwrap_or(0),
             })
             .collect())
+    }
+
+    /// Set what an account held before its first imported statement. The balance, net worth
+    /// and projection all include it; cash flow and budgets do not (it isn't income).
+    pub fn set_opening_balance(&self, account_id: i64, cents: i64) -> Result<(), String> {
+        self.require_edit()?;
+        if cents.abs() > 100_000_000_000 {
+            return Err("That amount is too large.".into());
+        }
+        self.db
+            .set_opening(AccountId(account_id), cents)
+            .map_err(|_| "No such account.".to_string())
     }
 
     /// Income / spending / net per period; `grain` is week, month, quarter or year.

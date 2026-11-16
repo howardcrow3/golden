@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup } from "@testing-library/svelte";
 import BalanceSheet from "./BalanceSheet.svelte";
@@ -10,6 +10,20 @@ const sheet = {
   debtsCents: 30000,
   netWorthCents: 170000,
 };
+
+const accountsRows = [
+  { id: 1, name: "Checking", kind: "checking", balanceCents: 200000, openingCents: 0 },
+  { id: 2, name: "Visa", kind: "credit", balanceCents: -30000, openingCents: 0 },
+];
+
+function fake(calls: [string, unknown][]) {
+  return async (cmd: string, args?: unknown) => {
+    calls.push([cmd, args]);
+    if (cmd === "accounts") return accountsRows;
+    if (cmd === "set_opening_balance") return null;
+    return sheet;
+  };
+}
 
 describe("BalanceSheet", () => {
   afterEach(cleanup);
@@ -36,5 +50,29 @@ describe("BalanceSheet", () => {
     render(BalanceSheet, {});
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByTestId("balance-sheet")).toBeNull();
+  });
+
+  it("saves only the starting balances that changed", async () => {
+    const calls: [string, unknown][] = [];
+    render(BalanceSheet, { invoke: fake(calls) });
+    await waitFor(() => screen.getByText("Set starting balances"));
+    await fireEvent.click(screen.getByText("Set starting balances"));
+    await fireEvent.input(screen.getByLabelText("Starting balance for Checking"), { target: { value: "10000" } });
+    await fireEvent.click(screen.getByText("Save starting balances"));
+    await waitFor(() => expect(screen.queryByTestId("opening-editor")).toBeNull());
+    const sets = calls.filter(([c]) => c === "set_opening_balance");
+    expect(sets).toEqual([["set_opening_balance", { accountId: 1, cents: 1000000 }]]);
+  });
+
+  it("explains a bad starting balance and keeps the editor open", async () => {
+    const calls: [string, unknown][] = [];
+    render(BalanceSheet, { invoke: fake(calls) });
+    await waitFor(() => screen.getByText("Set starting balances"));
+    await fireEvent.click(screen.getByText("Set starting balances"));
+    await fireEvent.input(screen.getByLabelText("Starting balance for Visa"), { target: { value: "lots" } });
+    await fireEvent.click(screen.getByText("Save starting balances"));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Visa"));
+    expect(screen.getByTestId("opening-editor")).toBeTruthy();
+    expect(calls.some(([c]) => c === "set_opening_balance")).toBe(false);
   });
 });
