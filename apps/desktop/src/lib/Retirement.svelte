@@ -4,6 +4,7 @@
   import { formatCents, formatPercent } from "./money";
   import { fromForm, newPerson, newStream, removePerson, toForm, type Form } from "./household";
   import Assumptions from "./Assumptions.svelte";
+  import Allocate from "./Allocate.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
@@ -123,6 +124,7 @@
 {/if}
 
 <Assumptions {invoke} onchange={rerun} />
+<Allocate {invoke} />
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }

@@ -1,6 +1,7 @@
 //! Application service: the one place the UI talks to. It wires file import, categorization
 //! rules and the ledger together and returns plain serializable shapes. The Tauri shell only
 //! forwards calls here, so everything is testable without a window.
+pub mod allocate;
 pub mod backup;
 pub mod balance;
 pub mod budget;
