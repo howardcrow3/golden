@@ -41,10 +41,20 @@ Today every merge refreshes the rolling `nightly` release. Before selling, add a
 - Paddle price IDs are repository secrets `GOLDEN_PRICE_ID` (core) and `GOLDEN_PLAID_PRICE_ID` (Plaid). CI passes them into the app build. They must be **price** IDs (`pri_...`), not product IDs (`pro_...`); the app refuses a product ID and says so on the Licence screen.
 - Changing a price in Paddle creates a new price ID: update the secret too, or checkout would charge the old amount.
 
+## 6. Checkout (shared by all Turtlebox apps)
+
+- `site/checkout/` is a static page that opens Paddle's overlay checkout for any price: `https://<site>/checkout/?price=pri_...&app=<app-slug>`. It uses Paddle's public client-side token (in `checkout.js`) and passes the app slug to Paddle as custom data so the licence service knows which app a sale is for. Other Turtlebox apps just link to it with their own price ID and slug.
+- `.github/workflows/pages.yml` publishes `site/` to GitHub Pages. One-time: repository Settings > Pages > Source = GitHub Actions.
+- In Paddle, add the Pages domain (for example `howardcrow3.github.io`) to approved domains for checkout.
+- Set the repository **variable** `GOLDEN_CHECKOUT_URL` to the page address (for example `https://howardcrow3.github.io/golden/checkout/`). Until it is set, the app's Buy buttons stay off.
+- `SALES_OPEN` in `site/checkout/checkout.js` is `false`: the page refuses to open checkout, so nobody can pay before keys can be delivered. Flip it to `true` in the same change that deploys the licence service.
+- Still to build: the licence service that receives Paddle's webhook (`fin-license::paddle` already verifies it and issues the key), emails the buyer, and needs the licence signing key and Paddle webhook secret as its own secrets.
+
 ## Checklist
 
 - [ ] Licence keypair generated, secret stored offline, public key committed
 - [ ] Apple secrets added and notarization verified on a nightly build
 - [ ] Windows signing configured and verified
 - [ ] Tagged release workflow added
-- [ ] Paddle checkout and licence-issuing webhook deployed
+- [ ] Pages enabled, domain approved in Paddle, `GOLDEN_CHECKOUT_URL` set
+- [ ] Licence service (webhook + email) deployed, then `SALES_OPEN = true`

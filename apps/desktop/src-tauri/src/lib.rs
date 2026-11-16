@@ -99,7 +99,36 @@ fn restore_backup(state: Shared, bytes: Vec<u8>) -> Result<fin_app::backup::Rest
 /// What Golden costs, plus the Paddle price IDs this build was given (see the signing guide).
 #[tauri::command]
 fn pricing() -> fin_license::pricing::PricingInfo {
-    fin_license::pricing::PricingInfo::from_ids(option_env!("GOLDEN_PRICE_ID"), option_env!("GOLDEN_PLAID_PRICE_ID"))
+    fin_license::pricing::PricingInfo::from_ids(
+        option_env!("GOLDEN_PRICE_ID"),
+        option_env!("GOLDEN_PLAID_PRICE_ID"),
+        option_env!("GOLDEN_CHECKOUT_URL"),
+    )
+}
+
+/// Open the hosted checkout page for "core" or "plaid" in the person's browser. The link is
+/// rebuilt here from the build's configuration and validated (https only), never taken from the UI.
+#[tauri::command]
+fn open_checkout(plan: String) -> Result<(), String> {
+    let info = pricing();
+    let url = match plan.as_str() {
+        "core" => info.core_checkout_url,
+        "plaid" => info.plaid_checkout_url,
+        _ => return Err("Unknown purchase option.".into()),
+    }
+    .ok_or("Purchasing isn't open yet.")?;
+    open_in_browser(&url)
+}
+
+fn open_in_browser(url: &str) -> Result<(), String> {
+    use std::process::Command;
+    #[cfg(target_os = "macos")]
+    let mut cmd = Command::new("open");
+    #[cfg(target_os = "windows")]
+    let mut cmd = Command::new("explorer");
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let mut cmd = Command::new("xdg-open");
+    cmd.arg(url).spawn().map(|_| ()).map_err(|e| format!("Couldn't open your browser: {e}"))
 }
 
 #[tauri::command]
@@ -244,6 +273,7 @@ pub fn run() {
             whatif,
             keep_whatif,
             pricing,
+            open_checkout,
             license_status,
             activate_license,
             accounts,

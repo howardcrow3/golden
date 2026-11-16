@@ -144,6 +144,44 @@ describe("License prices", () => {
   });
 });
 
+describe("License buy buttons", () => {
+  const priced = (url: string | null) => ({
+    currency: "USD", coreCents: 3999, plaidCents: 500, plaidInterval: "month",
+    corePriceId: "pri_a", plaidPriceId: "pri_b", coreCheckoutUrl: url, plaidCheckoutUrl: url, warning: null,
+  });
+  it("are off until a checkout page is configured", async () => {
+    render(License, { invoke: async (cmd: string) => (cmd === "pricing" ? priced(null) : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false }) });
+    const core = (await screen.findByRole("button", { name: /Buy Golden, \$39\.99/ })) as HTMLButtonElement;
+    expect(core.disabled).toBe(true);
+    expect(screen.getByText("Purchasing opens soon.")).toBeTruthy();
+  });
+  it("open checkout for the chosen plan when configured", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      return cmd === "pricing" ? priced("https://x.example/c/?price=pri_a&app=golden") : cmd === "open_checkout" ? undefined : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
+    };
+    render(License, { invoke });
+    const plaid = (await screen.findByRole("button", { name: /Add bank connections, \$5\.00 a month/ })) as HTMLButtonElement;
+    await vi.waitFor(() => expect(plaid.disabled).toBe(false));
+    await fireEvent.click(plaid);
+    await vi.waitFor(() => expect(calls.find(([c]) => c === "open_checkout")![1]).toEqual({ plan: "plaid" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/Checkout opened/);
+  });
+  it("shows the reason when the browser can't be opened", async () => {
+    const invoke = async (cmd: string) => {
+      if (cmd === "pricing") return priced("https://x.example/c/?price=pri_a&app=golden");
+      if (cmd === "open_checkout") throw "Couldn't open your browser: nope";
+      return { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
+    };
+    render(License, { invoke });
+    const core = (await screen.findByRole("button", { name: /Buy Golden/ })) as HTMLButtonElement;
+    await vi.waitFor(() => expect(core.disabled).toBe(false));
+    await fireEvent.click(core);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Couldn't open your browser/);
+  });
+});
+
 describe("License", () => {
   const trial = { state: "trial", daysLeft: 9, canEdit: true, plaidActive: false };
   it("shows the trial countdown", async () => {

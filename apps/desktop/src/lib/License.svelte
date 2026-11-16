@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activateLicense, DEFAULT_PRICING, getPricing, licenseStatus, type Invoke, type LicenseStatus, type Pricing } from "./api";
+  import { activateLicense, DEFAULT_PRICING, getPricing, licenseStatus, openCheckout, type Invoke, type LicenseStatus, type Pricing } from "./api";
   import { formatCents } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -27,6 +27,16 @@
     licenseStatus(invoke).then((s) => (status = s)).catch(() => (status = null));
   });
 
+  async function buy(plan: "core" | "plaid") {
+    error = "";
+    try {
+      await openCheckout(plan, invoke);
+      note = "Checkout opened in your browser. Your licence key will be emailed to you; paste it below.";
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   async function activate() {
     error = "";
     note = "";
@@ -44,6 +54,12 @@
 <p class="sub" data-testid="prices">{priceLine(pricing)}</p>
 {#if pricing.warning}<p class="err" role="alert">{pricing.warning}</p>{/if}
 
+<section class="card buy" data-testid="buy">
+  <button type="button" disabled={!pricing.coreCheckoutUrl} onclick={() => buy("core")}>Buy Golden, {formatCents(pricing.coreCents)}</button>
+  <button type="button" disabled={!pricing.plaidCheckoutUrl} onclick={() => buy("plaid")}>Add bank connections, {formatCents(pricing.plaidCents)} a {pricing.plaidInterval}</button>
+  {#if !pricing.coreCheckoutUrl}<span class="hint">Purchasing opens soon.</span>{/if}
+</section>
+
 {#if status}<section class="card" data-testid="status">{describe(status)}</section>{/if}
 
 <form class="card" onsubmit={(e) => { e.preventDefault(); activate(); }}>
@@ -59,4 +75,6 @@
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); width: 100%; }
   textarea { font: inherit; width: 100%; border: 1px solid var(--line); background: var(--paper); padding: 8px; }
   .err { color: var(--bad); }
+  .buy { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .hint { color: var(--muted); font-size: 12px; }
 </style>

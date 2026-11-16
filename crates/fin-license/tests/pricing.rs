@@ -1,4 +1,4 @@
-use fin_license::pricing::{check_price_id, Pricing, PricingInfo};
+use fin_license::pricing::{check_price_id, checkout_url, Pricing, PricingInfo};
 
 #[test]
 fn standard_prices_match_the_data_file() {
@@ -40,6 +40,7 @@ fn info_keeps_good_ids_and_reports_bad_ones() {
     let ok = PricingInfo::from_ids(
         Some("pri_01m7h6qqb0y4f9r6mftw05y772"),
         Some("pri_01m7h71ez1v1pen447723fmeje"),
+        None,
     );
     assert_eq!(
         ok.core_price_id.as_deref(),
@@ -54,6 +55,7 @@ fn info_keeps_good_ids_and_reports_bad_ones() {
     let mixed = PricingInfo::from_ids(
         Some("pro_01m7h6qqb0y4f9r6mftw05y772"),
         Some("pri_01m7h71ez1v1pen447723fmeje"),
+        None,
     );
     assert!(mixed.core_price_id.is_none());
     assert!(mixed.plaid_price_id.is_some());
@@ -63,15 +65,64 @@ fn info_keeps_good_ids_and_reports_bad_ones() {
 #[test]
 fn missing_ids_are_not_an_error() {
     for none in [None, Some(""), Some("   ")] {
-        let i = PricingInfo::from_ids(none, none);
+        let i = PricingInfo::from_ids(none, none, none);
         assert!(i.core_price_id.is_none() && i.plaid_price_id.is_none() && i.warning.is_none());
     }
 }
 
 #[test]
 fn serializes_flat_camel_case_for_the_ui() {
-    let v = serde_json::to_value(PricingInfo::from_ids(None, None)).unwrap();
+    let v = serde_json::to_value(PricingInfo::from_ids(None, None, None)).unwrap();
     assert_eq!(v["coreCents"], 3999);
     assert_eq!(v["plaidInterval"], "month");
     assert!(v["corePriceId"].is_null());
+    assert!(v["coreCheckoutUrl"].is_null());
+}
+
+const BASE: &str = "https://turtlebox.example/checkout/";
+const CORE: &str = "pri_01m7h6qqb0y4f9r6mftw05y772";
+const PLAID: &str = "pri_01m7h71ez1v1pen447723fmeje";
+
+#[test]
+fn checkout_links_carry_only_the_price_and_app() {
+    assert_eq!(
+        checkout_url(BASE, CORE, "golden").unwrap(),
+        "https://turtlebox.example/checkout/?price=pri_01m7h6qqb0y4f9r6mftw05y772&app=golden"
+    );
+}
+
+#[test]
+fn checkout_links_refuse_odd_input() {
+    assert!(checkout_url("http://turtlebox.example/c/", CORE, "golden").is_err());
+    assert!(checkout_url("https://", CORE, "golden").is_err());
+    assert!(checkout_url("https://x.example/c?evil=1", CORE, "golden").is_err());
+    assert!(checkout_url("https://x.example/c/#frag", CORE, "golden").is_err());
+    assert!(checkout_url(BASE, "pro_01m7h6qqb0y4f9r6mftw05y772", "golden").is_err());
+    assert!(checkout_url(BASE, CORE, "Golden App").is_err());
+    assert!(checkout_url(BASE, CORE, "").is_err());
+    assert!(checkout_url(BASE, CORE, &"a".repeat(33)).is_err());
+}
+
+#[test]
+fn no_checkout_page_means_no_buy_links() {
+    let i = PricingInfo::from_ids(Some(CORE), Some(PLAID), None);
+    assert!(i.core_checkout_url.is_none() && i.plaid_checkout_url.is_none());
+    let i = PricingInfo::from_ids(Some(CORE), Some(PLAID), Some("  "));
+    assert!(i.core_checkout_url.is_none());
+}
+
+#[test]
+fn with_a_checkout_page_both_links_appear_and_a_missing_id_has_none() {
+    let i = PricingInfo::from_ids(Some(CORE), Some(PLAID), Some(BASE));
+    assert!(i.core_checkout_url.unwrap().contains(CORE));
+    assert!(i.plaid_checkout_url.unwrap().contains(PLAID));
+    let i = PricingInfo::from_ids(Some(CORE), None, Some(BASE));
+    assert!(i.core_checkout_url.is_some() && i.plaid_checkout_url.is_none());
+}
+
+#[test]
+fn a_bad_checkout_address_is_reported() {
+    let i = PricingInfo::from_ids(Some(CORE), None, Some("http://insecure.example/"));
+    assert!(i.core_checkout_url.is_none());
+    assert!(i.warning.unwrap().contains("https://"));
 }

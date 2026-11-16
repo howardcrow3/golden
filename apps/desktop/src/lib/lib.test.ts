@@ -91,3 +91,45 @@ describe("default pricing", () => {
     expect(DEFAULT_PRICING.plaidInterval).toBe(pricingFile.plaidInterval);
   });
 });
+
+// @ts-expect-error plain JS module shared with the hosted checkout page
+import * as checkout from "../../../../site/checkout/checkout.js";
+describe("hosted checkout page", () => {
+  const PRICE = "pri_01m7h6qqb0y4f9r6mftw05y772";
+  it("accepts a valid link and defaults the app", () => {
+    expect(checkout.parseQuery(`?price=${PRICE}`)).toEqual({ ok: true, priceId: PRICE, app: "turtlebox", email: null });
+    expect(checkout.parseQuery(`?price=${PRICE}&app=golden&email=a@b.co`)).toEqual({ ok: true, priceId: PRICE, app: "golden", email: "a@b.co" });
+  });
+  it("refuses product IDs, junk prices and odd app names with a reason", () => {
+    expect(checkout.parseQuery("?price=pro_01m7h6qqb0y4f9r6mftw05y772").error).toMatch(/price ID/);
+    for (const q of ["", "?price=", "?price=x", `?price=${PRICE}&app=Bad App`, `?price=${PRICE}&app=<script>`]) {
+      expect(checkout.parseQuery(q).ok, q).toBe(false);
+    }
+  });
+  it("drops a malformed email instead of passing it on", () => {
+    expect(checkout.parseQuery(`?price=${PRICE}&email=not-an-email`).email).toBeNull();
+    expect(checkout.parseQuery(`?price=${PRICE}&email=a b@c.d`).email).toBeNull();
+  });
+  it("hands Paddle only the price, the app name and a fixed success page", () => {
+    const o = checkout.checkoutOptions({ ok: true, priceId: PRICE, app: "golden", email: null }, "https://x.example/thanks.html");
+    expect(o).toEqual({
+      items: [{ priceId: PRICE, quantity: 1 }],
+      customData: { app: "golden" },
+      settings: { displayMode: "overlay", theme: "light", successUrl: "https://x.example/thanks.html" },
+    });
+  });
+  it("stays closed until sales are switched on, and never calls Paddle while closed", () => {
+    expect(checkout.SALES_OPEN).toBe(false);
+    const el = { textContent: "" };
+    const calls: string[] = [];
+    const win = {
+      location: { search: `?price=${PRICE}&app=golden`, href: "https://x.example/checkout/" },
+      Paddle: { Initialize: () => calls.push("init"), Checkout: { open: () => calls.push("open") } },
+    };
+    const doc = { getElementById: (id: string) => (id === "message" ? el : null) };
+    (globalThis as unknown as { document: unknown }).document = doc;
+    checkout.main(win);
+    expect(el.textContent).toMatch(/open soon/);
+    expect(calls).toEqual([]);
+  });
+});

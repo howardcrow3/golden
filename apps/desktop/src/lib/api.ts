@@ -282,6 +282,8 @@ export interface Pricing {
   plaidInterval: "month" | "year";
   corePriceId: string | null;
   plaidPriceId: string | null;
+  coreCheckoutUrl: string | null;
+  plaidCheckoutUrl: string | null;
   warning: string | null;
 }
 /** Shown until the app answers (and in a plain browser). Must match crates/fin-license/data/pricing.json. */
@@ -292,6 +294,8 @@ export const DEFAULT_PRICING: Pricing = {
   plaidInterval: "month",
   corePriceId: null,
   plaidPriceId: null,
+  coreCheckoutUrl: null,
+  plaidCheckoutUrl: null,
   warning: null,
 };
 export async function getPricing(invoke?: Invoke): Promise<Pricing> {
@@ -305,4 +309,8 @@ export async function getPricing(invoke?: Invoke): Promise<Pricing> {
 
 export async function setLibraryFolder(path: string, invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("set_library_folder", { path })) as string;
+}
+
+export async function openCheckout(plan: "core" | "plaid", invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("open_checkout", { plan });
 }
