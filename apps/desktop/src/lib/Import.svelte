@@ -1,6 +1,7 @@
 <script lang="ts">
   import { importFile, libraryFolder, setLibraryFolder, type ImportReport, type Invoke } from "./api";
   import { formatCents } from "./money";
+  import Paystub from "./Paystub.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let account = $state("Checking");
@@ -97,6 +98,8 @@
     ({r.parsed} lines, net {formatCents(r.totalCents)}){#if r.uncategorized > 0}; {r.uncategorized} need a category{/if}.{#if r.filedAs} Filed as <span class="filed">{r.filedAs}</span>.{/if}
   </section>
 {/each}
+
+<Paystub {invoke} />
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }

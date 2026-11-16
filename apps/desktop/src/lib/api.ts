@@ -347,3 +347,27 @@ export interface BalanceSheet {
 export async function getBalanceSheet(invoke?: Invoke): Promise<BalanceSheet> {
   return (await (await resolve(invoke))("balance_sheet")) as BalanceSheet;
 }
+
+export interface PaystubSummary {
+  employer: string;
+  payDate: string | null;
+  frequency: string;
+  periodsPerYear: number;
+  grossCents: number;
+  netCents: number;
+  federalTaxCents: number;
+  stateTaxCents: number;
+  socialSecurityCents: number;
+  medicareCents: number;
+  retirementCents: number;
+  benefitsCents: number;
+  annualGrossCents: number;
+  annualRetirementCents: number;
+  incomeTaxRateBp: number;
+}
+export async function readPaystub(text: string, invoke?: Invoke): Promise<PaystubSummary> {
+  return (await (await resolve(invoke))("read_paystub", { text })) as PaystubSummary;
+}
+export async function applyPaystub(text: string, person: number, invoke?: Invoke): Promise<StreamRow> {
+  return (await (await resolve(invoke))("apply_paystub", { text, person })) as StreamRow;
+}

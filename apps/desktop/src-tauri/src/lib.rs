@@ -220,6 +220,20 @@ fn balance_sheet(state: Shared) -> Result<fin_app::balance::BalanceSheet, String
 }
 
 #[tauri::command]
+fn read_paystub(state: Shared, text: String) -> Result<fin_app::paystub::PaystubSummary, String> {
+    lock(&state)?.read_paystub(&text)
+}
+
+#[tauri::command]
+fn apply_paystub(
+    state: Shared,
+    text: String,
+    person: usize,
+) -> Result<fin_app::household::StreamRow, String> {
+    lock(&state)?.apply_paystub(&text, person)
+}
+
+#[tauri::command]
 fn forecast(state: Shared, months: u32) -> Result<fin_app::forecast::Forecast, String> {
     lock(&state)?.forecast(months)
 }
@@ -273,6 +287,8 @@ pub fn run() {
             budget_status,
             forecast,
             balance_sheet,
+            read_paystub,
+            apply_paystub,
             set_budget,
             set_category,
             library_folder,
