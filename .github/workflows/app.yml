@@ -45,9 +45,10 @@ jobs:
       - run: npm ci
         working-directory: apps/desktop
       - name: Configure Apple signing and notarization
-        # Only on pushes to main, on the macOS runner. Exports the Tauri signing variables
-        # only when their secrets exist, so builds stay unsigned (not broken) without them.
-        if: github.event_name == 'push' && runner.os == 'macOS'
+        # Only for push or manual runs on main (never pull requests), on the macOS runner.
+        # Exports the Tauri signing variables only when their secrets exist, so builds stay
+        # unsigned (not broken) without them.
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && runner.os == 'macOS'
         env:
           S_CERT: ${{ secrets.APPLE_CERTIFICATE }}
           S_CERT_PW: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -85,7 +86,7 @@ jobs:
             echo "::notice::Signing only; notarization credentials not set."
           fi
       - name: Build (pull requests only build)
-        if: github.event_name != 'push'
+        if: github.event_name == 'pull_request'
         env:
           GOLDEN_PRICE_ID: ${{ secrets.GOLDEN_PRICE_ID }}
           GOLDEN_PLAID_PRICE_ID: ${{ secrets.GOLDEN_PLAID_PRICE_ID }}
@@ -93,7 +94,7 @@ jobs:
         working-directory: apps/desktop
         run: npm run tauri -- build ${{ matrix.args }}
       - name: Build and publish nightly release
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
