@@ -44,6 +44,46 @@ jobs:
         with: { workspaces: "apps/desktop/src-tauri -> target" }
       - run: npm ci
         working-directory: apps/desktop
+      - name: Configure Apple signing and notarization
+        # Only on pushes to main, on the macOS runner. Exports the Tauri signing variables
+        # only when their secrets exist, so builds stay unsigned (not broken) without them.
+        if: github.event_name == 'push' && runner.os == 'macOS'
+        env:
+          S_CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          S_CERT_PW: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          S_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          S_ID: ${{ secrets.APPLE_ID }}
+          S_ID_PW: ${{ secrets.APPLE_PASSWORD }}
+          S_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          S_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          S_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          S_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          export_var() { # name value
+            local d="EOF_$RANDOM$RANDOM"
+            { echo "$1<<$d"; printf '%s\n' "$2"; echo "$d"; } >> "$GITHUB_ENV"
+          }
+          if [ -z "$S_CERT" ] || [ -z "$S_CERT_PW" ]; then
+            echo "::notice::Apple signing secrets not set; building unsigned."
+            exit 0
+          fi
+          export_var APPLE_CERTIFICATE "$(printf '%s' "$S_CERT" | tr -d ' \r\n')"
+          export_var APPLE_CERTIFICATE_PASSWORD "$S_CERT_PW"
+          if [ -n "$S_IDENTITY" ]; then export_var APPLE_SIGNING_IDENTITY "$S_IDENTITY"; fi
+          if [ -n "$S_ID" ] && [ -n "$S_ID_PW" ] && [ -n "$S_TEAM" ]; then
+            export_var APPLE_ID "$S_ID"
+            export_var APPLE_PASSWORD "$S_ID_PW"
+            export_var APPLE_TEAM_ID "$S_TEAM"
+            echo "::notice::Signing and notarizing with Apple ID."
+          elif [ -n "$S_API_ISSUER" ] && [ -n "$S_API_KEY" ] && [ -n "$S_API_KEY_P8" ]; then
+            printf '%s\n' "$S_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+            export_var APPLE_API_ISSUER "$S_API_ISSUER"
+            export_var APPLE_API_KEY "$S_API_KEY"
+            export_var APPLE_API_KEY_PATH "$RUNNER_TEMP/AuthKey.p8"
+            echo "::notice::Signing and notarizing with App Store Connect API key."
+          else
+            echo "::notice::Signing only; notarization credentials not set."
+          fi
       - name: Build (pull requests only build)
         if: github.event_name != 'push'
         env:
@@ -65,7 +105,7 @@ jobs:
           args: ${{ matrix.args }}
           tagName: nightly
           releaseName: "Golden nightly (latest main)"
-          releaseBody: "Unsigned build of the latest main. macOS: right-click, Open the first time. Windows: choose More info, then Run anyway."
+          releaseBody: "Latest main. macOS is signed and notarized when Apple credentials are configured; if it is not, right-click, Open the first time. Windows: choose More info, then Run anyway."
           releaseDraft: false
           prerelease: true
       - name: Upload installers
