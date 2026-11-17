@@ -15,12 +15,22 @@ cargo run -p fin-license --features tool --bin golden-license -- keygen
 
 ## 2. macOS signing and notarization
 
-Needs an Apple Developer Program membership.
+`.github/workflows/app.yml` already signs and notarizes the macOS build on pushes to `main` when the secrets below exist. With none set, it builds unsigned as before. Pull-request builds are never signed.
 
-1. Create a "Developer ID Application" certificate and export it as `.p12`.
+Needs an Apple Developer Program membership ($99/year).
+
+1. In Xcode (Settings > Accounts > Manage Certificates) or at developer.apple.com, create a **Developer ID Application** certificate. In Keychain Access, export it with its private key as `cert.p12` and choose a password.
 2. Base64-encode it: `base64 -i cert.p12 | pbcopy`.
-3. Add these GitHub Actions secrets: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY` (for example `Developer ID Application: Name (TEAMID)`), `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password), `APPLE_TEAM_ID`.
-4. Pass them as `env` to the `tauri-action` step in `.github/workflows/app.yml`. Tauri signs and notarizes when they are present.
+3. In the repository, open Settings > Secrets and variables > Actions and add:
+   - `APPLE_CERTIFICATE`: the base64 text.
+   - `APPLE_CERTIFICATE_PASSWORD`: the `.p12` password.
+   - `APPLE_SIGNING_IDENTITY` (optional): for example `Developer ID Application: Your Name (TEAMID)`. Tauri finds it from the certificate if omitted.
+4. For notarization, add **one** of:
+   - Apple ID: `APPLE_ID` (your Apple ID email), `APPLE_PASSWORD` (an app-specific password from appleid.apple.com), `APPLE_TEAM_ID`.
+   - App Store Connect API key: `APPLE_API_ISSUER`, `APPLE_API_KEY` (key ID), `APPLE_API_KEY_P8` (the full text of the `.p8` file).
+5. Merge anything to `main`. The macOS job's "Configure Apple signing and notarization" step prints which mode it used. Verify the download with `spctl -a -vv Golden.app` and `xcrun stapler validate Golden.dmg`.
+
+Never paste these values into chat or commit them.
 
 ## 3. Windows signing
 
