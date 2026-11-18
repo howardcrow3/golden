@@ -67,6 +67,33 @@ fn columns(headers: &[String]) -> Result<Cols, IngestError> {
     })
 }
 
+/// Comma unless the header line clearly uses semicolons or tabs (common in European exports).
+fn sniff_delimiter(header: &str) -> u8 {
+    let count = |c: char| header.matches(c).count();
+    let (commas, semis, tabs) = (count(','), count(';'), count('\t'));
+    if semis > commas && semis >= tabs {
+        b';'
+    } else if tabs > commas {
+        b'\t'
+    } else {
+        b','
+    }
+}
+
+/// Make an amount cell readable by `Money::parse`: a trailing minus ("5.00-") becomes a leading
+/// one, and with semicolon files a decimal comma ("1.234,56") becomes a decimal point.
+fn normalize_amount(raw: &str, decimal_comma: bool) -> String {
+    let mut s = raw.trim().to_string();
+    if s.len() > 1 && s.ends_with('-') {
+        s.pop();
+        s = format!("-{}", s.trim());
+    }
+    if decimal_comma && s.contains(',') {
+        s = s.replace('.', "").replace(',', ".");
+    }
+    s
+}
+
 /// Parse a bank CSV with a header row. Handles single signed Amount columns, split
 /// Debit/Credit columns, a leading preamble before the header, and quoted fields.
 pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
@@ -77,13 +104,15 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
     let mut start = 0usize;
     for (i, line) in text.lines().enumerate() {
         let l = line.to_ascii_lowercase();
-        if l.contains("date") && l.contains(',') {
+        if l.contains("date") && (l.contains(',') || l.contains(';') || l.contains('\t')) {
             start = text.lines().take(i).map(|x| x.len() + 1).sum();
             break;
         }
     }
     let body = &text[start.min(text.len())..];
+    let delimiter = sniff_delimiter(body.lines().next().unwrap_or(""));
     let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(delimiter)
         .flexible(true)
         .trim(csv::Trim::All)
         .from_reader(body.as_bytes());
@@ -108,7 +137,7 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
             msg: format!("bad date '{date_s}'"),
         })?;
         let money = |s: &str| {
-            Money::parse(s).map_err(|e| IngestError::Row {
+            Money::parse(&normalize_amount(s, delimiter == b';')).map_err(|e| IngestError::Row {
                 row,
                 msg: e.to_string(),
             })
@@ -149,6 +178,39 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn semicolon_files_with_decimal_commas() {
+        let t =
+            parse("Date;Description;Amount\n10/01/2026;Rent;-1.234,56\n10/02/2026;Pay;2500,00\n")
+                .unwrap();
+        assert_eq!(
+            (t[0].amount.cents(), t[1].amount.cents()),
+            (-123_456, 250_000)
+        );
+    }
+
+    #[test]
+    fn tab_separated_files() {
+        let t = parse("Date\tDescription\tAmount\n10/01/2026\tCoffee, large\t-4.50\n").unwrap();
+        assert_eq!(
+            (t[0].payee.as_str(), t[0].amount.cents()),
+            ("Coffee, large", -450)
+        );
+    }
+
+    #[test]
+    fn trailing_minus_means_money_out() {
+        let t = parse("Date,Description,Amount\n10/01/2026,Fee,12.00-\n10/02/2026,Pay,12.00\n")
+            .unwrap();
+        assert_eq!((t[0].amount.cents(), t[1].amount.cents()), (-1200, 1200));
+    }
+
+    #[test]
+    fn commas_inside_a_comma_file_still_mean_thousands() {
+        let t = parse("Date,Description,Amount\n10/01/2026,Pay,\"1,234.56\"\n").unwrap();
+        assert_eq!(t[0].amount.cents(), 123_456);
+    }
 
     #[test]
     fn signed_amount_column() {
