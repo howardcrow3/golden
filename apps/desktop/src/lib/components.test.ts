@@ -455,6 +455,16 @@ describe("Transactions", () => {
     await screen.findByRole("status");
     expect((log.find(([c]) => c === "set_category")![1] as { remember: boolean }).remember).toBe(false);
   });
+  it("narrows the list as you search and says how much is shown", async () => {
+    render(Transactions, { invoke: fake([]) });
+    await screen.findByText("ACME PAYROLL");
+    expect(screen.getByTestId("shown").textContent).toContain("2 of 2 lines");
+    await fireEvent.input(screen.getByLabelText("Search transactions"), { target: { value: "mystery" } });
+    expect(screen.queryByText("ACME PAYROLL")).toBeNull();
+    expect(screen.getByTestId("shown").textContent).toBe("1 of 2 lines · in $0.00 · out $10.00");
+    await fireEvent.input(screen.getByLabelText("Search transactions"), { target: { value: "zzz" } });
+    expect(screen.getByText("Nothing matches that search.")).toBeTruthy();
+  });
   it("does nothing when the category is unchanged or empty", async () => {
     const log: [string, Record<string, unknown> | undefined][] = [];
     render(Transactions, { invoke: fake(log) });

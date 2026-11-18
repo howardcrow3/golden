@@ -1,6 +1,7 @@
 <script lang="ts">
   import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, type Invoke, type TxnRow } from "./api";
   import { formatCents } from "./money";
+  import { filterTxns, sumTxns } from "./txnFilter";
 
   let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
   let rows = $state<TxnRow[]>([]);
@@ -10,6 +11,9 @@
   let error = $state("");
   let note = $state("");
   let loaded = $state(false);
+  let query = $state("");
+  let shown = $derived(filterTxns(rows, query));
+  let totals = $derived(sumTxns(shown));
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   function lastYear(): string {
@@ -116,6 +120,7 @@
   <label class="check">To <input type="date" bind:value={toDay} aria-label="To date" /></label>
   <label class="check"><input type="checkbox" bind:checked={onlyTodo} /> Only lines that need a category</label>
   <label class="check"><input type="checkbox" bind:checked={remember} /> Remember this merchant for next time</label>
+  <label class="check">Search <input type="search" bind:value={query} placeholder="payee, category, amount…" aria-label="Search transactions" /></label>
   <button type="button" onclick={exportCsv}>Export CSV</button>
   <button type="button" onclick={backup}>Back up everything</button>
   <label class="check">Restore from backup <input type="file" accept=".json" aria-label="Backup file" onchange={restore} /></label>
@@ -129,10 +134,12 @@
 {#if loaded && rows.length === 0}
   <p class="empty">{onlyTodo ? "Everything has a category." : "No transactions yet. Import a statement first."}</p>
 {:else if rows.length > 0}
+  <p class="muted" data-testid="shown">{shown.length} of {rows.length} lines · in {formatCents(totals.inCents)} · out {formatCents(totals.outCents)}</p>
+  {#if shown.length === 0}<p class="empty">Nothing matches that search.</p>{/if}
   <table class="card">
     <thead><tr><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th></tr></thead>
     <tbody>
-      {#each rows as r (r.id)}
+      {#each shown as r (r.id)}
         <tr>
           <td class="num">{r.day}</td>
           <td>{r.payee}</td>
