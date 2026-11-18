@@ -6,6 +6,10 @@ use rusqlite::{params, OptionalExtension};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AccountId(pub i64);
 
+/// SQL for "not money moved between the household's own accounts" on the `txn` table.
+const NOT_TRANSFER: &str =
+    "coalesce((SELECT name FROM category WHERE id = category_id), '') <> 'Transfer'";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewTxn {
     pub account: AccountId,
@@ -352,7 +356,7 @@ impl Db {
         let col = grain_col(grain);
         let sql = format!(
             "SELECT {col}, coalesce(sum(CASE WHEN cents>0 THEN cents END),0), coalesce(sum(CASE WHEN cents<0 THEN cents END),0), count(*)
-             FROM txn WHERE day BETWEEN ?1 AND ?2 GROUP BY {col}"
+             FROM txn WHERE day BETWEEN ?1 AND ?2 AND {NOT_TRANSFER} GROUP BY {col}"
         );
         let mut st = self.conn.prepare(&sql)?;
         let mut found: std::collections::HashMap<String, (i64, i64, i64)> = Default::default();
@@ -400,7 +404,7 @@ impl Db {
         };
         let sql = format!(
             "SELECT coalesce(c.name,'Uncategorized'), sum(t.cents) FROM txn t LEFT JOIN category c ON c.id=t.category_id
-             WHERE t.{col}=?1 AND t.cents {cmp} 0 GROUP BY 1 ORDER BY sum(t.cents) * {sign} DESC, 1"
+             WHERE t.{col}=?1 AND t.cents {cmp} 0 AND coalesce(c.name,'') <> 'Transfer' GROUP BY 1 ORDER BY sum(t.cents) * {sign} DESC, 1"
         );
         let mut st = self.conn.prepare(&sql)?;
         let rows = st.query_map([period.to_string()], |r| {

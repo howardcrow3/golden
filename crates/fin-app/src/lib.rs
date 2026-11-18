@@ -21,6 +21,7 @@ pub mod model;
 pub mod paystub;
 pub mod recurring;
 pub mod transactions;
+pub mod transfers;
 pub mod withholding;
 
 use chrono::NaiveDate;
@@ -187,6 +188,7 @@ impl App {
             })
             .collect();
         let summary = self.db.import_batch(&rows).map_err(|e| e.to_string())?;
+        self.mark_transfers()?;
         Ok(ImportReport {
             account: account.to_string(),
             parsed: parsed.len(),
