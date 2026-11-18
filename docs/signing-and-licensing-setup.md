@@ -58,7 +58,22 @@ Today every merge refreshes the rolling `nightly` release. Before selling, add a
 - In Paddle, add the Pages domain (for example `howardcrow3.github.io`) to approved domains for checkout.
 - Set the repository **variable** `GOLDEN_CHECKOUT_URL` to the page address (for example `https://howardcrow3.github.io/golden/checkout/`). Until it is set, the app's Buy buttons stay off.
 - `SALES_OPEN` in `site/checkout/checkout.js` is `false`: the page refuses to open checkout, so nobody can pay before keys can be delivered. Flip it to `true` in the same change that deploys the licence service.
-- Still to build: the licence service that receives Paddle's webhook (`fin-license::paddle` already verifies it and issues the key), emails the buyer, and needs the licence signing key and Paddle webhook secret as its own secrets.
+- The licence service is `services/licence/` (see section 7).
+
+## 7. Licence service (Paddle webhook, signed key, email)
+
+`services/licence/` is a Cloudflare Worker (free tier is plenty). After a payment, Paddle calls its `/webhook`; it verifies the signature, signs a licence with the secret key, looks up the buyer's email in Paddle, and emails the key through Resend. The app verifies it offline. Retried webhooks never send twice; a failed email makes Paddle retry.
+
+One-time setup (nothing here goes into chat or the repo):
+
+1. **Cloudflare**: create a free account. Create an API token (My Profile > API Tokens > "Edit Cloudflare Workers" template). Add repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the account ID is on the Workers overview page).
+2. **Paddle**: create an API key with `customer.read` (Developer Tools > Authentication) and add it as secret `PADDLE_API_KEY`. Add a notification destination (Developer Tools > Notifications) for the event `transaction.completed`, URL `https://golden-licence.<your-workers-subdomain>.workers.dev/webhook`, and copy its secret key into repository secret `PADDLE_WEBHOOK_SECRET`.
+3. **Email**: create a Resend account, verify a sending domain, create an API key and add it as `RESEND_API_KEY`. Set repository variables `LICENCE_MAIL_FROM` (for example `Golden <licences@yourdomain.com>`) and `LICENCE_SUPPORT_EMAIL`. Set `PADDLE_ENV` to `sandbox` while testing.
+4. Run the **Licence service** workflow (Actions tab > Run workflow). It tests, creates the KV store, deploys, and loads the secrets above.
+5. Run the **Generate licence signing key** workflow once. The secret key is created on the runner and stored directly in the Worker; nobody sees it. Copy the public key from the run summary into `apps/desktop/src-tauri/license_public_key.txt` and commit it.
+6. Test with a Paddle sandbox purchase, confirm the email arrives and the key activates in the app, then switch `PADDLE_ENV` back, set `SALES_OPEN = true` in `site/checkout/checkout.js`, and merge.
+
+The secret key cannot be read back from Cloudflare. If you also want an offline backup, generate your own pair locally (section 1) and put the secret into the Worker with `npx wrangler secret put LICENCE_SIGNING_KEY` instead of step 5.
 
 ## Checklist
 
@@ -67,4 +82,6 @@ Today every merge refreshes the rolling `nightly` release. Before selling, add a
 - [ ] Windows signing configured and verified
 - [ ] Tagged release workflow added
 - [ ] Pages enabled, domain approved in Paddle, `GOLDEN_CHECKOUT_URL` set
-- [ ] Licence service (webhook + email) deployed, then `SALES_OPEN = true`
+- [ ] Cloudflare, Paddle API key and webhook secret, Resend secrets added
+- [ ] Licence service deployed and signing key generated, public key committed
+- [ ] Sandbox purchase tested, then `SALES_OPEN = true`

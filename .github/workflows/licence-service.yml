@@ -1,0 +1,53 @@
+name: Licence service
+# Deploys services/licence to Cloudflare Workers. Needs repository secrets CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID; without them this workflow only runs the tests. See
+# docs/signing-and-licensing-setup.md section 7.
+on:
+  push:
+    branches: [main]
+    paths: ["services/licence/**", ".github/workflows/licence-service.yml"]
+  workflow_dispatch:
+concurrency: { group: licence-service, cancel-in-progress: false }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    defaults: { run: { working-directory: services/licence } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - name: Deploy
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        env:
+          PADDLE_WEBHOOK_SECRET: ${{ secrets.PADDLE_WEBHOOK_SECRET }}
+          PADDLE_API_KEY: ${{ secrets.PADDLE_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GOLDEN_PRICE_ID: ${{ secrets.GOLDEN_PRICE_ID }}
+          GOLDEN_PLAID_PRICE_ID: ${{ secrets.GOLDEN_PLAID_PRICE_ID }}
+          MAIL_FROM: ${{ vars.LICENCE_MAIL_FROM }}
+          SUPPORT_EMAIL: ${{ vars.LICENCE_SUPPORT_EMAIL }}
+          PADDLE_ENV: ${{ vars.PADDLE_ENV }}
+        run: |
+          set -euo pipefail
+          # One KV namespace remembers delivered transactions; create it on first run only.
+          ID=$(npx wrangler kv namespace list | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const f=JSON.parse(s).find(n=>n.title==="golden-licence-LICENCES");console.log(f?f.id:"")})')
+          if [ -z "$ID" ]; then
+            npx wrangler kv namespace create LICENCES >/dev/null
+            ID=$(npx wrangler kv namespace list | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{console.log(JSON.parse(s).find(n=>n.title==="golden-licence-LICENCES").id)})')
+          fi
+          sed -i "s/REPLACE_WITH_KV_NAMESPACE_ID/$ID/" wrangler.toml
+          VARS=()
+          [ -n "${MAIL_FROM:-}" ] && VARS+=(--var "MAIL_FROM:$MAIL_FROM")
+          [ -n "${SUPPORT_EMAIL:-}" ] && VARS+=(--var "SUPPORT_EMAIL:$SUPPORT_EMAIL")
+          [ -n "${PADDLE_ENV:-}" ] && VARS+=(--var "PADDLE_ENV:$PADDLE_ENV")
+          npx wrangler deploy "${VARS[@]}"
+          # Secrets: only those that are set (the signing key is created by the keygen workflow).
+          node -e 'const k=["PADDLE_WEBHOOK_SECRET","PADDLE_API_KEY","RESEND_API_KEY","GOLDEN_PRICE_ID","GOLDEN_PLAID_PRICE_ID"];const o={};for(const n of k)if(process.env[n])o[n]=process.env[n];require("fs").writeFileSync("/tmp/secrets.json",JSON.stringify(o))'
+          npx wrangler secret bulk /tmp/secrets.json
+          rm -f /tmp/secrets.json
+          echo "Deployed. Webhook URL is https://golden-licence.<your-workers-subdomain>.workers.dev/webhook" >> "$GITHUB_STEP_SUMMARY"

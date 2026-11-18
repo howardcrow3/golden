@@ -1,0 +1,51 @@
+name: Generate licence signing key
+# Run once, by hand, after the Licence service workflow has deployed. Generates the Ed25519
+# licence keypair on the runner and stores the SECRET key straight into the Worker's secrets, so
+# no person (and no log) ever sees it. The PUBLIC key is printed in the run summary; it goes in
+# apps/desktop/src-tauri/license_public_key.txt.
+on:
+  workflow_dispatch:
+    inputs:
+      replace_existing:
+        description: "Replace an existing signing key (invalidates every licence issued so far; leave off)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  keygen:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Refuse to overwrite an existing key
+        working-directory: services/licence
+        run: |
+          npm install --no-audit --no-fund
+          if npx wrangler secret list | grep -q LICENCE_SIGNING_KEY && [ "${{ inputs.replace_existing }}" != "true" ]; then
+            echo "A signing key already exists. Re-run with replace_existing only if you mean to invalidate all licences." >&2
+            exit 1
+          fi
+      - name: Generate and store
+        working-directory: services/licence
+        run: |
+          set -euo pipefail
+          OUT=$(cargo run -q --manifest-path ../../Cargo.toml -p fin-license --features tool --bin golden-license -- keygen)
+          SECRET=$(echo "$OUT" | sed -n 's/^SECRET[^:]*: //p')
+          PUBLIC=$(echo "$OUT" | sed -n 's/^PUBLIC[^:]*: //p')
+          echo "::add-mask::$SECRET"
+          printf '%s' "$SECRET" | npx wrangler secret put LICENCE_SIGNING_KEY >/dev/null
+          unset SECRET OUT
+          {
+            echo "## Licence public key"
+            echo
+            echo "Put this in \`apps/desktop/src-tauri/license_public_key.txt\` and commit it:"
+            echo
+            echo "\`$PUBLIC\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Signing key stored in the Worker. Public key: $PUBLIC"
