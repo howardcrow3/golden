@@ -44,6 +44,21 @@ jobs:
         with: { workspaces: "apps/desktop/src-tauri -> target" }
       - run: npm ci
         working-directory: apps/desktop
+      - name: Stamp the build number
+        # Every run gets the next number (the workflow run number, which only goes up). It becomes
+        # the last part of the version (0.1.<build>), so it is in the installer and bundle file
+        # names and the app's own metadata, and the app shows it on its About page.
+        shell: bash
+        run: |
+          V="0.1.${{ github.run_number }}" node -e '
+            const fs = require("fs");
+            const f = "apps/desktop/src-tauri/tauri.conf.json";
+            const c = JSON.parse(fs.readFileSync(f, "utf8"));
+            c.version = process.env.V;
+            fs.writeFileSync(f, JSON.stringify(c, null, 2) + "\n");
+          '
+          echo "GOLDEN_BUILD=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "GOLDEN_COMMIT=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
       - name: Configure Apple signing and notarization
         # Only for push or manual runs on main (never pull requests), on the macOS runner.
         # Exports the Tauri signing variables only when their secrets exist, so builds stay
@@ -105,10 +120,23 @@ jobs:
           projectPath: apps/desktop
           args: ${{ matrix.args }}
           tagName: nightly
-          releaseName: "Golden nightly (latest main)"
-          releaseBody: "Latest main. macOS is signed and notarized when Apple credentials are configured; if it is not, right-click, Open the first time. Windows: choose More info, then Run anyway."
+          releaseName: "Golden nightly (build ${{ github.run_number }})"
+          releaseBody: "Latest main, build ${{ github.run_number }} (version 0.1.${{ github.run_number }}). macOS is signed and notarized when Apple credentials are configured; if it is not, right-click, Open the first time. Windows: choose More info, then Run anyway."
           releaseDraft: false
           prerelease: true
+      - name: Remove installers from older builds
+        # Installer names carry the build number, so old ones would pile up on the release.
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view nightly --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' |
+            grep -E '^Golden_0\.1\.[0-9]+_' | grep -v "^Golden_0\.1\.${{ github.run_number }}_" |
+            while read -r name; do
+              echo "Removing $name"
+              gh release delete-asset nightly "$name" --repo "$GITHUB_REPOSITORY" --yes
+            done || true
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:

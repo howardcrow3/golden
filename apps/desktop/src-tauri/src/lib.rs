@@ -330,8 +330,16 @@ async fn quick_plan(req: QuickPlanRequest) -> Result<QuickPlanResult, String> {
 }
 
 #[tauri::command]
-fn app_info() -> serde_json::Value {
-    serde_json::json!({ "name": "Golden", "version": env!("CARGO_PKG_VERSION"), "mode": "private" })
+fn app_info(app: tauri::AppHandle) -> serde_json::Value {
+    // The version comes from the bundle (CI stamps it 0.1.<build>); the build number and commit
+    // are baked in at compile time and read "dev" for a local build.
+    serde_json::json!({
+        "name": "Golden",
+        "version": app.package_info().version.to_string(),
+        "build": option_env!("GOLDEN_BUILD").unwrap_or("dev"),
+        "commit": option_env!("GOLDEN_COMMIT").unwrap_or("dev"),
+        "mode": "private",
+    })
 }
 
 fn run_mcp() -> Result<(), String> {

@@ -489,3 +489,15 @@ export interface WithholdingCheck {
 export async function getWithholdingCheck(invoke?: Invoke): Promise<WithholdingCheck> {
   return (await (await resolve(invoke))("withholding_check")) as WithholdingCheck;
 }
+
+export interface AppInfo {
+  name: string;
+  version: string;
+  /** The CI build number, or "dev" for a local build. */
+  build: string;
+  commit: string;
+  mode: string;
+}
+export async function appInfo(invoke?: Invoke): Promise<AppInfo> {
+  return (await (await resolve(invoke))("app_info")) as AppInfo;
+}

@@ -6,9 +6,10 @@
   import Transactions from "./lib/Transactions.svelte";
   import WhatIf from "./lib/WhatIf.svelte";
   import License from "./lib/License.svelte";
+  import About from "./lib/About.svelte";
   import { licenseStatus, type LicenseStatus } from "./lib/api";
 
-  const pages = ["Overview", "Transactions", "Import", "Retirement", "What if", "Tax estimate", "Licence"] as const;
+  const pages = ["Overview", "Transactions", "Import", "Retirement", "What if", "Tax estimate", "Licence", "About"] as const;
   let page = $state<(typeof pages)[number]>("Overview");
   let lic = $state<LicenseStatus | null>(null);
   $effect(() => {
@@ -30,7 +31,7 @@
     <div class="mode">Private mode · nothing leaves this computer</div>
   </nav>
   <main>
-    {#if page === "Overview"}<Overview />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
   </main>
 </div>
 
