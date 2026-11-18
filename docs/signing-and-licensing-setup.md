@@ -77,11 +77,11 @@ The signing key can be read back from Secrets Manager by an AWS admin, so it can
 
 ## Checklist
 
-- [ ] Licence keypair generated, secret stored offline, public key committed
+- [x] Licence keypair generated in AWS (never seen by anyone), public key committed
 - [ ] Apple secrets added and notarization verified on a nightly build
 - [ ] Windows signing configured and verified
 - [ ] Tagged release workflow added
 - [ ] Pages enabled, domain approved in Paddle, `GOLDEN_CHECKOUT_URL` set
-- [ ] highturtle variables GOLDEN_PRICE_ID / GOLDEN_PLAID_PRICE_ID set and Billing setup run
-- [ ] Public key committed
+- [x] highturtle variables GOLDEN_PRICE_ID / GOLDEN_PLAID_PRICE_ID set and Billing setup run
+- [x] Public key committed
 - [ ] Sandbox purchase tested, then `SALES_OPEN = true`
