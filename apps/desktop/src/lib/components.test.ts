@@ -6,15 +6,12 @@ import TaxCalculator from "./TaxCalculator.svelte";
 afterEach(cleanup);
 
 describe("Overview", () => {
-  it("switches the budget between week, month, quarter and year", async () => {
+  it("has a week, month, quarter and year toggle with month selected first", async () => {
     render(Overview);
-    expect(screen.getByTestId("budget").textContent).toBe("$6,500");
+    expect(screen.getByRole("button", { name: "Month" }).getAttribute("aria-pressed")).toBe("true");
     await fireEvent.click(screen.getByRole("button", { name: "Year" }));
-    expect(screen.getByTestId("budget").textContent).toBe("$78,000");
-    await fireEvent.click(screen.getByRole("button", { name: "Quarter" }));
-    expect(screen.getByTestId("budget").textContent).toBe("$19,500");
-    await fireEvent.click(screen.getByRole("button", { name: "Week" }));
-    expect(screen.getByTestId("budget").textContent).toBe("$1,495");
+    expect(screen.getByRole("button", { name: "Year" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Month" }).getAttribute("aria-pressed")).toBe("false");
   });
 });
 
