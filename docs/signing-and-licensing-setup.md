@@ -69,7 +69,9 @@ One-time setup:
 1. In the **highturtle** repository, add the variables `GOLDEN_PRICE_ID` and `GOLDEN_PLAID_PRICE_ID` (Settings > Secrets and variables > Actions > Variables). They are the same `pri_...` values as in this repository's secrets; price IDs are not sensitive.
 2. Run **Billing setup** in highturtle. It creates `GOLDEN_SIGNING_KEY` in AWS Secrets Manager if missing (nobody sees it) and prints the **public key** in the run's annotations.
 3. Put that public key in `apps/desktop/src-tauri/license_public_key.txt` here and merge.
-4. Test with a Paddle sandbox purchase: the email arrives and the key activates in the app. Then set `SALES_OPEN = true` in `site/checkout/checkout.js`.
+4. Test with one real purchase (the billing Lambda only handles live events): a 100% discount code on the Golden price works. The email arrives and the key activates in the app.
+
+The app's Buy button opens the Golden store page, `https://turtlebox.studio/golden/#buy`, which opens Paddle's checkout. `GOLDEN_CHECKOUT_URL` and `site/checkout/` (GitHub Pages) are an older route and are no longer needed.
 
 The signing key can be read back from Secrets Manager by an AWS admin, so it can be backed up. Issuing a licence by hand: `golden-license issue` (section 1).
 
