@@ -61,6 +61,10 @@ pub fn check_price_id(id: &str) -> Result<&str, String> {
     ))
 }
 
+/// Golden's store page on turtlebox.studio. Its Buy button opens Paddle's checkout, and the billing
+/// service emails the licence after payment. The app opens this page when no other checkout page is set.
+pub const STORE_URL: &str = "https://turtlebox.studio/golden/#buy";
+
 /// The short name sent to the checkout page so one page can serve every Turtlebox app.
 pub const APP_SLUG: &str = "golden";
 
@@ -118,7 +122,11 @@ impl PricingInfo {
                 }
             }
         };
-        let core_checkout_url = url_for("Core checkout", &core_price_id);
+        let core_checkout_url = if base.is_some() {
+            url_for("Core checkout", &core_price_id)
+        } else {
+            Some(STORE_URL.to_string())
+        };
         let plaid_checkout_url = url_for("Plaid checkout", &plaid_price_id);
         PricingInfo {
             pricing: Pricing::standard(),

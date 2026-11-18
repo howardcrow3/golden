@@ -37,6 +37,6 @@ Working today: balance sheet with starting balances, paystub reading, monthly pr
 Known gaps:
 
 - Six states (AR, CT, MD, MN, NY, VT) are flagged approximate; see the notes in `crates/fin-plan/data/states_2026.json`.
-- `apps/desktop/src-tauri/license_public_key.txt` is empty, so licence activation is off until the keypair is generated; see [signing and licensing setup](docs/signing-and-licensing-setup.md).
+- Licence activation is on: `apps/desktop/src-tauri/license_public_key.txt` holds the public key, and keys are issued by the highturtle billing Lambda on AWS; see [signing and licensing setup](docs/signing-and-licensing-setup.md).
 - Installers are unsigned (no Apple notarization or Windows certificate yet); the same doc lists the steps.
 - The what-if chat is rule-based by default. A language-model interpreter exists (`fin-app/src/model.rs`: validated answers only, no balances or birth dates sent, falls back to the rules) but no model is wired in yet; a `Completer` for a local model or CeeVee is the remaining piece.

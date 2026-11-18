@@ -76,7 +76,8 @@ fn serializes_flat_camel_case_for_the_ui() {
     assert_eq!(v["coreCents"], 3999);
     assert_eq!(v["plaidInterval"], "month");
     assert!(v["corePriceId"].is_null());
-    assert!(v["coreCheckoutUrl"].is_null());
+    assert_eq!(v["coreCheckoutUrl"], "https://turtlebox.studio/golden/#buy");
+    assert!(v["plaidCheckoutUrl"].is_null());
 }
 
 const BASE: &str = "https://turtlebox.example/checkout/";
@@ -104,11 +105,22 @@ fn checkout_links_refuse_odd_input() {
 }
 
 #[test]
-fn no_checkout_page_means_no_buy_links() {
-    let i = PricingInfo::from_ids(Some(CORE), Some(PLAID), None);
-    assert!(i.core_checkout_url.is_none() && i.plaid_checkout_url.is_none());
-    let i = PricingInfo::from_ids(Some(CORE), Some(PLAID), Some("  "));
-    assert!(i.core_checkout_url.is_none());
+fn without_a_checkout_page_buy_opens_the_store_page() {
+    use fin_license::pricing::STORE_URL;
+    assert_eq!(STORE_URL, "https://turtlebox.studio/golden/#buy");
+    // Core always has a place to buy; the add-on has no page yet, so no link.
+    for base in [None, Some("  ")] {
+        let i = PricingInfo::from_ids(Some(CORE), Some(PLAID), base);
+        assert_eq!(i.core_checkout_url.as_deref(), Some(STORE_URL));
+        assert!(i.plaid_checkout_url.is_none());
+    }
+    // A build with no price IDs at all still opens the store.
+    assert_eq!(
+        PricingInfo::from_ids(None, None, None)
+            .core_checkout_url
+            .as_deref(),
+        Some(STORE_URL)
+    );
 }
 
 #[test]
