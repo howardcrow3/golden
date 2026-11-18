@@ -1,0 +1,25 @@
+name = "golden-licence"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+# Remembers which Paddle transactions were already delivered, so a retried webhook never
+# sends a second email. Create it once: `npx wrangler kv namespace create LICENCES`, then
+# paste the id below (the deploy workflow does this for you when the id is still a placeholder).
+[[kv_namespaces]]
+binding = "LICENCES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# "live" or "sandbox" (which Paddle API to ask for the buyer's email).
+PADDLE_ENV = "live"
+MAIL_FROM = "Golden <licences@example.com>"
+SUPPORT_EMAIL = "support@example.com"
+
+# Secrets (set with `wrangler secret put`, never in this file):
+#   LICENCE_SIGNING_KEY   Ed25519 secret key, base64url (from golden-license keygen)
+#   PADDLE_WEBHOOK_SECRET Paddle notification destination secret (pdl_ntfset_...)
+#   PADDLE_API_KEY        Paddle API key with customer.read
+#   GOLDEN_PRICE_ID       core price (pri_...)
+#   GOLDEN_PLAID_PRICE_ID Plaid add-on price (pri_...)
+#   RESEND_API_KEY        email sending
