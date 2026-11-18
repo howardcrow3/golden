@@ -193,3 +193,14 @@ fn full_round_trip_signed_webhook_to_working_licence() {
     assert!(verify(&other, &got.token, APP_MAJOR).is_err());
     assert!(verify(&public(), &got.token, APP_MAJOR).is_ok());
 }
+
+/// The hosted licence service (services/licence, JavaScript) must issue tokens the app accepts.
+/// This token was made by the Rust tool with the same key, and services/licence/test pins the
+/// service's output to the same bytes, so the two stay in step.
+#[test]
+fn the_pinned_service_token_verifies() {
+    let token = "eyJwcm9kdWN0IjoiZ29sZGVuIiwibWFqb3IiOjEsImlzc3VlZCI6IjIwMjYtMTEtMTgiLCJwbGFpZF91bnRpbCI6IjIwMjYtMTItMTgiLCJidXllciI6ImN0bV9maXh0dXJlIn0.E1ZYwMv0TqZ3izTtBwqX2gICVC_UUOBCjKMUFf6ns2qqjLf8kgmdmmZMlXamZv5uPFriqZ5CaGQpRuTGAIcFCg";
+    let p = verify(&public(), token, APP_MAJOR).unwrap();
+    assert_eq!(p.buyer, "ctm_fixture");
+    assert_eq!(p.plaid_until, Some(day(2026, 12, 18)));
+}
