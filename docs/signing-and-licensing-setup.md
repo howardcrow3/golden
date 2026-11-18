@@ -58,22 +58,20 @@ Today every merge refreshes the rolling `nightly` release. Before selling, add a
 - In Paddle, add the Pages domain (for example `howardcrow3.github.io`) to approved domains for checkout.
 - Set the repository **variable** `GOLDEN_CHECKOUT_URL` to the page address (for example `https://howardcrow3.github.io/golden/checkout/`). Until it is set, the app's Buy buttons stay off.
 - `SALES_OPEN` in `site/checkout/checkout.js` is `false`: the page refuses to open checkout, so nobody can pay before keys can be delivered. Flip it to `true` in the same change that deploys the licence service.
-- The licence service is `services/licence/` (see section 7).
+- Licence delivery is the highturtle billing Lambda (see section 7).
 
-## 7. Licence service (Paddle webhook, signed key, email)
+## 7. Licence delivery (Paddle webhook, signed key, email)
 
-`services/licence/` is a Cloudflare Worker (free tier is plenty). After a payment, Paddle calls its `/webhook`; it verifies the signature, signs a licence with the secret key, looks up the buyer's email in Paddle, and emails the key through Resend. The app verifies it offline. Retried webhooks never send twice; a failed email makes Paddle retry.
+Golden reuses the Turtlebox billing Lambda in `howardcrow3/highturtle` (`billing/`, AWS, behind `https://turtlebox.studio/api/billing/webhook`). When Paddle reports a completed transaction for the Golden core or Plaid price, it signs a licence with the Golden signing key and emails it to the buyer through SES. The app verifies it offline. Retried webhooks never send twice, and a failed email makes Paddle retry. The existing Paddle destination already sends `transaction.completed`.
 
-One-time setup (nothing here goes into chat or the repo):
+One-time setup:
 
-1. **Cloudflare**: create a free account. Create an API token (My Profile > API Tokens > "Edit Cloudflare Workers" template). Add repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the account ID is on the Workers overview page).
-2. **Paddle**: create an API key with `customer.read` (Developer Tools > Authentication) and add it as secret `PADDLE_API_KEY`. Add a notification destination (Developer Tools > Notifications) for the event `transaction.completed`, URL `https://golden-licence.<your-workers-subdomain>.workers.dev/webhook`, and copy its secret key into repository secret `PADDLE_WEBHOOK_SECRET`.
-3. **Email**: create a Resend account, verify a sending domain, create an API key and add it as `RESEND_API_KEY`. Set repository variables `LICENCE_MAIL_FROM` (for example `Golden <licences@yourdomain.com>`) and `LICENCE_SUPPORT_EMAIL`. Set `PADDLE_ENV` to `sandbox` while testing.
-4. Run the **Licence service** workflow (Actions tab > Run workflow). It tests, creates the KV store, deploys, and loads the secrets above.
-5. Run the **Generate licence signing key** workflow once. The secret key is created on the runner and stored directly in the Worker; nobody sees it. Copy the public key from the run summary into `apps/desktop/src-tauri/license_public_key.txt` and commit it.
-6. Test with a Paddle sandbox purchase, confirm the email arrives and the key activates in the app, then switch `PADDLE_ENV` back, set `SALES_OPEN = true` in `site/checkout/checkout.js`, and merge.
+1. In the **highturtle** repository, add the variables `GOLDEN_PRICE_ID` and `GOLDEN_PLAID_PRICE_ID` (Settings > Secrets and variables > Actions > Variables). They are the same `pri_...` values as in this repository's secrets; price IDs are not sensitive.
+2. Run **Billing setup** in highturtle. It creates `GOLDEN_SIGNING_KEY` in AWS Secrets Manager if missing (nobody sees it) and prints the **public key** in the run's annotations.
+3. Put that public key in `apps/desktop/src-tauri/license_public_key.txt` here and merge.
+4. Test with a Paddle sandbox purchase: the email arrives and the key activates in the app. Then set `SALES_OPEN = true` in `site/checkout/checkout.js`.
 
-The secret key cannot be read back from Cloudflare. If you also want an offline backup, generate your own pair locally (section 1) and put the secret into the Worker with `npx wrangler secret put LICENCE_SIGNING_KEY` instead of step 5.
+The signing key can be read back from Secrets Manager by an AWS admin, so it can be backed up. Issuing a licence by hand: `golden-license issue` (section 1).
 
 ## Checklist
 
@@ -82,6 +80,6 @@ The secret key cannot be read back from Cloudflare. If you also want an offline 
 - [ ] Windows signing configured and verified
 - [ ] Tagged release workflow added
 - [ ] Pages enabled, domain approved in Paddle, `GOLDEN_CHECKOUT_URL` set
-- [ ] Cloudflare, Paddle API key and webhook secret, Resend secrets added
-- [ ] Licence service deployed and signing key generated, public key committed
+- [ ] highturtle variables GOLDEN_PRICE_ID / GOLDEN_PLAID_PRICE_ID set and Billing setup run
+- [ ] Public key committed
 - [ ] Sandbox purchase tested, then `SALES_OPEN = true`

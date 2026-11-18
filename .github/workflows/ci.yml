@@ -34,12 +34,3 @@ jobs:
       - run: cargo test --workspace --doc
       - name: Encrypted database (SQLCipher)
         run: cargo test -p fin-db -p fin-app --no-default-features --features sqlcipher
-  licence-service:
-    name: Licence service tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm test
-        working-directory: services/licence
