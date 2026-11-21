@@ -1,6 +1,7 @@
 <script lang="ts">
   import { GRAINS, GRAIN_LABEL, type Grain } from "./grain";
   import ThisPeriod from "./ThisPeriod.svelte";
+  import GettingStarted from "./GettingStarted.svelte";
   import CashFlow from "./CashFlow.svelte";
   import Budgets from "./Budgets.svelte";
   import Forecast from "./Forecast.svelte";
@@ -10,6 +11,7 @@
   import Insights from "./Insights.svelte";
   import Goals from "./Goals.svelte";
 
+  let { onnavigate }: { onnavigate?: (page: string) => void } = $props();
   let grain = $state<Grain>("month");
 </script>
 
@@ -22,6 +24,7 @@
   {/each}
 </div>
 
+<GettingStarted {onnavigate} />
 <ThisPeriod {grain} />
 
 <Insights />

@@ -31,7 +31,7 @@
     <div class="mode">Private mode · nothing leaves this computer</div>
   </nav>
   <main>
-    {#if page === "Overview"}<Overview />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
   </main>
 </div>
 

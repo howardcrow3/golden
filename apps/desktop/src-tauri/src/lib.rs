@@ -286,6 +286,11 @@ fn set_model(state: Shared, endpoint: String, name: String) -> Result<fin_app::l
 }
 
 #[tauri::command]
+fn setup_progress(state: Shared) -> Result<fin_app::setup::Setup, String> {
+    lock(&state)?.setup_progress()
+}
+
+#[tauri::command]
 fn goals(state: Shared) -> Result<Vec<fin_app::goals::GoalRow>, String> {
     lock(&state)?.goals()
 }
@@ -391,6 +396,7 @@ pub fn run() {
             estimate_tax,
             quick_plan,
             app_info,
+            setup_progress,
             model_settings,
             set_model,
             import_statement,
