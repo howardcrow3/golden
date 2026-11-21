@@ -54,6 +54,7 @@ fn household(spending: i64, state: &str) -> PlanInput {
             },
         ],
         annual_spending: Money::from_dollars(spending),
+        one_time_costs: vec![],
         horizon_age: 95,
     }
 }

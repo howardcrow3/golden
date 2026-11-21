@@ -2,7 +2,7 @@
 //! Golden runs the plan with and without them and shows both. Nothing is saved until the
 //! person keeps the change. The built-in `RuleInterpreter` understands common phrasings with
 //! no network or model; a language model can be plugged in behind the same trait later.
-use crate::household::{Household, StreamRow};
+use crate::household::{EventRow, Household, StreamRow};
 use crate::App;
 use chrono::{Datelike, NaiveDate};
 use fin_plan::quickplan::{self, QuickPlanResult};
@@ -27,16 +27,24 @@ pub enum Change {
         cents: i64,
         year: i32,
     },
+    /// A planned one-off cost (positive) or untaxed inflow (negative) in today's dollars.
+    #[serde(rename_all = "camelCase")]
+    PlannedCost {
+        label: String,
+        cents: i64,
+        year: i32,
+    },
 }
 
 impl Change {
     pub fn describe(&self, h: &Household) -> String {
         match self {
             Change::SetPick { key, label } => format!("Assume {}: {label}", pick_name(key)),
-            Change::RetireAt { person, age } => format!(
-                "{} retires at {age}",
-                h.people.get(*person).map_or("Someone", |p| p.name.as_str())
-            ),
+            Change::RetireAt { person, age } => {
+                let name = h.people.get(*person).map_or("Someone", |p| p.name.as_str());
+                let verb = if name == "You" { "retire" } else { "retires" };
+                format!("{name} {verb} at {age}")
+            }
             Change::Spending { cents } => {
                 format!("Spend ${} a year", group(*cents / 100))
             }
@@ -44,6 +52,12 @@ impl Change {
             Change::OneTime {
                 label, cents, year, ..
             } => format!("{label} of ${} in {year}", group(*cents / 100)),
+            Change::PlannedCost {
+                label, cents, year, ..
+            } if *cents < 0 => format!("{label}: ${} comes in during {year}", group(-*cents / 100)),
+            Change::PlannedCost {
+                label, cents, year, ..
+            } => format!("{label}: ${} goes out in {year}", group(*cents / 100)),
         }
     }
 
@@ -72,6 +86,11 @@ impl Change {
                 start_year: Some(*year),
                 end_year: Some(*year),
                 contribution_cents: 0,
+            }),
+            Change::PlannedCost { label, cents, year } => h.events.push(EventRow {
+                label: label.clone(),
+                year: *year,
+                cents: *cents,
             }),
         }
         Ok(())
@@ -206,6 +225,133 @@ fn amount_after(text: &str, marker: &str) -> Option<i64> {
         })
 }
 
+/// Amounts written with a dollar sign or a k/m suffix ("$400k", "30k", "$1,200"), in order.
+fn money_tokens(text: &str) -> Vec<i64> {
+    text.split_whitespace()
+        .map(|w| w.trim_matches(|c: char| ",.;:!?()".contains(c) && c != '$'))
+        .filter(|w| {
+            w.starts_with('$')
+                || (w.len() > 1
+                    && (w.ends_with('k') || w.ends_with('m'))
+                    && w[..w.len() - 1]
+                        .chars()
+                        .all(|c| c.is_ascii_digit() || c == '.' || c == ','))
+        })
+        .filter_map(parse_amount)
+        .collect()
+}
+
+/// Planned one-off costs and untaxed inflows: "buy a house for $400k in 2030", "college $30k
+/// a year from 2036 to 2040", "an inheritance of $200k in 2032", "sell the house in 2035 for
+/// $500k".
+fn planned_costs(t: &str, today: NaiveDate) -> Vec<Change> {
+    let years: Vec<i32> = t
+        .split_whitespace()
+        .filter_map(|w| {
+            w.trim_matches(|c: char| !c.is_ascii_digit())
+                .parse::<i32>()
+                .ok()
+        })
+        .filter(|y| (today.year()..=today.year() + 60).contains(y))
+        .collect();
+    let Some(&first_year) = years.first() else {
+        return vec![];
+    };
+    let Some(&cents) = money_tokens(t).first() else {
+        return vec![];
+    };
+    if t.contains("bonus") || t.contains("vest") {
+        return vec![];
+    }
+    let periodic = [
+        "a year",
+        "per year",
+        "each year",
+        "every year",
+        "annually",
+        "/year",
+    ]
+    .iter()
+    .any(|p| t.contains(p));
+    let monthly = t.contains("a month") || t.contains("per month") || t.contains("monthly");
+    let inflow = [
+        ("inherit", "Inheritance"),
+        ("sell the house", "Home sale"),
+        ("sell our house", "Home sale"),
+        ("sell the home", "Home sale"),
+        ("sell our home", "Home sale"),
+        ("sale of the house", "Home sale"),
+        ("sale of our house", "Home sale"),
+    ]
+    .iter()
+    .find(|(w, _)| t.contains(w))
+    .map(|(_, l)| l.to_string());
+    let cost = [
+        "house",
+        "home",
+        "car",
+        "wedding",
+        "college",
+        "tuition",
+        "boat",
+        "vacation",
+        "renovation",
+        "remodel",
+        "expense",
+        "cost",
+        "purchase",
+        "buy",
+        "down payment",
+        "medical",
+        "roof",
+    ]
+    .iter()
+    .find(|w| t.contains(*w))
+    .map(|w| {
+        let mut l = if *w == "buy" || *w == "purchase" || *w == "cost" {
+            "Expense".to_string()
+        } else {
+            w.to_string()
+        };
+        l[..1].make_ascii_uppercase();
+        l
+    });
+    let one_off_spend = t.contains("spend ") && years.len() == 1 && !periodic && !monthly;
+    let (label, sign) = match (inflow, cost) {
+        (Some(l), _) => (l, -1),
+        (None, Some(l)) => (l, 1),
+        (None, None) if one_off_spend => ("Expense".to_string(), 1),
+        _ => return vec![],
+    };
+    if monthly {
+        return vec![];
+    }
+    // A span of years: "from 2036 to 2040", "2036-2040" or "for 4 years".
+    let span: Vec<i32> = if years.len() >= 2 && years[1] > years[0] {
+        (years[0]..=years[1]).take(40).collect()
+    } else if let Some(n) = number_after(t, "for ").filter(|n| (2..=40).contains(n)) {
+        if t.contains("years") {
+            (first_year..first_year + n).collect()
+        } else {
+            vec![first_year]
+        }
+    } else {
+        vec![first_year]
+    };
+    let per_year = if span.len() > 1 && !periodic {
+        cents / span.len() as i64 // a total spread across the years
+    } else {
+        cents
+    };
+    span.into_iter()
+        .map(|year| Change::PlannedCost {
+            label: label.clone(),
+            cents: sign * per_year,
+            year,
+        })
+        .collect()
+}
+
 fn number_after(text: &str, marker: &str) -> Option<i32> {
     let rest = &text[text.find(marker)? + marker.len()..];
     rest.split_whitespace().take(3).find_map(|w| {
@@ -250,7 +396,14 @@ impl Interpreter for RuleInterpreter {
             }
         }
 
+        let planned = planned_costs(&t, today);
+        let has_planned = !planned.is_empty();
+        changes.extend(planned);
+
         for marker in ["spend ", "spending ", "live on "] {
+            if has_planned {
+                break;
+            }
             if let Some(mut cents) = amount_after(&t, marker) {
                 if t.contains("a month")
                     || t.contains("per month")
@@ -290,7 +443,6 @@ impl Interpreter for RuleInterpreter {
             "stock vest",
             "vest",
             "windfall",
-            "inheritance",
             "sell the business",
             "business sale",
         ] {
@@ -432,7 +584,7 @@ impl WhatIfPrep {
     }
 }
 
-const HELP: &str = "I couldn't turn that into a change yet. Try things like: \"what if I retire at 65\", \"spend $80k a year\", \"what if the market crashes\", \"claim Social Security at 70\", \"move to Florida\", or \"a bonus of $100k in 2028\".";
+const HELP: &str = "I couldn't turn that into a change yet. Try things like: \"what if I retire at 65\", \"spend $80k a year\", \"what if the market crashes\", \"claim Social Security at 70\", \"move to Florida\", \"a bonus of $100k in 2028\", \"buy a house for $400k in 2030\", \"college costs $30k a year from 2036 to 2040\" or \"an inheritance of $200k in 2032\".";
 
 impl App {
     /// Swap in a different interpreter (for example one backed by a language model).

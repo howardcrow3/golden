@@ -46,6 +46,9 @@ pub struct Household {
     pub filing: String,
     pub state: String,
     pub spending_cents: i64,
+    /// Planned one-off costs (and untaxed inflows when negative).
+    #[serde(default)]
+    pub events: Vec<EventRow>,
     pub cash_cents: i64,
     pub taxable_cents: i64,
     pub traditional_cents: i64,
@@ -100,6 +103,7 @@ impl From<LegacyHousehold> for Household {
             filing: l.filing,
             state: l.state,
             spending_cents: l.spending_cents,
+            events: vec![],
             cash_cents: l.cash_cents,
             taxable_cents: l.taxable_cents,
             traditional_cents: l.traditional_cents,
@@ -293,9 +297,26 @@ impl Household {
             streams,
             social_security: ss,
             annual_spending: Money::from_cents(self.spending_cents),
+            one_time_costs: self
+                .events
+                .iter()
+                .map(|e| fin_plan::projection::OneTimeCost {
+                    year: e.year,
+                    amount: Money::from_cents(e.cents),
+                })
+                .collect(),
             horizon_age: 95,
         })
     }
+}
+
+/// A planned one-off event: a cost when `cents` is positive, an untaxed inflow when negative.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EventRow {
+    pub label: String,
+    pub year: i32,
+    pub cents: i64,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
