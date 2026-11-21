@@ -188,7 +188,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Personal exemption phase-out and the tax-recapture add-back are not modelled.",
+   "notes": "Bracket schedule and standard figures match the 2025 CT-1040 Tax Calculation Schedule (CT DRS, Rev. 12/25; no 2026 schedule published yet). Not modelled: the personal exemption phase-out (Table A), 2% add-back (Table C), tax recapture (Table D) and personal tax credit (Table E), all of which depend on CT AGI.",
    "joint_brackets": [
     [
      0,
@@ -621,7 +621,7 @@
    "std_joint": 1310000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Deduction is a percentage of income with min/max and the exemption phases out at higher incomes; county income tax is not included.",
+   "notes": "Standard deduction and rate schedule match the Comptroller Tax Alert on the 2025 legislative session (rev. Dec 22, 2025): flat $3,350 single / $6,700 joint plus the $3,200 exemption per person, with new 6.25% and 6.5% top brackets. Not modelled: exemption phase-out at higher incomes; county income tax is not included.",
    "joint_brackets": [
     [
      0,
