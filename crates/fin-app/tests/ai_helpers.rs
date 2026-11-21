@@ -217,3 +217,77 @@ fn text_with_made_up_numbers_or_junk_falls_back() {
         assert_eq!(e.source, "built-in", "{bad}");
     }
 }
+
+fn household_two_people() -> fin_app::household::Household {
+    let mut h = App::in_memory().unwrap().household().unwrap();
+    while h.people.len() < 2 {
+        let p = h.people[0].clone();
+        h.people.push(p);
+    }
+    h
+}
+
+#[test]
+fn rules_suggest_a_longer_horizon_for_two_people_with_no_model() {
+    let app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 16));
+    let h = household_two_people();
+    app.save_household(&h).unwrap();
+    // Age 95 is already the likeliest, so nothing to suggest until the person picks Age 90.
+    assert!(app
+        .suggest_assumptions()
+        .unwrap()
+        .iter()
+        .all(|x| x.key != "horizon_age"));
+    app.set_pick("horizon_age", "Age 90").unwrap();
+    let s = app.suggest_assumptions().unwrap();
+    assert!(s
+        .iter()
+        .any(|x| x.key == "horizon_age" && x.label == "Age 95" && x.source == "built-in"));
+    // Once the person has picked it, it is no longer suggested.
+    app.set_pick("horizon_age", "Age 95").unwrap();
+    assert!(app
+        .suggest_assumptions()
+        .unwrap()
+        .iter()
+        .all(|x| x.key != "horizon_age"));
+}
+
+#[test]
+fn model_suggestions_are_limited_to_real_options_and_clean_reasons() {
+    let reply = r#"{"suggestions":[
+        {"key":"real_return","label":"Cautious","reason":"Your plan leans on markets, so a cautious return is safer."},
+        {"key":"real_return","label":"Optimistic","reason":"Only one suggestion per assumption is kept."},
+        {"key":"horizon_age","label":"Age 120","reason":"Not a real option, so it is dropped."},
+        {"key":"made_up","label":"Flat","reason":"Not a real assumption, so it is dropped."},
+        {"key":"spending_change","label":"Declines","reason":"Spending will drop 15 percent for sure, so plan on it."},
+        {"key":"ss_claim_age","label":"Age 70","reason":"Waiting to claim raises the benefit for later years."}
+    ]}"#;
+    let (app, asked) = app_with(reply);
+    app.save_household(&household_two_people()).unwrap();
+    let s = app.suggest_assumptions().unwrap();
+    let keys: Vec<_> = s
+        .iter()
+        .map(|x| (x.key.as_str(), x.label.as_str(), x.source.as_str()))
+        .collect();
+    assert_eq!(
+        keys,
+        vec![
+            ("real_return", "Cautious", "model"),
+            ("ss_claim_age", "Age 70", "model")
+        ]
+    );
+    // The prompt carried age bands and retirement ages, never birth dates or balances.
+    let prompt = asked.lock().unwrap()[0].1.clone();
+    assert!(prompt.contains("plans to retire at") && prompt.contains("likely"));
+    let h = household_two_people();
+    assert!(!prompt.contains(&h.people[0].birth_date) && !prompt.contains("taxable"));
+}
+
+#[test]
+fn unusable_model_answers_fall_back_to_the_rules() {
+    let (app, _) = app_with("garbage");
+    app.save_household(&household_two_people()).unwrap();
+    app.set_pick("horizon_age", "Age 90").unwrap();
+    let s = app.suggest_assumptions().unwrap();
+    assert!(s.iter().all(|x| x.source == "built-in") && !s.is_empty());
+}

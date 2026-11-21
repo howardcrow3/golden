@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "required": ["suggestions"],
+  "properties": {
+    "suggestions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["key", "label", "reason"],
+        "properties": {
+          "key": {"type": "string", "minLength": 1, "maxLength": 40},
+          "label": {"type": "string", "minLength": 1, "maxLength": 40},
+          "reason": {"type": "string", "minLength": 10, "maxLength": 160}
+        }
+      }
+    }
+  }
+}

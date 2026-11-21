@@ -169,8 +169,25 @@ pub const EXPLAIN: TaskSpec = TaskSpec {
     temperature: 0.2,
 };
 
+/// Suggest which existing option of each assumption suits a household, with a short reason. The
+/// caller keeps only real options and the person accepts or rejects each one.
+pub const SUGGEST_ASSUMPTIONS: TaskSpec = TaskSpec {
+    id: "suggest_assumptions",
+    version: 1,
+    prompt: "{{input}}",
+    schema: include_str!("../prompts/suggest_assumptions.schema.json"),
+    max_tokens: 500,
+    temperature: 0.2,
+};
+
 /// Every task, so a completer can find one by the name the app asks for.
-pub const ALL: &[&TaskSpec] = &[&WHATIF, &CATEGORIZE, &NAME_STATEMENT, &EXPLAIN];
+pub const ALL: &[&TaskSpec] = &[
+    &WHATIF,
+    &CATEGORIZE,
+    &NAME_STATEMENT,
+    &EXPLAIN,
+    &SUGGEST_ASSUMPTIONS,
+];
 
 pub fn by_id(id: &str) -> Option<&'static TaskSpec> {
     ALL.iter().copied().find(|t| t.id == id)

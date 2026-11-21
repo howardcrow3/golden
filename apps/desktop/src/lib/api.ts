@@ -583,3 +583,14 @@ export interface Explanation {
 export async function explainResult(facts: ExplainFacts, invoke?: Invoke): Promise<Explanation> {
   return (await (await resolve(invoke))("explain_result", { facts })) as Explanation;
 }
+
+export interface AssumptionSuggestion {
+  key: string;
+  label: string;
+  reason: string;
+  /** "model" or "built-in". */
+  source: string;
+}
+export async function suggestAssumptions(invoke?: Invoke): Promise<AssumptionSuggestion[]> {
+  return (await (await resolve(invoke))("suggest_assumptions")) as AssumptionSuggestion[];
+}

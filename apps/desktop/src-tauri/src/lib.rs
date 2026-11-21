@@ -394,6 +394,18 @@ async fn explain_result(
     .map_err(|e| e.to_string())?
 }
 
+/// Suggest which assumption options suit this household. Nothing is saved.
+#[tauri::command]
+async fn suggest_assumptions(app: tauri::AppHandle) -> Result<Vec<fin_app::suggest::AssumptionSuggestion>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Mutex<Core>>();
+        let core = lock(&state)?;
+        core.suggest_assumptions()
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 fn setup_progress(state: Shared) -> Result<fin_app::setup::Setup, String> {
     lock(&state)?.setup_progress()
@@ -512,6 +524,7 @@ pub fn run() {
             model_status,
             suggest_categories,
             explain_result,
+            suggest_assumptions,
             start_model_download,
             model_progress,
             cancel_model_download,
