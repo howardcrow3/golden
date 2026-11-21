@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["intent"],
+  "properties": {
+    "intent": {"type": "string", "enum": ["spending", "income", "saving", "net_worth", "balance"]},
+    "grain": {"type": "string", "enum": ["week", "month", "quarter", "year"]},
+    "which": {"type": "string", "enum": ["this", "last"]},
+    "month": {"type": "integer", "minimum": 1, "maximum": 12},
+    "category": {"type": "string", "maxLength": 40},
+    "account": {"type": "string", "maxLength": 60}
+  }
+}
