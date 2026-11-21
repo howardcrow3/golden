@@ -201,6 +201,7 @@ export type Change =
   | { kind: "spending"; cents: number }
   | { kind: "moveTo"; state: string }
   | { kind: "oneTime"; label: string; person: number; cents: number; year: number }
+  | { kind: "raise"; person: number; bp: number }
   | { kind: "plannedCost"; label: string; cents: number; year: number };
 
 export interface WhatIfReply {

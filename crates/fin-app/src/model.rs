@@ -120,6 +120,7 @@ fn valid(c: &Change, h: &Household, today: NaiveDate) -> bool {
                 && (0..=MAX_DOLLARS_IN_CENTS).contains(cents)
                 && (today.year()..=today.year() + 60).contains(year)
         }
+        Change::Raise { person, bp } => *person < people && (1..=10_000).contains(bp),
         Change::PlannedCost { label, cents, year } => {
             !label.trim().is_empty()
                 && label.len() <= 60

@@ -124,3 +124,58 @@ fn keeping_it_saves_the_event_in_the_household() {
     let old: fin_app::household::Household = serde_json::from_value(v).unwrap();
     assert!(old.events.is_empty());
 }
+
+#[test]
+fn a_raise_scales_regular_income_but_not_one_time_amounts() {
+    let a = app();
+    let c = changes(&a, "what if I get a 10% raise");
+    assert!(c.iter().any(|c| matches!(
+        c,
+        Change::Raise {
+            person: 0,
+            bp: 1000
+        }
+    )));
+    let c = changes(&a, "a raise of 3.5 percent");
+    assert!(c.iter().any(|c| matches!(c, Change::Raise { bp: 350, .. })));
+    // Words without a number are not guessed at.
+    assert!(changes(&a, "what if I get a raise").is_empty());
+
+    let mut h = a.household().unwrap();
+    let before = h.streams.clone();
+    h.streams.push(fin_app::household::StreamRow {
+        label: "Bonus".into(),
+        person: 0,
+        annual_cents: 1_000_000,
+        start_year: Some(2028),
+        end_year: Some(2028),
+        contribution_cents: 0,
+    });
+    Change::Raise {
+        person: 0,
+        bp: 1000,
+    }
+    .apply(&mut h)
+    .unwrap();
+    for (i, s) in before.iter().enumerate().filter(|(_, s)| s.person == 0) {
+        assert_eq!(h.streams[i].annual_cents, s.annual_cents * 11 / 10);
+    }
+    assert_eq!(h.streams.last().unwrap().annual_cents, 1_000_000);
+    assert!(Change::Raise { person: 9, bp: 100 }.apply(&mut h).is_err());
+}
+
+#[test]
+fn a_raise_helps_the_plan() {
+    let a = app();
+    let r = a
+        .prepare_whatif("a 10% raise", today())
+        .unwrap()
+        .run(300)
+        .unwrap();
+    assert!(r.after.unwrap().success_rate >= r.before.unwrap().success_rate);
+    assert!(
+        r.descriptions[0].contains("10% raise"),
+        "{:?}",
+        r.descriptions
+    );
+}
