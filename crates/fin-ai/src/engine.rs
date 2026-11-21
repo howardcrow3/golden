@@ -33,6 +33,16 @@ impl Engine {
         }
     }
 
+    /// Run a harness task (versioned prompt, schema-built grammar, validation, one retry).
+    /// Blocks until done; call it off the UI thread.
+    pub fn run_task(
+        &self,
+        spec: &crate::task::TaskSpec,
+        vars: &[(&str, &str)],
+    ) -> Result<crate::task::TaskOutput> {
+        crate::task::run_blocking(&self.worker, spec, vars, Priority::Interactive)
+    }
+
     /// Ask for one JSON object. Blocks until the model answers; call it off the UI thread.
     pub fn complete_json(&self, prompt: &str) -> Result<String> {
         let mut req = GenerateRequest::new(prompt);

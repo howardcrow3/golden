@@ -11,6 +11,8 @@ pub mod hardware;
 #[cfg(feature = "llama")]
 pub mod llama;
 pub mod manager;
+pub mod task;
+pub mod validate;
 pub mod worker;
 
 pub use catalog::{Catalog, ModelEntry, Role};
