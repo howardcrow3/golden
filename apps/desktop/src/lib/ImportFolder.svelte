@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { importFolder, type FolderReport, type ImportReport, type Invoke } from "./api";
+  import { importFolder, stopWatching, watchFolder, watchedFolder, type FolderReport, type ImportReport, type Invoke, type Watch } from "./api";
 
   let {
     invoke,
@@ -11,6 +11,33 @@
   let busy = $state(false);
   let error = $state("");
   let result = $state<FolderReport | null>(null);
+
+  let watching = $state<Watch | null>(null);
+  $effect(() => {
+    watchedFolder(invoke)
+      .then((w) => {
+        watching = w;
+        if (w && !path) path = w.path;
+      })
+      .catch(() => (watching = null));
+  });
+  async function watch() {
+    error = "";
+    try {
+      watching = await watchFolder(path, account, kind, invoke);
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+  async function unwatch() {
+    error = "";
+    try {
+      await stopWatching(invoke);
+      watching = null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
 
   async function run() {
     busy = true;
@@ -34,6 +61,12 @@
     <input bind:value={path} aria-label="Folder to import" placeholder="/Users/you/Downloads" />
   </label>
   <button type="button" onclick={run} disabled={busy || !path.trim()}>{busy ? "Importing…" : "Import new files"}</button>
+  {#if watching}
+    <p role="status" data-testid="watching">Watching {watching.path}. New statements are imported every few minutes while Golden is open.</p>
+    <button type="button" onclick={unwatch}>Stop watching</button>
+  {:else}
+    <button type="button" onclick={watch} disabled={!path.trim()}>Keep watching this folder</button>
+  {/if}
   {#if error}<p class="err" role="alert">{error}</p>{/if}
   {#if result}
     <p role="status" data-testid="folder-result">

@@ -33,6 +33,7 @@ pub mod setup;
 pub mod suggest;
 pub mod transactions;
 pub mod transfers;
+pub mod watch;
 pub mod withholding;
 
 use chrono::NaiveDate;
