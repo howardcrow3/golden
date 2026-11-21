@@ -315,7 +315,7 @@ fn attach_model(app: &tauri::AppHandle) {
     let state = app.state::<Mutex<Core>>();
     if let Ok(mut core) = state.lock() {
         core.set_embedded_model(completer);
-    }
+    };
 }
 
 #[tauri::command]
