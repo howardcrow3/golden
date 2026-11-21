@@ -253,6 +253,12 @@ fn undo_make_plan(state: Shared) -> Result<Household, String> {
     lock(&state)?.undo_make_plan()
 }
 
+/// Answer a plain-words question about spending, income, savings, net worth or balances.
+#[tauri::command]
+fn ask(state: Shared, question: String) -> Result<fin_app::ask::Answer, String> {
+    lock(&state)?.ask(&question)
+}
+
 #[tauri::command]
 fn accounts(state: Shared) -> Result<Vec<AccountRow>, String> {
     lock(&state)?.accounts()
@@ -606,6 +612,7 @@ pub fn run() {
             connections,
             erase_all_data,
             import_folder,
+            ask,
             list_scenarios,
             save_scenario,
             delete_scenario,
