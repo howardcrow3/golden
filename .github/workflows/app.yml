@@ -137,6 +137,11 @@ jobs:
               echo "Removing $name"
               gh release delete-asset nightly "$name" --repo "$GITHUB_REPOSITORY" --yes
             done || true
+          # The action only sets the title and notes when it creates a release, so keep them
+          # current: whoever opens the page sees which build is newest.
+          gh release edit nightly --repo "$GITHUB_REPOSITORY" \
+            --title "Golden nightly (build ${{ github.run_number }})" \
+            --notes "Latest main, build ${{ github.run_number }} (version 0.1.${{ github.run_number }}). macOS is signed and notarized when Apple credentials are configured; if it is not, right-click, Open the first time. Windows: choose More info, then Run anyway." || true
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
