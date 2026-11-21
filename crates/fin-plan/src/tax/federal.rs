@@ -36,7 +36,8 @@ pub struct FederalTaxYear {
     pub year: i32,
     pub source: String,
     standard_deduction: HashMap<FilingStatus, Money>,
-    /// Extra standard deduction for each filer aged 65 or over.
+    /// Extra standard deduction for each filer aged 65 or over. 2026: $2,050 if unmarried,
+    /// $1,650 if married (IRS Rev. Proc. 2025-32 section 4.14(3), checked November 2026).
     #[serde(default)]
     aged_extra_deduction: HashMap<FilingStatus, Money>,
     brackets: HashMap<FilingStatus, BracketTable>,
@@ -80,6 +81,7 @@ pub struct FederalResult {
 }
 
 /// Statutory MAGI thresholds for the 3.8% net investment income tax (not inflation-indexed).
+/// Source: IRS Topic no. 559, https://www.irs.gov/taxtopics/tc559 (checked November 2026).
 fn niit_threshold(fs: FilingStatus) -> Money {
     Money::from_dollars(match fs {
         FilingStatus::MarriedJoint => 250_000,
@@ -89,7 +91,10 @@ fn niit_threshold(fs: FilingStatus) -> Money {
 }
 
 /// The 2025-2028 extra deduction for filers 65+: $6,000 each, reduced by 6% of income over
-/// $75,000 ($150,000 joint). Not available to married people filing separately.
+/// $75,000 ($150,000 joint). Not available to married people filing separately (the IRS says
+/// to file jointly if married). Source: IRS fact sheet FS-2025-03,
+/// https://www.irs.gov/newsroom/one-big-beautiful-bill-act-tax-deductions-for-working-americans-and-seniors
+/// for the amount, years and thresholds; the 6% rate is from the statute (the fact sheet omits it).
 fn senior_bonus_deduction(fs: FilingStatus, seniors: u8, magi: Money) -> Money {
     let (start, ok) = match fs {
         FilingStatus::MarriedJoint => (150_000, true),
