@@ -598,3 +598,19 @@ export interface AssumptionSuggestion {
 export async function suggestAssumptions(invoke?: Invoke): Promise<AssumptionSuggestion[]> {
   return (await (await resolve(invoke))("suggest_assumptions")) as AssumptionSuggestion[];
 }
+
+export interface AiActivityEntry {
+  at: string;
+  task: string;
+  ok: boolean;
+  millis: number;
+  promptChars: number;
+  replyChars: number;
+  error: string | null;
+}
+export async function aiActivity(invoke?: Invoke): Promise<AiActivityEntry[]> {
+  return (await (await resolve(invoke))("ai_activity")) as AiActivityEntry[];
+}
+export async function clearAiActivity(invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("clear_ai_activity");
+}

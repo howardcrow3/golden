@@ -406,6 +406,18 @@ async fn suggest_assumptions(app: tauri::AppHandle) -> Result<Vec<fin_app::sugge
     .map_err(|e| e.to_string())?
 }
 
+/// Every model run this session (timings and sizes only, never the text).
+#[tauri::command]
+fn ai_activity(state: Shared) -> Result<Vec<fin_app::activity::ActivityEntry>, String> {
+    Ok(lock(&state)?.ai_activity())
+}
+
+#[tauri::command]
+fn clear_ai_activity(state: Shared) -> Result<(), String> {
+    lock(&state)?.clear_ai_activity();
+    Ok(())
+}
+
 #[tauri::command]
 fn setup_progress(state: Shared) -> Result<fin_app::setup::Setup, String> {
     lock(&state)?.setup_progress()
@@ -525,6 +537,8 @@ pub fn run() {
             suggest_categories,
             explain_result,
             suggest_assumptions,
+            ai_activity,
+            clear_ai_activity,
             start_model_download,
             model_progress,
             cancel_model_download,
