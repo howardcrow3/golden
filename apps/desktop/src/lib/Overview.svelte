@@ -24,6 +24,14 @@
   {/each}
 </div>
 
+{#if onnavigate}
+  <nav class="quick" aria-label="Quick actions">
+    <button type="button" onclick={() => onnavigate("Ask")}>Ask about your money</button>
+    <button type="button" onclick={() => onnavigate("What if")}>Try a what if</button>
+    <button type="button" onclick={() => onnavigate("Import")}>Import a statement</button>
+  </nav>
+{/if}
+
 <GettingStarted {onnavigate} />
 <ThisPeriod {grain} />
 
@@ -40,5 +48,6 @@
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }
+  .quick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
   .toggle { display: flex; gap: 6px; margin-bottom: 20px; }
 </style>

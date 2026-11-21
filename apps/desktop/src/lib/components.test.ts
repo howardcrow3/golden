@@ -15,6 +15,17 @@ describe("Overview", () => {
   });
 });
 
+describe("Overview quick actions", () => {
+  it("jumps to Ask, What if and Import", async () => {
+    const go = vi.fn();
+    render(Overview, { onnavigate: go });
+    await fireEvent.click(screen.getByRole("button", { name: "Ask about your money" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Try a what if" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Import a statement" }));
+    expect(go.mock.calls.map((c) => c[0])).toEqual(["Ask", "What if", "Import"]);
+  });
+});
+
 describe("TaxCalculator", () => {
   it("rejects a non-numeric wage", async () => {
     render(TaxCalculator);
