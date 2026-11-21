@@ -326,6 +326,15 @@ impl App {
         }
     }
 
+    /// Whether the person has saved their own household (as opposed to the sample shown first).
+    pub fn household_is_saved(&self) -> Result<bool, String> {
+        Ok(self
+            .db
+            .get_setting(KEY)
+            .map_err(|e| e.to_string())?
+            .is_some())
+    }
+
     pub fn save_household(&self, h: &Household) -> Result<(), String> {
         self.require_edit()?;
         let mut h = h.clone();

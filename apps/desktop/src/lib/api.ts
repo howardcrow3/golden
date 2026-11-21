@@ -512,3 +512,19 @@ export async function modelSettings(invoke?: Invoke): Promise<ModelSettings> {
 export async function setModel(endpoint: string, name: string, invoke?: Invoke): Promise<ModelSettings> {
   return (await (await resolve(invoke))("set_model", { endpoint, name })) as ModelSettings;
 }
+
+export interface SetupStep {
+  key: string;
+  title: string;
+  done: boolean;
+  /** Sidebar page that does it. */
+  page: string;
+}
+export interface Setup {
+  steps: SetupStep[];
+  done: number;
+  complete: boolean;
+}
+export async function setupProgress(invoke?: Invoke): Promise<Setup> {
+  return (await (await resolve(invoke))("setup_progress")) as Setup;
+}

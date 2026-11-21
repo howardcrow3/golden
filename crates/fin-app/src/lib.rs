@@ -21,6 +21,7 @@ pub mod mcp;
 pub mod model;
 pub mod paystub;
 pub mod recurring;
+pub mod setup;
 pub mod transactions;
 pub mod transfers;
 pub mod withholding;
