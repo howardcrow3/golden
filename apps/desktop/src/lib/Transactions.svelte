@@ -1,5 +1,6 @@
 <script lang="ts">
   import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, type Invoke, type TxnRow } from "./api";
+  import CategorySuggest from "./CategorySuggest.svelte";
   import { formatCents } from "./money";
   import { filterTxns, sumTxns } from "./txnFilter";
 
@@ -125,6 +126,8 @@
   <button type="button" onclick={backup}>Back up everything</button>
   <label class="check">Restore from backup <input type="file" accept=".json" aria-label="Backup file" onchange={restore} /></label>
 </div>
+
+{#if onlyTodo && rows.length > 0}<CategorySuggest {invoke} ondone={load} />{/if}
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 {#if note}<p role="status">{note}</p>{/if}

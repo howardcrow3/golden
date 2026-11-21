@@ -299,8 +299,13 @@ struct EngineCompleter(fin_ai::Engine);
 
 impl fin_app::model::Completer for EngineCompleter {
     fn complete(&self, prompt: &str) -> Result<String, String> {
+        self.complete_task("whatif", prompt)
+    }
+
+    fn complete_task(&self, task: &str, prompt: &str) -> Result<String, String> {
+        let spec = fin_ai::task::by_id(task).ok_or_else(|| format!("unknown model task {task}"))?;
         self.0
-            .run_task(&fin_ai::task::WHATIF, &[("input", prompt)])
+            .run_task(spec, &[("input", prompt)])
             .map(|o| o.raw)
             .map_err(|e| e.to_string())
     }
@@ -359,6 +364,19 @@ fn remove_model(app: tauri::AppHandle, id: String) -> Result<(), String> {
     fin_ai::manager::remove(&fin_ai::Catalog::builtin(), &id, &models_dir(&app)?)?;
     attach_model(&app);
     Ok(())
+}
+
+/// Ask the model to suggest categories for lines that have none. Off the async runtime, since a
+/// model can take seconds.
+#[tauri::command]
+async fn suggest_categories(app: tauri::AppHandle) -> Result<Vec<fin_app::ai::CategorySuggestion>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Mutex<Core>>();
+        let core = lock(&state)?;
+        core.suggest_categories()
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -477,6 +495,7 @@ pub fn run() {
             setup_progress,
             model_settings,
             model_status,
+            suggest_categories,
             start_model_download,
             model_progress,
             cancel_model_download,

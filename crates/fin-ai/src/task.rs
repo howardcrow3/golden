@@ -136,5 +136,23 @@ pub const WHATIF: TaskSpec = TaskSpec {
     temperature: 0.0,
 };
 
+/// File bank transactions into the app's categories from their descriptions alone. The caller
+/// checks every id and category against what exists, and nothing is saved until the person accepts.
+pub const CATEGORIZE: TaskSpec = TaskSpec {
+    id: "categorize",
+    version: 1,
+    prompt: "{{input}}",
+    schema: include_str!("../prompts/categorize.schema.json"),
+    max_tokens: 900,
+    temperature: 0.0,
+};
+
+/// Every task, so a completer can find one by the name the app asks for.
+pub const ALL: &[&TaskSpec] = &[&WHATIF, &CATEGORIZE];
+
+pub fn by_id(id: &str) -> Option<&'static TaskSpec> {
+    ALL.iter().copied().find(|t| t.id == id)
+}
+
 #[cfg(test)]
 mod tests;

@@ -1,6 +1,7 @@
 //! Application service: the one place the UI talks to. It wires file import, categorization
 //! rules and the ledger together and returns plain serializable shapes. The Tauri shell only
 //! forwards calls here, so everything is testable without a window.
+pub mod ai;
 pub mod allocate;
 pub mod backup;
 pub mod balance;
@@ -83,6 +84,8 @@ pub struct App {
     pub(crate) clock: fn() -> NaiveDate,
     pub(crate) interpreter: Box<dyn chat::Interpreter>,
     /// A model running inside the app; it wins over a saved model address.
+    /// Whichever model is in use (built-in, or a saved local address) for the AI helpers.
+    pub(crate) ai: Option<std::sync::Arc<dyn model::Completer + Sync>>,
     pub(crate) embedded: Option<std::sync::Arc<dyn model::Completer + Sync>>,
     library_root: Option<std::path::PathBuf>,
     pub(crate) library_default: Option<std::path::PathBuf>,
@@ -127,6 +130,7 @@ impl App {
             public_key: None,
             clock: today_local,
             interpreter: Box::new(chat::RuleInterpreter),
+            ai: None,
             embedded: None,
             library_root: None,
             library_default: None,

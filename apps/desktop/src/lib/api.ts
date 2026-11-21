@@ -558,3 +558,12 @@ export async function cancelModelDownload(invoke?: Invoke): Promise<void> {
 export async function removeModel(id: string, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("remove_model", { id });
 }
+
+export interface CategorySuggestion {
+  id: number;
+  payee: string;
+  category: string;
+}
+export async function suggestCategories(invoke?: Invoke): Promise<CategorySuggestion[]> {
+  return (await (await resolve(invoke))("suggest_categories")) as CategorySuggestion[];
+}

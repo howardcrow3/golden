@@ -140,3 +140,22 @@ fn two_bad_answers_fail_the_task() {
     let e = run_blocking(&w, &WHATIF, &[("input", "x")], Priority::Interactive).unwrap_err();
     assert!(e.to_string().contains("failed after 2 attempts"));
 }
+
+#[test]
+fn every_task_is_findable_and_compiles() {
+    for t in ALL {
+        assert_eq!(by_id(t.id).unwrap().id, t.id);
+        assert!(t.grammar().unwrap().contains("root ::="), "{}", t.id);
+        assert!(t.version >= 1 && t.prompt.contains("{{input}}"));
+    }
+    assert!(by_id("nope").is_none());
+}
+
+#[test]
+fn categorize_accepts_items_and_refuses_junk() {
+    let schema = CATEGORIZE.schema_value().unwrap();
+    assert!(check_output(&schema, r#"{"items":[{"id":3,"category":"Dining out"}]}"#).is_ok());
+    assert!(check_output(&schema, r#"{"items":[]}"#).is_ok());
+    assert!(check_output(&schema, r#"{"items":[{"id":"x","category":"a"}]}"#).is_err());
+    assert!(check_output(&schema, r#"{"items":[{"id":1}]}"#).is_err());
+}
