@@ -2,6 +2,7 @@
   import { keepWhatIf, whatIf, type Invoke, type WhatIfReply } from "./api";
   import { verdict } from "./chart";
   import { formatPercent } from "./money";
+  import ModelSetup from "./ModelSetup.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   type Turn = { question: string; reply: WhatIfReply; state: "open" | "kept" | "dismissed" };
@@ -56,6 +57,8 @@
 </div>
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
+
+<ModelSetup {invoke} />
 
 {#each turns as t, i}
   <section class="card turn" data-testid="turn">

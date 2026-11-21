@@ -392,7 +392,7 @@ describe("WhatIf", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Spend $80k a year" }));
     await fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
     expect((await screen.findByRole("status")).textContent).toMatch(/Nothing was changed/);
-    expect(calls).toEqual(["whatif"]);
+    expect(calls.filter((c) => c !== "model_settings")).toEqual(["whatif"]);
   });
   it("shows the help text and no buttons when nothing was understood", async () => {
     render(WhatIf, { invoke: async () => reply(false) });

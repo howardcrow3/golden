@@ -276,6 +276,16 @@ fn insights(state: Shared) -> Result<Vec<fin_app::insights::Insight>, String> {
 }
 
 #[tauri::command]
+fn model_settings(state: Shared) -> Result<fin_app::localmodel::ModelSettings, String> {
+    lock(&state)?.model_settings()
+}
+
+#[tauri::command]
+fn set_model(state: Shared, endpoint: String, name: String) -> Result<fin_app::localmodel::ModelSettings, String> {
+    lock(&state)?.set_model(&endpoint, &name)
+}
+
+#[tauri::command]
 fn goals(state: Shared) -> Result<Vec<fin_app::goals::GoalRow>, String> {
     lock(&state)?.goals()
 }
@@ -369,15 +379,20 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
-            app.manage(Mutex::new(Core::new(db)
+            let mut core = Core::new(db)
                 .with_public_key(bundled_public_key())
-                .with_library(Some(fin_app::library::default_root(&dir)))));
+                .with_library(Some(fin_app::library::default_root(&dir)));
+            // Use the local language model for the what-if chat when one was set up.
+            core.refresh_interpreter();
+            app.manage(Mutex::new(core));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             estimate_tax,
             quick_plan,
             app_info,
+            model_settings,
+            set_model,
             import_statement,
             import_file,
             export_transactions,
