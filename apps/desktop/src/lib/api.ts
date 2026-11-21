@@ -675,3 +675,13 @@ export async function undoablePlan(invoke?: Invoke): Promise<string | null> {
 export async function undoMakePlan(invoke?: Invoke): Promise<Household> {
   return (await (await resolve(invoke))("undo_make_plan")) as Household;
 }
+
+export interface AskAnswer {
+  understood: boolean;
+  text: string;
+  facts: { label: string; cents: number }[];
+  behind: { id: number; day: string; payee: string; memo: string; amountCents: number; category: string | null; account: string }[];
+}
+export async function ask(question: string, invoke?: Invoke): Promise<AskAnswer> {
+  return (await (await resolve(invoke))("ask", { question })) as AskAnswer;
+}
