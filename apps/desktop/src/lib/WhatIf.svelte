@@ -4,6 +4,7 @@
   import { formatPercent } from "./money";
   import ModelSetup from "./ModelSetup.svelte";
   import ModelDownload from "./ModelDownload.svelte";
+  import AiActivity from "./AiActivity.svelte";
   import Explain from "./Explain.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -62,6 +63,7 @@
 
 <ModelDownload {invoke} />
 <ModelSetup {invoke} />
+<AiActivity {invoke} />
 
 {#each turns as t, i}
   <section class="card turn" data-testid="turn">

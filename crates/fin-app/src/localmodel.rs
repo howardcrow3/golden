@@ -272,6 +272,15 @@ impl App {
         self.refresh_interpreter();
     }
 
+    /// Every model run this session, newest first (sizes and timings only, never the text).
+    pub fn ai_activity(&self) -> Vec<crate::activity::ActivityEntry> {
+        self.activity.entries()
+    }
+
+    pub fn clear_ai_activity(&self) {
+        self.activity.clear();
+    }
+
     /// Use the saved local model for the what-if chat and the AI helpers, or the built-in phrases
     /// when none is set (or the saved address is no longer acceptable). Call once after opening
     /// the database.
@@ -284,6 +293,12 @@ impl App {
                     .then(|| std::sync::Arc::new(LocalCompleter::new(ep, &s.name)) as _)
             }),
         };
+        let ai: Option<std::sync::Arc<dyn Completer + Sync>> = ai.map(|inner| {
+            std::sync::Arc::new(crate::activity::Logged {
+                inner,
+                log: self.activity.clone(),
+            }) as _
+        });
         self.interpreter = match &ai {
             Some(c) => Box::new(ModelInterpreter::new(Box::new(Shared(c.clone())))),
             None => Box::new(crate::chat::RuleInterpreter),
