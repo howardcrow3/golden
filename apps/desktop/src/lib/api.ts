@@ -614,3 +614,18 @@ export async function aiActivity(invoke?: Invoke): Promise<AiActivityEntry[]> {
 export async function clearAiActivity(invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("clear_ai_activity");
 }
+
+export interface Connection {
+  name: string;
+  host: string;
+  sends: string;
+  inUse: boolean;
+  when: string;
+}
+export interface Connections {
+  private: boolean;
+  items: Connection[];
+}
+export async function connections(invoke?: Invoke): Promise<Connections> {
+  return (await (await resolve(invoke))("connections")) as Connections;
+}
