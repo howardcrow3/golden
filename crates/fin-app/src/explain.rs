@@ -100,7 +100,7 @@ fn allowed_numbers(f: &ExplainFacts) -> BTreeSet<String> {
     set
 }
 
-fn numbers_in(text: &str) -> Vec<String> {
+pub(crate) fn numbers_in(text: &str) -> Vec<String> {
     let mut out = vec![];
     let mut run = String::new();
     for c in text.chars().chain(std::iter::once(' ')) {

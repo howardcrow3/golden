@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getAssumptions, setPick, type AssumptionRow, type Invoke } from "./api";
   import { assumptionName, optionText } from "./assumptions";
+  import AssumptionSuggest from "./AssumptionSuggest.svelte";
 
   let { invoke, onchange }: { invoke?: Invoke; onchange?: () => void } = $props();
   let rows = $state<AssumptionRow[]>([]);
@@ -45,6 +46,7 @@
       <span class="src">{current ? `Using ${current.label}: ${current.source}` : ""}</span>
     </div>
   {/each}
+  <AssumptionSuggest {invoke} onchange={() => { load(); onchange?.(); }} />
 </section>
 
 <style>
