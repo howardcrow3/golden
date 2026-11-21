@@ -341,6 +341,21 @@ fn set_debt_terms(
 }
 
 #[tauri::command]
+fn month_close_check(state: Shared, month: String) -> Result<fin_app::close::CloseReport, String> {
+    lock(&state)?.month_close_check(&month)
+}
+
+#[tauri::command]
+fn close_month(state: Shared, month: String) -> Result<fin_app::close::CloseReport, String> {
+    lock(&state)?.close_month(&month)
+}
+
+#[tauri::command]
+fn reopen_month(state: Shared, month: String) -> Result<fin_app::close::CloseReport, String> {
+    lock(&state)?.reopen_month(&month)
+}
+
+#[tauri::command]
 fn insights(state: Shared) -> Result<Vec<fin_app::insights::Insight>, String> {
     lock(&state)?.insights()
 }
@@ -647,6 +662,9 @@ pub fn run() {
             set_goal,
             remove_goal,
             insights,
+            month_close_check,
+            close_month,
+            reopen_month,
             debt_plan,
             set_debt_terms,
             recurring,
