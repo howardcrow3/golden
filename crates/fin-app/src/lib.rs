@@ -12,6 +12,7 @@ pub mod connections;
 pub mod debts;
 pub mod explain;
 pub mod export;
+pub mod folder;
 pub mod forecast;
 pub mod goals;
 pub mod history;
@@ -289,6 +290,7 @@ impl App {
                 format!("The transactions were imported, but filing the original failed: {e}")
             })?);
         }
+        self.remember_file(bytes)?;
         Ok(report)
     }
 

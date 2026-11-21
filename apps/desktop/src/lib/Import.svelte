@@ -1,6 +1,7 @@
 <script lang="ts">
   import { importFile, libraryFolder, setLibraryFolder, type ImportReport, type Invoke } from "./api";
   import { formatCents } from "./money";
+  import ImportFolder from "./ImportFolder.svelte";
   import Paystub from "./Paystub.svelte";
   import Withholding from "./Withholding.svelte";
   let bump = $state(0);
@@ -93,6 +94,8 @@
 </section>
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
+
+<ImportFolder {invoke} {account} {kind} onreport={(r) => (reports = [...reports, ...r])} />
 
 {#each reports as r}
   <section class="card report" data-testid="report">
