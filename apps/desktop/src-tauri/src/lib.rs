@@ -642,7 +642,7 @@ pub fn run() {
                 let state = handle.state::<Mutex<Core>>();
                 if let Ok(mut core) = state.lock() {
                     core.scan_watched();
-                }
+                };
             });
             Ok(())
         })
