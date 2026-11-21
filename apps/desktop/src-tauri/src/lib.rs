@@ -285,6 +285,44 @@ fn set_model(state: Shared, endpoint: String, name: String) -> Result<fin_app::l
     lock(&state)?.set_model(&endpoint, &name)
 }
 
+fn models_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("models"))
+}
+
+#[tauri::command]
+fn model_status(app: tauri::AppHandle) -> Result<fin_ai::manager::ModelStatus, String> {
+    fin_ai::manager::status(&fin_ai::Catalog::builtin(), fin_ai::hardware::total_ram_gb(), &models_dir(&app)?)
+}
+
+#[tauri::command]
+fn start_model_download(
+    app: tauri::AppHandle,
+    state: State<'_, std::sync::Arc<fin_ai::manager::DownloadState>>,
+    id: String,
+) -> Result<(), String> {
+    let entry = fin_ai::Catalog::builtin().get(&id).cloned().ok_or("Unknown model.")?;
+    state.begin(&entry)?;
+    let dir = models_dir(&app)?;
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn(async move { st.run(&entry, &dir).await });
+    Ok(())
+}
+
+#[tauri::command]
+fn model_progress(state: State<'_, std::sync::Arc<fin_ai::manager::DownloadState>>) -> fin_ai::manager::DownloadProgress {
+    state.progress()
+}
+
+#[tauri::command]
+fn cancel_model_download(state: State<'_, std::sync::Arc<fin_ai::manager::DownloadState>>) {
+    state.cancel();
+}
+
+#[tauri::command]
+fn remove_model(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    fin_ai::manager::remove(&fin_ai::Catalog::builtin(), &id, &models_dir(&app)?)
+}
+
 #[tauri::command]
 fn setup_progress(state: Shared) -> Result<fin_app::setup::Setup, String> {
     lock(&state)?.setup_progress()
@@ -390,6 +428,7 @@ pub fn run() {
             // Use the local language model for the what-if chat when one was set up.
             core.refresh_interpreter();
             app.manage(Mutex::new(core));
+            app.manage(std::sync::Arc::new(fin_ai::manager::DownloadState::default()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -398,6 +437,11 @@ pub fn run() {
             app_info,
             setup_progress,
             model_settings,
+            model_status,
+            start_model_download,
+            model_progress,
+            cancel_model_download,
+            remove_model,
             set_model,
             import_statement,
             import_file,

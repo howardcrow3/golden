@@ -3,6 +3,7 @@
   import { verdict } from "./chart";
   import { formatPercent } from "./money";
   import ModelSetup from "./ModelSetup.svelte";
+  import ModelDownload from "./ModelDownload.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   type Turn = { question: string; reply: WhatIfReply; state: "open" | "kept" | "dismissed" };
@@ -58,6 +59,7 @@
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 
+<ModelDownload {invoke} />
 <ModelSetup {invoke} />
 
 {#each turns as t, i}

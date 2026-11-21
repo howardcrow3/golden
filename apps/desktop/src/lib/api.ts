@@ -528,3 +528,33 @@ export interface Setup {
 export async function setupProgress(invoke?: Invoke): Promise<Setup> {
   return (await (await resolve(invoke))("setup_progress")) as Setup;
 }
+
+export interface ModelStatus {
+  ramGb: number;
+  id: string;
+  name: string;
+  sizeMb: number;
+  installed: boolean;
+  path: string;
+}
+export interface ModelProgress {
+  running: boolean;
+  downloadedMb: number;
+  totalMb: number;
+  error: string;
+}
+export async function modelStatus(invoke?: Invoke): Promise<ModelStatus> {
+  return (await (await resolve(invoke))("model_status")) as ModelStatus;
+}
+export async function startModelDownload(id: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("start_model_download", { id });
+}
+export async function modelProgress(invoke?: Invoke): Promise<ModelProgress> {
+  return (await (await resolve(invoke))("model_progress")) as ModelProgress;
+}
+export async function cancelModelDownload(invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("cancel_model_download");
+}
+export async function removeModel(id: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("remove_model", { id });
+}

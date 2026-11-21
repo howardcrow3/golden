@@ -392,7 +392,7 @@ describe("WhatIf", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Spend $80k a year" }));
     await fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
     expect((await screen.findByRole("status")).textContent).toMatch(/Nothing was changed/);
-    expect(calls.filter((c) => c !== "model_settings")).toEqual(["whatif"]);
+    expect(calls.filter((c) => !c.startsWith("model_"))).toEqual(["whatif"]);
   });
   it("shows the help text and no buttons when nothing was understood", async () => {
     render(WhatIf, { invoke: async () => reply(false) });
@@ -401,7 +401,7 @@ describe("WhatIf", () => {
     expect(screen.queryByRole("button", { name: "Keep this change" })).toBeNull();
   });
   it("shows an engine error", async () => {
-    render(WhatIf, { invoke: async () => { throw new Error("That change doesn't work: nope"); } });
+    render(WhatIf, { invoke: async (cmd: string) => { if (cmd !== "whatif") return undefined; throw new Error("That change doesn't work: nope"); } });
     await fireEvent.input(screen.getByLabelText("What if question"), { target: { value: "retire at 40" } });
     await fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     expect((await screen.findByRole("alert")).textContent).toMatch(/doesn't work/);
