@@ -60,7 +60,7 @@
 </script>
 
 <h1>Import statements</h1>
-<p class="sub">CSV, OFX or QFX files from your bank. Files stay on this computer. Importing a file twice adds nothing.{#if folder} Originals are filed by year, type and month in <span data-testid="folder">{folder}</span>.{/if}</p>
+<p class="sub">CSV, OFX, QFX or text PDF statements from your bank. Files stay on this computer. Importing a file twice adds nothing.{#if folder} Originals are filed by year, type and month in <span data-testid="folder">{folder}</span>.{/if}</p>
 
 {#if folder}
   <p class="sub">
@@ -90,7 +90,7 @@
       <option value="loan">Loan</option>
     </select>
   </label>
-  <label>Files <input type="file" multiple accept=".csv,.ofx,.qfx" aria-label="Statement files" onchange={onFiles} disabled={busy} /></label>
+  <label>Files <input type="file" multiple accept=".csv,.ofx,.qfx,.pdf" aria-label="Statement files" onchange={onFiles} disabled={busy} /></label>
 </section>
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}

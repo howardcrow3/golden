@@ -56,7 +56,7 @@
 
 <section class="card folder">
   <b>Import a whole folder</b>
-  <p class="muted">Imports every new CSV, OFX or QFX file in a folder, such as your Downloads. Files already imported are skipped. OFX and QFX files go to the account they name; CSV files go to the account chosen above.</p>
+  <p class="muted">Imports every new CSV, OFX, QFX or PDF statement in a folder, such as your Downloads. Files already imported are skipped. OFX and QFX files go to the account they name; CSV files go to the account chosen above.</p>
   <label>Folder (full path)
     <input bind:value={path} aria-label="Folder to import" placeholder="/Users/you/Downloads" />
   </label>

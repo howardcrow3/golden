@@ -11,7 +11,7 @@ Plan documents are in [`docs/`](docs/README.md).
 | `crates/fin-core` | Money in integer cents, week/month/quarter/year grains, people and age rules |
 | `crates/fin-plan` | Federal and state tax, retirement projection, Monte Carlo, assumptions with options, what-if scenarios |
 | `crates/fin-db` | SQLite ledger (optional SQLCipher encryption), idempotent imports, totals at any grain |
-| `crates/fin-ingest` | CSV and OFX statement readers, statement library naming |
+| `crates/fin-ingest` | CSV, OFX and text-PDF statement readers, statement library naming |
 | `crates/fin-license` | 14-day trial and offline Ed25519-signed licences (plus Plaid add-on expiry) |
 | `crates/fin-app` | Service layer behind the Tauri commands: import, filing, recategorize, export, household, what-if chat |
 | `crates/fin-ledger` | Merchant normalization, categorization rules, transfer matching |
@@ -32,7 +32,7 @@ cd apps/desktop && npm ci && npm test && npm run tauri dev
 
 ## Status
 
-Working today: balance sheet with starting balances, paystub reading, monthly projection, budgets, backup/restore, savings allocation suggestions, a read-only assistant (MCP) server, statement import (CSV/OFX, with a balance check against the balance an OFX statement prints) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
+Working today: balance sheet with starting balances, paystub reading, monthly projection, budgets, backup/restore, savings allocation suggestions, a read-only assistant (MCP) server, statement import (CSV/OFX/text PDF, with a balance check against the closing balance the statement prints) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
 
 Known gaps:
 
@@ -40,3 +40,4 @@ Known gaps:
 - Licence activation is on: `apps/desktop/src-tauri/license_public_key.txt` holds the public key, and keys are issued by the highturtle billing Lambda on AWS; see [signing and licensing setup](docs/signing-and-licensing-setup.md).
 - Installers are unsigned (no Apple notarization or Windows certificate yet); the same doc lists the steps.
 - The built-in model (llama.cpp, downloaded in the app) drives the what-if chat, transaction categories, statement names, plain-English explanations and suggested assumptions, each with a rules fallback. It has only been exercised with fake engines so far; Windows runs on CPU.
+- PDF statements work when the PDF has a text layer and the lines carry running balances or minus/CR markers; scanned PDFs need OCR, which is not built in yet, and a PDF whose layout cannot be read reliably is refused rather than guessed. Only generic layouts have been tried, not real bank PDFs.

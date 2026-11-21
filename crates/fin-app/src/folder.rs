@@ -125,7 +125,7 @@ impl App {
                     .extension()
                     .map(|x| {
                         let x = x.to_string_lossy().to_ascii_lowercase();
-                        matches!(x.as_str(), "csv" | "ofx" | "qfx")
+                        matches!(x.as_str(), "csv" | "ofx" | "qfx" | "pdf")
                     })
                     .unwrap_or(false)
             })
