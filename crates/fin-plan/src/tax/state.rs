@@ -209,6 +209,40 @@ mod tests {
     }
 
     #[test]
+    fn arkansas_top_rate_is_3_7_percent() {
+        let y = StateTaxYear::y2026();
+        let r = y.rules("AR").unwrap();
+        assert_eq!(r.brackets.0.last().unwrap().rate, 0.037);
+        // Well above the top bracket, an extra $10,000 is taxed at 3.7%.
+        let a = y
+            .income_tax("AR", FilingStatus::Single, m(200_000))
+            .unwrap();
+        let b = y
+            .income_tax("AR", FilingStatus::Single, m(210_000))
+            .unwrap();
+        assert_eq!(b - a, m(370));
+    }
+
+    #[test]
+    fn minnesota_matches_the_department_of_revenue_2026_figures() {
+        let y = StateTaxYear::y2026();
+        let r = y.rules("MN").unwrap();
+        assert_eq!(r.std_single, m(15_300));
+        assert_eq!(r.std_joint, m(30_600));
+        let floors: Vec<_> = r.brackets.0.iter().map(|b| b.floor).collect();
+        assert_eq!(floors, vec![m(0), m(33_310), m(109_430), m(203_150)]);
+        let joint: Vec<_> = r
+            .joint_brackets
+            .as_ref()
+            .unwrap()
+            .0
+            .iter()
+            .map(|b| b.floor)
+            .collect();
+        assert_eq!(joint, vec![m(0), m(48_700), m(193_480), m(337_930)]);
+    }
+
+    #[test]
     fn approximate_states_are_flagged() {
         let y = StateTaxYear::y2026();
         assert!(y.rules("NY").unwrap().approximate);

@@ -59,14 +59,14 @@
     ],
     [
      460000,
-     0.039
+     0.037
     ]
    ],
    "std_single": 247000,
    "std_joint": 494000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Brackets use 2025 inflation-adjusted widths (2026 widths unpublished at source time).",
+   "notes": "Top rate is 3.7% (H.B. 1001, retroactive to Jan 1, 2026). Bracket widths use 2025 amounts; the Department of Finance's 2026 widths are not confirmed here.",
    "credit_single": 2900,
    "credit_joint": 5800
   },
