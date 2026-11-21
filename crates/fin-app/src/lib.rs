@@ -82,6 +82,8 @@ pub struct App {
     pub(crate) public_key: Option<ed25519_dalek::VerifyingKey>,
     pub(crate) clock: fn() -> NaiveDate,
     pub(crate) interpreter: Box<dyn chat::Interpreter>,
+    /// A model running inside the app; it wins over a saved model address.
+    pub(crate) embedded: Option<std::sync::Arc<dyn model::Completer + Sync>>,
     library_root: Option<std::path::PathBuf>,
     pub(crate) library_default: Option<std::path::PathBuf>,
 }
@@ -125,6 +127,7 @@ impl App {
             public_key: None,
             clock: today_local,
             interpreter: Box::new(chat::RuleInterpreter),
+            embedded: None,
             library_root: None,
             library_default: None,
         };

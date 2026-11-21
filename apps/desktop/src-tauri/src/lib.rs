@@ -181,11 +181,16 @@ async fn run_plan(state: Shared<'_>, runs: usize) -> Result<QuickPlanResult, Str
 
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
-async fn whatif(state: Shared<'_>, text: String, runs: usize) -> Result<WhatIfReply, String> {
-    let prep = lock(&state)?.prepare_whatif(&text, today())?;
-    tauri::async_runtime::spawn_blocking(move || prep.run(runs))
-        .await
-        .map_err(|e| e.to_string())?
+async fn whatif(app: tauri::AppHandle, text: String, runs: usize) -> Result<WhatIfReply, String> {
+    // Reading the question can take seconds when the built-in model answers, so none of this
+    // runs on the async runtime's own threads.
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Mutex<Core>>();
+        let prep = lock(&state)?.prepare_whatif(&text, today())?;
+        prep.run(runs)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Keep a what-if: save its changes into the household.
@@ -289,6 +294,30 @@ fn models_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("models"))
 }
 
+/// Adapts the built-in model to the what-if chat.
+struct EngineCompleter(fin_ai::Engine);
+
+impl fin_app::model::Completer for EngineCompleter {
+    fn complete(&self, prompt: &str) -> Result<String, String> {
+        self.0.complete_json(prompt).map_err(|e| e.to_string())
+    }
+}
+
+/// Start using the downloaded model for the what-if chat, or stop when it is not on disk.
+fn attach_model(app: &tauri::AppHandle) {
+    let completer = models_dir(app).ok().and_then(|dir| {
+        let catalog = fin_ai::Catalog::builtin();
+        let id = fin_ai::manager::status(&catalog, fin_ai::hardware::total_ram_gb(), &dir).ok()?.id;
+        let path = fin_ai::manager::installed_path(&catalog, &id, &dir)?;
+        let engine = fin_ai::Engine::new(fin_ai::llama::LlamaCppBackend::new(path), fin_ai::engine::IDLE_UNLOAD);
+        Some(std::sync::Arc::new(EngineCompleter(engine)) as std::sync::Arc<dyn fin_app::model::Completer + Sync>)
+    });
+    let state = app.state::<Mutex<Core>>();
+    if let Ok(mut core) = state.lock() {
+        core.set_embedded_model(completer);
+    };
+}
+
 #[tauri::command]
 fn model_status(app: tauri::AppHandle) -> Result<fin_ai::manager::ModelStatus, String> {
     fin_ai::manager::status(&fin_ai::Catalog::builtin(), fin_ai::hardware::total_ram_gb(), &models_dir(&app)?)
@@ -303,8 +332,12 @@ fn start_model_download(
     let entry = fin_ai::Catalog::builtin().get(&id).cloned().ok_or("Unknown model.")?;
     state.begin(&entry)?;
     let dir = models_dir(&app)?;
+    let handle = app.clone();
     let st = state.inner().clone();
-    tauri::async_runtime::spawn(async move { st.run(&entry, &dir).await });
+    tauri::async_runtime::spawn(async move {
+        st.run(&entry, &dir).await;
+        attach_model(&handle);
+    });
     Ok(())
 }
 
@@ -320,7 +353,9 @@ fn cancel_model_download(state: State<'_, std::sync::Arc<fin_ai::manager::Downlo
 
 #[tauri::command]
 fn remove_model(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    fin_ai::manager::remove(&fin_ai::Catalog::builtin(), &id, &models_dir(&app)?)
+    fin_ai::manager::remove(&fin_ai::Catalog::builtin(), &id, &models_dir(&app)?)?;
+    attach_model(&app);
+    Ok(())
 }
 
 #[tauri::command]
@@ -429,6 +464,7 @@ pub fn run() {
             core.refresh_interpreter();
             app.manage(Mutex::new(core));
             app.manage(std::sync::Arc::new(fin_ai::manager::DownloadState::default()));
+            attach_model(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

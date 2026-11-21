@@ -10,6 +10,8 @@ concurrency:
   cancel-in-progress: true
 env:
   CARGO_TERM_COLOR: always
+  # llama.cpp uses std::filesystem, which needs macOS 10.15 or later.
+  MACOSX_DEPLOYMENT_TARGET: "13.0"
 jobs:
   ui:
     name: UI checks
