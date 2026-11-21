@@ -27,6 +27,10 @@ pub enum Change {
         cents: i64,
         year: i32,
     },
+    /// A lasting raise: this person's regular income streams grow by `bp` basis points
+    /// (100 bp = 1%) in real terms. One-time amounts are left alone.
+    #[serde(rename_all = "camelCase")]
+    Raise { person: usize, bp: i32 },
     /// A planned one-off cost (positive) or untaxed inflow (negative) in today's dollars.
     #[serde(rename_all = "camelCase")]
     PlannedCost {
@@ -52,6 +56,16 @@ impl Change {
             Change::OneTime {
                 label, cents, year, ..
             } => format!("{label} of ${} in {year}", group(*cents / 100)),
+            Change::Raise { person, bp } => format!(
+                "{} get{} a {}% raise",
+                h.people.get(*person).map_or("Someone", |p| p.name.as_str()),
+                if h.people.get(*person).is_some_and(|p| p.name == "You") {
+                    ""
+                } else {
+                    "s"
+                },
+                *bp as f64 / 100.0
+            ),
             Change::PlannedCost {
                 label, cents, year, ..
             } if *cents < 0 => format!("{label}: ${} comes in during {year}", group(-*cents / 100)),
@@ -87,6 +101,17 @@ impl Change {
                 end_year: Some(*year),
                 contribution_cents: 0,
             }),
+            Change::Raise { person, bp } => {
+                if *person >= h.people.len() {
+                    return Err("No such person.".into());
+                }
+                for s in h.streams.iter_mut().filter(|s| {
+                    s.person == *person && !(s.start_year.is_some() && s.start_year == s.end_year)
+                }) {
+                    s.annual_cents = s.annual_cents * (10_000 + *bp as i64) / 10_000;
+                    s.contribution_cents = s.contribution_cents * (10_000 + *bp as i64) / 10_000;
+                }
+            }
             Change::PlannedCost { label, cents, year } => h.events.push(EventRow {
                 label: label.clone(),
                 year: *year,
@@ -352,6 +377,28 @@ fn planned_costs(t: &str, today: NaiveDate) -> Vec<Change> {
         .collect()
 }
 
+/// "a 5% raise", "raise of 3.5%", "give me a 10 percent raise" as basis points.
+fn raise_bp(t: &str) -> Option<i32> {
+    if !t.contains("raise") {
+        return None;
+    }
+    let words: Vec<&str> = t.split_whitespace().collect();
+    for (i, w) in words.iter().enumerate() {
+        let w = w.trim_matches(|c: char| ",.;:!?()".contains(c));
+        let pct = if let Some(n) = w.strip_suffix('%') {
+            n.parse::<f64>().ok()
+        } else if words.get(i + 1).is_some_and(|n| n.starts_with("percent")) {
+            w.parse::<f64>().ok()
+        } else {
+            None
+        };
+        if let Some(p) = pct.filter(|p| *p > 0.0 && *p <= 100.0) {
+            return Some((p * 100.0).round() as i32);
+        }
+    }
+    None
+}
+
 fn number_after(text: &str, marker: &str) -> Option<i32> {
     let rest = &text[text.find(marker)? + marker.len()..];
     rest.split_whitespace().take(3).find_map(|w| {
@@ -394,6 +441,10 @@ impl Interpreter for RuleInterpreter {
                 changes.push(Change::RetireAt { person, age });
                 break;
             }
+        }
+
+        if let Some(bp) = raise_bp(&t) {
+            changes.push(Change::Raise { person, bp });
         }
 
         let planned = planned_costs(&t, today);
@@ -584,7 +635,7 @@ impl WhatIfPrep {
     }
 }
 
-const HELP: &str = "I couldn't turn that into a change yet. Try things like: \"what if I retire at 65\", \"spend $80k a year\", \"what if the market crashes\", \"claim Social Security at 70\", \"move to Florida\", \"a bonus of $100k in 2028\", \"buy a house for $400k in 2030\", \"college costs $30k a year from 2036 to 2040\" or \"an inheritance of $200k in 2032\".";
+const HELP: &str = "I couldn't turn that into a change yet. Try things like: \"what if I retire at 65\", \"spend $80k a year\", \"what if the market crashes\", \"claim Social Security at 70\", \"move to Florida\", \"a bonus of $100k in 2028\", \"a 5% raise\", \"buy a house for $400k in 2030\", \"college costs $30k a year from 2036 to 2040\" or \"an inheritance of $200k in 2032\".";
 
 impl App {
     /// Swap in a different interpreter (for example one backed by a language model).
