@@ -16,6 +16,8 @@ pub struct LicenseStatus {
 
 const FIRST_RUN: &str = "first_run";
 const LICENSE: &str = "license_token";
+/// Settings that survive "delete everything" so erasing cannot reset the trial or drop a licence.
+pub(crate) const KEEP_ON_ERASE: &[&str] = &[FIRST_RUN, LICENSE];
 
 impl App {
     fn stored_license(&self) -> Option<LicensePayload> {

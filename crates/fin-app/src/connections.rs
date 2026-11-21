@@ -65,3 +65,24 @@ impl App {
         Ok(Connections { private, items })
     }
 }
+
+/// The word the person must type to erase everything.
+pub const ERASE_WORD: &str = "DELETE";
+
+impl App {
+    /// SC-1: delete every account, transaction, household member, budget, rule and saved
+    /// setting in one step. The trial start and licence are kept so erasing can't reset the trial.
+    /// Statement files already filed in the library folder are not touched.
+    pub fn erase_all_data(&mut self, confirm: &str) -> Result<(), String> {
+        if confirm.trim() != ERASE_WORD {
+            return Err(format!("Type {ERASE_WORD} to confirm."));
+        }
+        self.db
+            .erase_personal_data(crate::licensing::KEEP_ON_ERASE)
+            .map_err(|e| e.to_string())?;
+        self.rules = crate::RuleSet::starter();
+        self.library_root = self.library_default.clone();
+        self.refresh_interpreter();
+        Ok(())
+    }
+}

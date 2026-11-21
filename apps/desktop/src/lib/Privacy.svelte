@@ -1,10 +1,22 @@
 <script lang="ts">
-  import { connections, type Connections, type Invoke } from "./api";
+  import { connections, eraseAllData, type Connections, type Invoke } from "./api";
   import AiActivity from "./AiActivity.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let data = $state<Connections | null>(null);
   let error = $state("");
+  let word = $state("");
+  let erased = $state(false);
+  async function erase() {
+    error = "";
+    try {
+      await eraseAllData(word, invoke);
+      erased = true;
+      word = "";
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
   $effect(() => {
     connections(invoke)
       .then((d) => (data = d))
@@ -31,7 +43,17 @@
 {/if}
 <AiActivity {invoke} />
 
+<section class="card erase">
+  <h2>Delete everything</h2>
+  <p class="muted">Removes every account, transaction, household member, budget, rule and setting from this computer in one step. It cannot be undone, so export a backup first if you might want it. Your trial or licence is kept. Statement files already filed in your statement folder are not touched; delete that folder yourself if you want them gone.</p>
+  {#if erased}<p role="status" data-testid="erased">Everything has been deleted. Restart Golden to start fresh.</p>{/if}
+  <label>Type DELETE to confirm <input aria-label="Confirm deletion" bind:value={word} /></label>
+  <button type="button" onclick={erase} disabled={word.trim() !== "DELETE"}>Delete everything</button>
+</section>
+
 <style>
+  .erase { margin-top: 24px; }
+  .erase label { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; max-width: 240px; }
   .list { list-style: none; padding: 0; display: grid; gap: 12px; }
   .head { display: flex; justify-content: space-between; align-items: center; }
   .muted { color: var(--muted); }

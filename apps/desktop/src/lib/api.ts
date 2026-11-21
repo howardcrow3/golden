@@ -629,3 +629,6 @@ export interface Connections {
 export async function connections(invoke?: Invoke): Promise<Connections> {
   return (await (await resolve(invoke))("connections")) as Connections;
 }
+export async function eraseAllData(confirm: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("erase_all_data", { confirm });
+}
