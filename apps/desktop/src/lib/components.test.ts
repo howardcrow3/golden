@@ -414,7 +414,25 @@ describe("WhatIf", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Spend $80k a year" }));
     await fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
     expect((await screen.findByRole("status")).textContent).toMatch(/Nothing was changed/);
-    expect(calls.filter((c) => !c.startsWith("model_"))).toEqual(["whatif"]);
+    expect(calls.filter((c) => !c.startsWith("model_") && !c.endsWith("scenarios") && c !== "undoable_plan")).toEqual(["whatif"]);
+  });
+  it("saves a what-if as a named scenario", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      if (cmd === "save_scenario") return { id: 1, name: "Early", changes: [], descriptions: [] };
+      return reply();
+    };
+    render(WhatIf, { invoke });
+    await fireEvent.click(screen.getByRole("button", { name: "Spend $80k a year" }));
+    const save = await screen.findByRole("button", { name: "Save as scenario" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    await fireEvent.input(screen.getByLabelText("Scenario name"), { target: { value: "Early" } });
+    await fireEvent.click(save);
+    expect((await screen.findByTestId("scenario-saved")).textContent).toMatch(/Saved as "Early"/);
+    const sent = calls.find(([c]) => c === "save_scenario")![1] as { name: string; changes: unknown[] };
+    expect(sent.name).toBe("Early");
+    expect(sent.changes.length).toBeGreaterThan(0);
   });
   it("shows the help text and no buttons when nothing was understood", async () => {
     render(WhatIf, { invoke: async () => reply(false) });

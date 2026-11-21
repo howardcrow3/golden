@@ -26,6 +26,7 @@ pub mod mcp;
 pub mod model;
 pub mod paystub;
 pub mod recurring;
+pub mod scenarios;
 pub mod setup;
 pub mod suggest;
 pub mod transactions;
