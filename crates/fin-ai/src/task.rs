@@ -147,8 +147,19 @@ pub const CATEGORIZE: TaskSpec = TaskSpec {
     temperature: 0.0,
 };
 
+/// Read the top of a statement for the bank's name and the account's last four digits, to name and
+/// file the original. The caller only uses what passes its own checks.
+pub const NAME_STATEMENT: TaskSpec = TaskSpec {
+    id: "name_statement",
+    version: 1,
+    prompt: "{{input}}",
+    schema: include_str!("../prompts/name_statement.schema.json"),
+    max_tokens: 120,
+    temperature: 0.0,
+};
+
 /// Every task, so a completer can find one by the name the app asks for.
-pub const ALL: &[&TaskSpec] = &[&WHATIF, &CATEGORIZE];
+pub const ALL: &[&TaskSpec] = &[&WHATIF, &CATEGORIZE, &NAME_STATEMENT];
 
 pub fn by_id(id: &str) -> Option<&'static TaskSpec> {
     ALL.iter().copied().find(|t| t.id == id)

@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "required": ["institution", "last4"],
+  "properties": {
+    "institution": {"type": "string", "maxLength": 40},
+    "last4": {"type": ["string", "null"], "maxLength": 4}
+  }
+}

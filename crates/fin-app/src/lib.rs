@@ -255,6 +255,7 @@ impl App {
                     .map(|e| e.to_string_lossy().to_string())
                     .unwrap_or_else(|| "csv".into()),
             };
+            let meta = self.refine_statement_meta(bytes, meta);
             report.filed_as = Some(library::file_statement(root, bytes, &meta).map_err(|e| {
                 format!("The transactions were imported, but filing the original failed: {e}")
             })?);

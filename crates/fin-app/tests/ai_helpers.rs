@@ -114,3 +114,63 @@ fn accepting_a_suggestion_uses_the_normal_edit_path() {
     app.set_category(id, "Dining out", true).unwrap();
     assert!(uncategorized(&app).iter().all(|(i, _)| *i != id));
 }
+
+const OFX: &str = "OFXHEADER:100\nDATA:OFXSGML\n<OFX>\n<FI><ORG>Chase Bank</FI>\n<ACCTID>00123456784821\n<STMTTRN>\n<DTPOSTED>20261006\n<TRNAMT>-18.40\n<NAME>JOES TAQUERIA\n</STMTTRN>\n</OFX>\n";
+
+fn filed(reply: &str, account: &str) -> (String, Asked) {
+    let dir = tempfile::tempdir().unwrap();
+    let mut app = App::in_memory()
+        .unwrap()
+        .with_library(Some(dir.path().to_path_buf()));
+    let asked = Arc::new(Mutex::new(vec![]));
+    app.set_embedded_model(Some(Arc::new(Script {
+        reply: reply.into(),
+        asked: asked.clone(),
+    })));
+    let r = app
+        .import_file("download.qfx", OFX.as_bytes(), account, "checking")
+        .unwrap();
+    (r.filed_as.unwrap(), asked)
+}
+
+#[test]
+fn a_statement_is_named_for_its_bank_and_last_four() {
+    let (name, asked) = filed(r#"{"institution":"Chase Bank","last4":"4821"}"#, "Checking");
+    assert_eq!(
+        name,
+        "2026/Checking/2026-10 Chase Bank Checking 4821 statement.qfx"
+    );
+    let asked = asked.lock().unwrap();
+    assert_eq!(asked[0].0, "name_statement");
+    // The model saw the bank and masked account number, not the transaction or the full number.
+    assert!(asked[0].1.contains("Chase Bank") && asked[0].1.contains("…4821"));
+    assert!(
+        !asked[0].1.contains("00123456784821")
+            && !asked[0].1.contains("18.40")
+            && !asked[0].1.contains("TAQUERIA")
+    );
+}
+
+#[test]
+fn made_up_names_and_digits_are_refused() {
+    // A bank the text never mentions, and digits that are not in it, are ignored.
+    let (name, _) = filed(
+        r#"{"institution":"Wells Fargo","last4":"9999"}"#,
+        "Checking",
+    );
+    assert_eq!(name, "2026/Checking/2026-10 Checking statement.qfx");
+    let (name, _) = filed("garbage", "Checking");
+    assert_eq!(name, "2026/Checking/2026-10 Checking statement.qfx");
+}
+
+#[test]
+fn a_name_the_person_typed_is_kept() {
+    let (name, _) = filed(
+        r#"{"institution":"Chase Bank","last4":"4821"}"#,
+        "My Joint Account",
+    );
+    assert_eq!(
+        name,
+        "2026/Checking/2026-10 My Joint Account Checking 4821 statement.qfx"
+    );
+}
