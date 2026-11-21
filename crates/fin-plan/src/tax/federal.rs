@@ -121,6 +121,36 @@ impl FederalTaxYear {
     }
 }
 
+/// The part of Social Security benefits that is taxable, by the IRS provisional-income rule.
+/// `other_income` is everything on the return except Social Security (wages, withdrawals,
+/// gains, interest). The thresholds are set in law and are not adjusted for inflation.
+pub fn taxable_social_security(fs: FilingStatus, ss: Money, other_income: Money) -> Money {
+    if ss <= Money::ZERO {
+        return Money::ZERO;
+    }
+    let (lower, upper, tier) = match fs {
+        FilingStatus::Single | FilingStatus::HeadOfHousehold => (25_000, 34_000, 4_500),
+        FilingStatus::MarriedJoint => (32_000, 44_000, 6_000),
+        // Married filing separately (living with a spouse): no base amount at all.
+        FilingStatus::MarriedSeparate => (0, 0, 0),
+    };
+    let (lower, upper, tier) = (
+        Money::from_dollars(lower),
+        Money::from_dollars(upper),
+        Money::from_dollars(tier),
+    );
+    let provisional = other_income.max(Money::ZERO) + ss.mul_rate(0.5);
+    if provisional <= lower {
+        return Money::ZERO;
+    }
+    let cap = ss.mul_rate(0.85);
+    let half = ss.mul_rate(0.5);
+    if provisional <= upper {
+        return (provisional - lower).mul_rate(0.5).min(half);
+    }
+    ((provisional - upper).mul_rate(0.85) + half.min(tier)).min(cap)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,5 +280,54 @@ mod tests {
         let high = y.fica_for_wages(FilingStatus::Single, m(300_000));
         // SS: 6.2% * 184,500 = 11,439; Medicare 1.45% * 300k = 4,350; addl 0.9% * 100k = 900
         assert_eq!(high, m(11_439 + 4_350 + 900));
+    }
+
+    #[test]
+    fn taxable_social_security_follows_the_provisional_income_tiers() {
+        let single = FilingStatus::Single;
+        // Under $25,000 of provisional income nothing is taxed.
+        assert_eq!(
+            taxable_social_security(single, m(20_000), m(10_000)),
+            Money::ZERO
+        );
+        // $20k benefits + $20k other: PI 30k, so half of the $5k over 25k.
+        assert_eq!(
+            taxable_social_security(single, m(20_000), m(20_000)),
+            m(2_500)
+        );
+        // $24k benefits + $40k other: PI 52k. 0.85*18k + 4.5k = 19.8k, under the 20.4k cap.
+        assert_eq!(
+            taxable_social_security(single, m(24_000), m(40_000)),
+            m(19_800)
+        );
+        // Plenty of other income hits the 85% cap.
+        assert_eq!(
+            taxable_social_security(single, m(24_000), m(200_000)),
+            m(20_400)
+        );
+        // Married filing jointly uses 32k/44k and a 6k middle tier.
+        let joint = FilingStatus::MarriedJoint;
+        assert_eq!(
+            taxable_social_security(joint, m(30_000), m(15_000)),
+            Money::ZERO
+        );
+        assert_eq!(
+            taxable_social_security(joint, m(30_000), m(30_000)),
+            m(6_850)
+        );
+        assert_eq!(
+            taxable_social_security(joint, m(30_000), m(60_000)),
+            m(25_500)
+        );
+        // No benefits, no tax.
+        assert_eq!(
+            taxable_social_security(single, Money::ZERO, m(90_000)),
+            Money::ZERO
+        );
+        // Married filing separately: taxed from the first dollar.
+        assert_eq!(
+            taxable_social_security(FilingStatus::MarriedSeparate, m(20_000), m(10_000)),
+            m(17_000)
+        );
     }
 }
