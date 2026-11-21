@@ -2,6 +2,7 @@
   "year": 2026,
   "source": "IRS Rev. Proc. 2025-32 (2026 inflation adjustments) and SSA 2026 wage base. Verify each November.",
   "standard_deduction": { "single": 1610000, "married_joint": 3220000, "married_separate": 1610000, "head_of_household": 2415000 },
+  "aged_extra_deduction": { "single": 205000, "married_joint": 165000, "married_separate": 165000, "head_of_household": 205000 },
   "brackets": {
     "single": [[0, 0.10], [1240000, 0.12], [5040000, 0.22], [10570000, 0.24], [20177500, 0.32], [25622500, 0.35], [64060000, 0.37]],
     "married_joint": [[0, 0.10], [2480000, 0.12], [10080000, 0.22], [21140000, 0.24], [40355000, 0.32], [51245000, 0.35], [76870000, 0.37]],

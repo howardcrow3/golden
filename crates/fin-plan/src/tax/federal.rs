@@ -36,6 +36,9 @@ pub struct FederalTaxYear {
     pub year: i32,
     pub source: String,
     standard_deduction: HashMap<FilingStatus, Money>,
+    /// Extra standard deduction for each filer aged 65 or over.
+    #[serde(default)]
+    aged_extra_deduction: HashMap<FilingStatus, Money>,
     brackets: HashMap<FilingStatus, BracketTable>,
     ltcg: HashMap<FilingStatus, BracketTable>,
     fica: Fica,
@@ -54,6 +57,13 @@ pub struct FederalInput {
     pub itemized: Money,
     /// Wages subject to FICA (all earners combined; use `fica_for_wages` per earner for exact SS cap).
     pub wages: Money,
+    /// Interest and other investment income not already counted as long-term gains; it only
+    /// matters for the net investment income tax.
+    pub other_investment_income: Money,
+    /// How many of the filers (0, 1 or 2) are 65 or older.
+    pub seniors: u8,
+    /// Apply the temporary extra deduction for filers 65 and older (tax years 2025 to 2028).
+    pub senior_bonus: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -63,8 +73,37 @@ pub struct FederalResult {
     pub taxable_income: Money,
     pub ordinary_tax: Money,
     pub ltcg_tax: Money,
+    /// Net investment income tax (3.8%), included in `income_tax`.
+    pub niit: Money,
     pub income_tax: Money,
     pub marginal_rate: f64,
+}
+
+/// Statutory MAGI thresholds for the 3.8% net investment income tax (not inflation-indexed).
+fn niit_threshold(fs: FilingStatus) -> Money {
+    Money::from_dollars(match fs {
+        FilingStatus::MarriedJoint => 250_000,
+        FilingStatus::MarriedSeparate => 125_000,
+        FilingStatus::Single | FilingStatus::HeadOfHousehold => 200_000,
+    })
+}
+
+/// The 2025-2028 extra deduction for filers 65+: $6,000 each, reduced by 6% of income over
+/// $75,000 ($150,000 joint). Not available to married people filing separately.
+fn senior_bonus_deduction(fs: FilingStatus, seniors: u8, magi: Money) -> Money {
+    let (start, ok) = match fs {
+        FilingStatus::MarriedJoint => (150_000, true),
+        FilingStatus::MarriedSeparate => (0, false),
+        FilingStatus::Single | FilingStatus::HeadOfHousehold => (75_000, true),
+    };
+    if !ok {
+        return Money::ZERO;
+    }
+    let full = Money::from_dollars(6_000 * seniors as i64);
+    let cut = (magi - Money::from_dollars(start))
+        .max(Money::ZERO)
+        .mul_rate(0.06);
+    (full - cut).max(Money::ZERO)
 }
 
 impl FederalTaxYear {
@@ -88,7 +127,22 @@ impl FederalTaxYear {
 
     pub fn income_tax(&self, fs: FilingStatus, i: FederalInput) -> FederalResult {
         let agi = (i.ordinary_income + i.long_term_gains - i.adjustments).max(Money::ZERO);
-        let deduction = self.standard_deduction(fs).max(i.itemized);
+        let aged = self
+            .aged_extra_deduction
+            .get(&fs)
+            .copied()
+            .unwrap_or(Money::ZERO);
+        let seniors = i.seniors.min(if fs == FilingStatus::MarriedJoint {
+            2
+        } else {
+            1
+        });
+        let standard =
+            self.standard_deduction(fs) + Money::from_cents(aged.cents() * seniors as i64);
+        let mut deduction = standard.max(i.itemized);
+        if i.senior_bonus {
+            deduction += senior_bonus_deduction(fs, seniors, agi);
+        }
         let taxable = (agi - deduction).max(Money::ZERO);
         // Gains sit on top of ordinary income; deduction first absorbs ordinary income.
         let ordinary_taxable = (i.ordinary_income - i.adjustments - deduction).max(Money::ZERO);
@@ -98,13 +152,19 @@ impl FederalTaxYear {
             .max(Money::ZERO);
         let ordinary_tax = self.brackets[&fs].tax(ordinary_taxable);
         let ltcg_tax = self.ltcg[&fs].tax_stacked(ordinary_taxable, gains_taxable);
+        let net_investment = i.long_term_gains + i.other_investment_income;
+        let niit = net_investment
+            .min((agi - niit_threshold(fs)).max(Money::ZERO))
+            .max(Money::ZERO)
+            .mul_rate(0.038);
         FederalResult {
             agi,
             deduction,
             taxable_income: taxable,
             ordinary_tax,
             ltcg_tax,
-            income_tax: ordinary_tax + ltcg_tax,
+            niit,
+            income_tax: ordinary_tax + ltcg_tax + niit,
             marginal_rate: self.brackets[&fs].marginal_rate(ordinary_taxable),
         }
     }
@@ -328,6 +388,102 @@ mod tests {
         assert_eq!(
             taxable_social_security(FilingStatus::MarriedSeparate, m(20_000), m(10_000)),
             m(17_000)
+        );
+    }
+
+    #[test]
+    fn niit_applies_to_investment_income_over_the_threshold() {
+        let y = FederalTaxYear::y2026();
+        // Single, $180k wages + $50k gains: AGI 230k is $30k over, so NIIT is 3.8% of $30k.
+        let r = y.income_tax(
+            FilingStatus::Single,
+            FederalInput {
+                ordinary_income: m(180_000),
+                long_term_gains: m(50_000),
+                ..Default::default()
+            },
+        );
+        assert_eq!(r.niit, Money::from_cents(114_000));
+        assert_eq!(r.income_tax, r.ordinary_tax + r.ltcg_tax + r.niit);
+        // Only investment income counts: $20k of gains on $300k wages is taxed in full.
+        let r = y.income_tax(
+            FilingStatus::Single,
+            FederalInput {
+                ordinary_income: m(300_000),
+                long_term_gains: m(20_000),
+                ..Default::default()
+            },
+        );
+        assert_eq!(r.niit, Money::from_cents(76_000));
+        // Below the threshold nothing is owed.
+        let r = y.income_tax(
+            FilingStatus::MarriedJoint,
+            FederalInput {
+                ordinary_income: m(150_000),
+                long_term_gains: m(50_000),
+                ..Default::default()
+            },
+        );
+        assert_eq!(r.niit, Money::ZERO);
+        // Interest counts too, via the other-investment field.
+        let r = y.income_tax(
+            FilingStatus::Single,
+            FederalInput {
+                ordinary_income: m(250_000),
+                other_investment_income: m(10_000),
+                ..Default::default()
+            },
+        );
+        assert_eq!(r.niit, Money::from_cents(38_000));
+    }
+
+    #[test]
+    fn people_65_and_over_get_a_bigger_deduction() {
+        let y = FederalTaxYear::y2026();
+        let base = FederalInput {
+            ordinary_income: m(60_000),
+            ..Default::default()
+        };
+        let plain = y.income_tax(FilingStatus::Single, base);
+        let aged = y.income_tax(FilingStatus::Single, FederalInput { seniors: 1, ..base });
+        assert_eq!(aged.deduction, plain.deduction + m(2_050));
+        let couple = y.income_tax(
+            FilingStatus::MarriedJoint,
+            FederalInput { seniors: 2, ..base },
+        );
+        assert_eq!(
+            couple.deduction,
+            y.standard_deduction(FilingStatus::MarriedJoint) + m(3_300)
+        );
+        // A second senior on a single return is ignored.
+        let odd = y.income_tax(FilingStatus::Single, FederalInput { seniors: 2, ..base });
+        assert_eq!(odd.deduction, aged.deduction);
+    }
+
+    #[test]
+    fn the_temporary_senior_deduction_phases_out() {
+        let y = FederalTaxYear::y2026();
+        let with = |income: i64, fs| {
+            y.income_tax(
+                fs,
+                FederalInput {
+                    ordinary_income: m(income),
+                    seniors: 1,
+                    senior_bonus: true,
+                    ..Default::default()
+                },
+            )
+            .deduction
+        };
+        let std_aged = y.standard_deduction(FilingStatus::Single) + m(2_050);
+        assert_eq!(with(60_000, FilingStatus::Single), std_aged + m(6_000));
+        // $100k is $25k over the $75k start: 6% of that is $1,500.
+        assert_eq!(with(100_000, FilingStatus::Single), std_aged + m(4_500));
+        assert_eq!(with(200_000, FilingStatus::Single), std_aged);
+        // Not available when married filing separately.
+        assert_eq!(
+            with(60_000, FilingStatus::MarriedSeparate),
+            y.standard_deduction(FilingStatus::MarriedSeparate) + m(1_650)
         );
     }
 }
