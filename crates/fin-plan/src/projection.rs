@@ -121,6 +121,12 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         // Tax on income that does not depend on withdrawals.
         let fica = fed.fica_for_wages(input.filing, wages);
         let base_ordinary = (wages - contrib).max(Money::ZERO);
+        let seniors = input
+            .people
+            .iter()
+            .filter(|p| !p.is_dependent && p.age_on(chrono_start(year)) >= 65)
+            .count()
+            .min(2) as u8;
         // How much of Social Security is taxed depends on all other income, so it is worked
         // out again whenever withdrawals change that income.
         let base_tax = |ord: Money, gains: Money| -> Money {
@@ -130,6 +136,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 FederalInput {
                     ordinary_income: ord + taxable_ss,
                     long_term_gains: gains,
+                    seniors,
+                    senior_bonus: year <= 2028,
                     ..Default::default()
                 },
             );
