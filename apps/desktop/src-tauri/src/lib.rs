@@ -299,7 +299,10 @@ struct EngineCompleter(fin_ai::Engine);
 
 impl fin_app::model::Completer for EngineCompleter {
     fn complete(&self, prompt: &str) -> Result<String, String> {
-        self.0.complete_json(prompt).map_err(|e| e.to_string())
+        self.0
+            .run_task(&fin_ai::task::WHATIF, &[("input", prompt)])
+            .map(|o| o.raw)
+            .map_err(|e| e.to_string())
     }
 }
 
