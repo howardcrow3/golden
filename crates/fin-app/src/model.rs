@@ -13,6 +13,12 @@ use serde_json::Value;
 
 pub trait Completer: Send {
     fn complete(&self, prompt: &str) -> Result<String, String>;
+
+    /// Complete for a named task (`whatif`, `categorize`, ...). A built-in model picks the task's
+    /// schema from the name; other completers just answer the prompt.
+    fn complete_task(&self, _task: &str, prompt: &str) -> Result<String, String> {
+        self.complete(prompt)
+    }
 }
 
 pub struct ModelInterpreter {
@@ -142,7 +148,7 @@ pub fn parse_reply(reply: &str, h: &Household, today: NaiveDate) -> Option<Vec<C
 impl Interpreter for ModelInterpreter {
     fn interpret(&self, text: &str, h: &Household, today: NaiveDate) -> Interpretation {
         let prompt = ModelInterpreter::prompt(text, h, today);
-        if let Ok(reply) = self.completer.complete(&prompt) {
+        if let Ok(reply) = self.completer.complete_task("whatif", &prompt) {
             if let Some(changes) = parse_reply(&reply, h, today) {
                 return Interpretation { changes };
             }

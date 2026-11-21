@@ -172,6 +172,9 @@ impl Completer for Shared {
     fn complete(&self, prompt: &str) -> Result<String, String> {
         self.0.complete(prompt)
     }
+    fn complete_task(&self, task: &str, prompt: &str) -> Result<String, String> {
+        self.0.complete_task(task, prompt)
+    }
 }
 
 pub struct LocalCompleter {
@@ -263,27 +266,28 @@ impl App {
         self.model_settings()
     }
 
-    /// Use the saved local model for the what-if chat, or the built-in phrases when none is set
-    /// (or the saved address is no longer acceptable). Call once after opening the database.
     /// Use a model running inside the app (or stop using it with `None`).
     pub fn set_embedded_model(&mut self, c: Option<std::sync::Arc<dyn Completer + Sync>>) {
         self.embedded = c;
         self.refresh_interpreter();
     }
 
+    /// Use the saved local model for the what-if chat and the AI helpers, or the built-in phrases
+    /// when none is set (or the saved address is no longer acceptable). Call once after opening
+    /// the database.
     pub fn refresh_interpreter(&mut self) {
-        if let Some(c) = &self.embedded {
-            self.interpreter = Box::new(ModelInterpreter::new(Box::new(Shared(c.clone()))));
-            return;
-        }
-        let saved = self.model_settings().ok();
-        let completer = saved.and_then(|s| {
-            let ep = parse_endpoint(&s.endpoint).ok()?;
-            (!s.name.trim().is_empty()).then(|| LocalCompleter::new(ep, &s.name))
-        });
-        self.interpreter = match completer {
-            Some(c) => Box::new(ModelInterpreter::new(Box::new(c))),
+        let ai: Option<std::sync::Arc<dyn Completer + Sync>> = match &self.embedded {
+            Some(c) => Some(c.clone()),
+            None => self.model_settings().ok().and_then(|s| {
+                let ep = parse_endpoint(&s.endpoint).ok()?;
+                (!s.name.trim().is_empty())
+                    .then(|| std::sync::Arc::new(LocalCompleter::new(ep, &s.name)) as _)
+            }),
+        };
+        self.interpreter = match &ai {
+            Some(c) => Box::new(ModelInterpreter::new(Box::new(Shared(c.clone())))),
             None => Box::new(crate::chat::RuleInterpreter),
         };
+        self.ai = ai;
     }
 }
