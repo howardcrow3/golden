@@ -1,7 +1,9 @@
 //! Year-by-year retirement projection in today's dollars (real terms): tax brackets and
 //! spending are held constant in real terms and portfolios grow at a real return.
 
-use crate::tax::{FederalInput, FederalTaxYear, FilingStatus, StateTaxYear};
+use crate::tax::{
+    taxable_social_security, FederalInput, FederalTaxYear, FilingStatus, StateTaxYear,
+};
 use fin_core::{Money, Person};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -118,13 +120,15 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
 
         // Tax on income that does not depend on withdrawals.
         let fica = fed.fica_for_wages(input.filing, wages);
-        let taxable_ss = ss.mul_rate(0.85);
-        let base_ordinary = (wages - contrib).max(Money::ZERO) + taxable_ss;
+        let base_ordinary = (wages - contrib).max(Money::ZERO);
+        // How much of Social Security is taxed depends on all other income, so it is worked
+        // out again whenever withdrawals change that income.
         let base_tax = |ord: Money, gains: Money| -> Money {
+            let taxable_ss = taxable_social_security(input.filing, ss, ord + gains);
             let f = fed.income_tax(
                 input.filing,
                 FederalInput {
-                    ordinary_income: ord,
+                    ordinary_income: ord + taxable_ss,
                     long_term_gains: gains,
                     ..Default::default()
                 },
@@ -333,6 +337,31 @@ mod tests {
         let after = p.rows.iter().find(|r| r.age == 67).unwrap();
         assert_eq!(before.social_security, Money::ZERO);
         assert_eq!(after.social_security, Money::from_dollars(38_000));
+    }
+
+    #[test]
+    fn a_retiree_living_on_social_security_and_roth_pays_no_income_tax() {
+        let mut i = couple();
+        i.streams.clear();
+        i.accounts = Accounts {
+            cash: Money::ZERO,
+            taxable: Money::ZERO,
+            taxable_gain_share: 0.0,
+            traditional: Money::ZERO,
+            roth: Money::from_dollars(800_000),
+        };
+        i.social_security = vec![SocialSecurity {
+            person: 0,
+            annual_benefit: Money::from_dollars(30_000),
+            claim_age: 50,
+        }];
+        i.annual_spending = Money::from_dollars(50_000);
+        let p = project_constant(&i, 0.04);
+        // $30k of benefits and nothing else is under the joint threshold: nothing is taxed,
+        // so the only gap is spending less benefits, paid from Roth.
+        let row = &p.rows[0];
+        assert_eq!(row.taxes, Money::ZERO);
+        assert_eq!(row.withdrawals, Money::from_dollars(20_000));
     }
 
     #[test]
