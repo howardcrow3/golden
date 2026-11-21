@@ -28,7 +28,7 @@ describe("ImportFolder", () => {
     const status = await screen.findByTestId("folder-result");
     expect(status.textContent).toMatch(/Found 3 statement files: 1 imported,\s+1 already imported, 1 could not be read/);
     expect((await screen.findByTestId("folder-failure")).textContent).toMatch(/x\.csv: bad row/);
-    expect(calls[0]).toEqual(["import_folder", { path: " /Users/me/Downloads ", account: "Jar", kind: "savings" }]);
+    expect(calls.find(([c]) => c === "import_folder")).toEqual(["import_folder", { path: " /Users/me/Downloads ", account: "Jar", kind: "savings" }]);
     expect(onreport).toHaveBeenCalledWith([rep]);
   });
   it("shows the engine's error", async () => {
@@ -36,5 +36,26 @@ describe("ImportFolder", () => {
     await fireEvent.input(screen.getByLabelText("Folder to import"), { target: { value: "/nope" } });
     await fireEvent.click(screen.getByRole("button", { name: "Import new files" }));
     expect((await screen.findByRole("alert")).textContent).toMatch(/Could not open/);
+  });
+  it("starts and stops watching a folder", async () => {
+    let w: unknown = null;
+    const calls: string[] = [];
+    render(ImportFolder, {
+      invoke: async (c: string, a?: Record<string, unknown>) => {
+        calls.push(c);
+        if (c === "watched_folder") return w;
+        if (c === "watch_folder") return (w = { path: a!.path, account: a!.account, kind: a!.kind });
+        if (c === "stop_watching") return (w = null);
+        return undefined;
+      },
+      account: "Jar",
+      kind: "savings",
+    });
+    await fireEvent.input(screen.getByLabelText("Folder to import"), { target: { value: "/Users/me/Downloads" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Keep watching this folder" }));
+    expect((await screen.findByTestId("watching")).textContent).toMatch(/Watching \/Users\/me\/Downloads/);
+    await fireEvent.click(screen.getByRole("button", { name: "Stop watching" }));
+    expect(await screen.findByRole("button", { name: "Keep watching this folder" })).toBeTruthy();
+    expect(calls).toContain("stop_watching");
   });
 });

@@ -643,6 +643,22 @@ export async function importFolder(path: string, account: string, kind: string, 
   return (await (await resolve(invoke))("import_folder", { path, account, kind })) as FolderReport;
 }
 
+export interface Watch {
+  path: string;
+  account: string;
+  kind: string;
+}
+export async function watchedFolder(invoke?: Invoke): Promise<Watch | null> {
+  const w = (await (await resolve(invoke))("watched_folder")) as Watch | null;
+  return w && typeof w.path === "string" ? w : null;
+}
+export async function watchFolder(path: string, account: string, kind: string, invoke?: Invoke): Promise<Watch> {
+  return (await (await resolve(invoke))("watch_folder", { path, account, kind })) as Watch;
+}
+export async function stopWatching(invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("stop_watching");
+}
+
 export interface SavedScenario {
   id: number;
   name: string;

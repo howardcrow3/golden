@@ -59,6 +59,25 @@ async fn import_folder(app: tauri::AppHandle, path: String, account: String, kin
     .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+fn watched_folder(state: Shared) -> Result<Option<fin_app::watch::Watch>, String> {
+    lock(&state)?.watched_folder()
+}
+
+/// Start watching a folder; it is scanned once straight away.
+#[tauri::command]
+fn watch_folder(state: Shared, path: String, account: String, kind: String) -> Result<fin_app::watch::Watch, String> {
+    let mut core = lock(&state)?;
+    let w = core.watch_folder(&path, &account, &kind)?;
+    core.scan_watched();
+    Ok(w)
+}
+
+#[tauri::command]
+fn stop_watching(state: Shared) -> Result<(), String> {
+    lock(&state)?.stop_watching()
+}
+
 /// Choose the statement library folder ("" goes back to the default); returns the folder now in use.
 #[tauri::command]
 fn set_library_folder(state: Shared, path: String) -> Result<String, String> {
@@ -616,6 +635,15 @@ pub fn run() {
             app.manage(Mutex::new(core));
             app.manage(std::sync::Arc::new(fin_ai::manager::DownloadState::default()));
             attach_model(app.handle());
+            // Look in the watched folder (if any) for new statements every few minutes.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(300));
+                let state = handle.state::<Mutex<Core>>();
+                if let Ok(mut core) = state.lock() {
+                    core.scan_watched();
+                };
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -632,6 +660,9 @@ pub fn run() {
             connections,
             erase_all_data,
             import_folder,
+            watched_folder,
+            watch_folder,
+            stop_watching,
             ask,
             list_scenarios,
             save_scenario,
