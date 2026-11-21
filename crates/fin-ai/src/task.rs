@@ -158,8 +158,19 @@ pub const NAME_STATEMENT: TaskSpec = TaskSpec {
     temperature: 0.0,
 };
 
+/// Say what a plan result means in plain English, from a few facts only (success rate, ages,
+/// whether money runs out). The caller refuses any number the facts do not contain.
+pub const EXPLAIN: TaskSpec = TaskSpec {
+    id: "explain",
+    version: 1,
+    prompt: "{{input}}",
+    schema: include_str!("../prompts/explain.schema.json"),
+    max_tokens: 300,
+    temperature: 0.2,
+};
+
 /// Every task, so a completer can find one by the name the app asks for.
-pub const ALL: &[&TaskSpec] = &[&WHATIF, &CATEGORIZE, &NAME_STATEMENT];
+pub const ALL: &[&TaskSpec] = &[&WHATIF, &CATEGORIZE, &NAME_STATEMENT, &EXPLAIN];
 
 pub fn by_id(id: &str) -> Option<&'static TaskSpec> {
     ALL.iter().copied().find(|t| t.id == id)

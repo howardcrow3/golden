@@ -379,6 +379,21 @@ async fn suggest_categories(app: tauri::AppHandle) -> Result<Vec<fin_app::ai::Ca
     .map_err(|e| e.to_string())?
 }
 
+/// Explain a plan result in plain English, from a few rounded facts only.
+#[tauri::command]
+async fn explain_result(
+    app: tauri::AppHandle,
+    facts: fin_app::explain::ExplainFacts,
+) -> Result<fin_app::explain::Explanation, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Mutex<Core>>();
+        let core = lock(&state)?;
+        Ok(core.explain_result(&facts))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 fn setup_progress(state: Shared) -> Result<fin_app::setup::Setup, String> {
     lock(&state)?.setup_progress()
@@ -496,6 +511,7 @@ pub fn run() {
             model_settings,
             model_status,
             suggest_categories,
+            explain_result,
             start_model_download,
             model_progress,
             cancel_model_download,

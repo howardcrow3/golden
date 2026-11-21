@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Explain from "./Explain.svelte";
   import { getHousehold, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
   import { formatCents, formatPercent } from "./money";
@@ -119,6 +120,7 @@
       {#if result.depletedYear}On the average path the money runs out in {result.depletedYear}.{/if}
     </p>
     <svg viewBox="0 0 640 180" role="img" aria-label="Projected balance by year"><polyline fill="none" stroke="var(--gold)" stroke-width="2" {points} /></svg>
+    <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <p class="assumptions">Assumes {formatPercent(result.realReturn)} real return, {formatPercent(result.volatility)} volatility, Social Security at {result.ssClaimAge}. These are estimates, not advice.</p>
   </section>
 {/if}
