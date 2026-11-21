@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import Privacy from "./Privacy.svelte";
 
 afterEach(cleanup);
@@ -26,5 +26,34 @@ describe("Privacy", () => {
   it("shows an error", async () => {
     render(Privacy, { invoke: async () => { throw new Error("locked"); } });
     expect((await screen.findByRole("alert")).textContent).toMatch(/locked/);
+  });
+  it("only deletes after the word is typed", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    render(Privacy, {
+      invoke: async (c: string, a?: Record<string, unknown>) => {
+        calls.push([c, a]);
+        return c === "connections" ? { private: true, items } : c === "ai_activity" ? [] : undefined;
+      },
+    });
+    const btn = screen.getByRole("button", { name: "Delete everything" }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    await fireEvent.input(screen.getByLabelText("Confirm deletion"), { target: { value: "delete" } });
+    expect(btn.disabled).toBe(true);
+    await fireEvent.input(screen.getByLabelText("Confirm deletion"), { target: { value: "DELETE" } });
+    expect(btn.disabled).toBe(false);
+    await fireEvent.click(btn);
+    expect(await screen.findByTestId("erased")).toBeTruthy();
+    expect(calls.find(([c]) => c === "erase_all_data")?.[1]).toEqual({ confirm: "DELETE" });
+  });
+  it("shows the engine's refusal", async () => {
+    render(Privacy, {
+      invoke: async (c: string) => {
+        if (c === "erase_all_data") throw new Error("Type DELETE to confirm.");
+        return c === "connections" ? { private: true, items } : [];
+      },
+    });
+    await fireEvent.input(screen.getByLabelText("Confirm deletion"), { target: { value: "DELETE" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Delete everything" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/Type DELETE/);
   });
 });

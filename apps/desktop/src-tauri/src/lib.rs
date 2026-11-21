@@ -418,6 +418,12 @@ fn clear_ai_activity(state: Shared) -> Result<(), String> {
     Ok(())
 }
 
+/// Delete everything in one step. The caller must send the word DELETE.
+#[tauri::command]
+fn erase_all_data(state: Shared, confirm: String) -> Result<(), String> {
+    lock(&state)?.erase_all_data(&confirm)
+}
+
 #[tauri::command]
 fn connections(state: Shared) -> Result<fin_app::connections::Connections, String> {
     lock(&state)?.connections()
@@ -544,6 +550,7 @@ pub fn run() {
             suggest_assumptions,
             ai_activity,
             connections,
+            erase_all_data,
             clear_ai_activity,
             start_model_download,
             model_progress,

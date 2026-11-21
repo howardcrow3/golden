@@ -19,6 +19,24 @@ impl Db {
         Ok(())
     }
 
+    /// Delete every account, transaction, person and setting except the settings named in `keep`
+    /// (the trial start and licence, so erasing data can't reset the trial). Categories are kept:
+    /// they are names, not personal data.
+    pub fn erase_personal_data(&self, keep: &[&str]) -> Result<()> {
+        self.conn
+            .execute_batch("DELETE FROM txn; DELETE FROM account; DELETE FROM person;")?;
+        let mut stmt = self.conn.prepare("SELECT key FROM setting")?;
+        let keys: Vec<String> = stmt
+            .query_map([], |r| r.get(0))?
+            .collect::<std::result::Result<_, rusqlite::Error>>()?;
+        drop(stmt);
+        for k in keys.iter().filter(|k| !keep.contains(&k.as_str())) {
+            self.conn
+                .execute("DELETE FROM setting WHERE key=?1", params![k])?;
+        }
+        Ok(())
+    }
+
     /// Set only if missing; returns the stored value either way.
     pub fn set_setting_if_absent(&self, key: &str, value: &str) -> Result<String> {
         self.conn.execute(
