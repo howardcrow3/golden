@@ -419,6 +419,11 @@ fn clear_ai_activity(state: Shared) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn connections(state: Shared) -> Result<fin_app::connections::Connections, String> {
+    lock(&state)?.connections()
+}
+
+#[tauri::command]
 fn setup_progress(state: Shared) -> Result<fin_app::setup::Setup, String> {
     lock(&state)?.setup_progress()
 }
@@ -538,6 +543,7 @@ pub fn run() {
             explain_result,
             suggest_assumptions,
             ai_activity,
+            connections,
             clear_ai_activity,
             start_model_download,
             model_progress,
