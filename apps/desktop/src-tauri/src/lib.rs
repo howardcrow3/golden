@@ -47,6 +47,18 @@ fn import_file(state: Shared, name: String, bytes: Vec<u8>, account: String, kin
     lock(&state)?.import_file(&name, &bytes, &account, &kind)
 }
 
+/// Import every new statement in a folder (OFX/QFX name their own account; CSV uses `account`).
+#[tauri::command]
+async fn import_folder(app: tauri::AppHandle, path: String, account: String, kind: String) -> Result<fin_app::folder::FolderReport, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Mutex<Core>>();
+        let mut core = lock(&state)?;
+        core.import_folder(std::path::Path::new(path.trim()), &account, &kind)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Choose the statement library folder ("" goes back to the default); returns the folder now in use.
 #[tauri::command]
 fn set_library_folder(state: Shared, path: String) -> Result<String, String> {
@@ -551,6 +563,7 @@ pub fn run() {
             ai_activity,
             connections,
             erase_all_data,
+            import_folder,
             clear_ai_activity,
             start_model_download,
             model_progress,

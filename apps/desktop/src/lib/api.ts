@@ -632,3 +632,13 @@ export async function connections(invoke?: Invoke): Promise<Connections> {
 export async function eraseAllData(confirm: string, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("erase_all_data", { confirm });
 }
+
+export interface FolderReport {
+  found: number;
+  alreadyImported: number;
+  imported: ImportReport[];
+  failed: { name: string; error: string }[];
+}
+export async function importFolder(path: string, account: string, kind: string, invoke?: Invoke): Promise<FolderReport> {
+  return (await (await resolve(invoke))("import_folder", { path, account, kind })) as FolderReport;
+}
