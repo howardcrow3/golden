@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { keepWhatIf, whatIf, type Invoke, type WhatIfReply } from "./api";
+  import { keepWhatIf, saveScenario, whatIf, type Invoke, type WhatIfReply } from "./api";
   import { verdict } from "./chart";
   import { formatPercent } from "./money";
   import ModelSetup from "./ModelSetup.svelte";
   import ModelDownload from "./ModelDownload.svelte";
   import AiActivity from "./AiActivity.svelte";
   import Explain from "./Explain.svelte";
+  import Scenarios from "./Scenarios.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   type Turn = { question: string; reply: WhatIfReply; state: "open" | "kept" | "dismissed" };
@@ -29,6 +30,20 @@
       error = e instanceof Error ? e.message : String(e);
     } finally {
       busy = false;
+    }
+  }
+
+  let scenarioRefresh = $state(0);
+  let saveName = $state<Record<number, string>>({});
+  let saved = $state<Record<number, string>>({});
+  async function saveAsScenario(i: number) {
+    error = "";
+    try {
+      const s = await saveScenario(saveName[i] ?? "", turns[i].reply.changes, invoke);
+      saved[i] = s.name;
+      scenarioRefresh++;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
     }
   }
 
@@ -61,6 +76,7 @@
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 
+<Scenarios {invoke} refresh={scenarioRefresh} />
 <ModelDownload {invoke} />
 <ModelSetup {invoke} />
 <AiActivity {invoke} />
@@ -92,6 +108,14 @@
           <button type="button" onclick={() => keep(i)}>Keep this change</button>
           <button type="button" onclick={() => (turns[i].state = "dismissed")}>Dismiss</button>
         </div>
+        {#if saved[i]}
+          <p role="status" data-testid="scenario-saved">Saved as "{saved[i]}" below.</p>
+        {:else}
+          <div class="actions">
+            <input bind:value={saveName[i]} aria-label="Scenario name" placeholder="Name this scenario" />
+            <button type="button" onclick={() => saveAsScenario(i)} disabled={!(saveName[i] ?? "").trim()}>Save as scenario</button>
+          </div>
+        {/if}
       {:else}
         <p class="done" role="status">{t.state === "kept" ? "Saved to your plan." : "Dismissed. Nothing was changed."}</p>
       {/if}

@@ -212,6 +212,48 @@ fn keep_whatif(state: Shared, changes: Vec<Change>) -> Result<Household, String>
 }
 
 #[tauri::command]
+fn list_scenarios(state: Shared) -> Result<Vec<fin_app::scenarios::SavedScenario>, String> {
+    lock(&state)?.list_scenarios()
+}
+
+#[tauri::command]
+fn save_scenario(state: Shared, name: String, changes: Vec<Change>) -> Result<fin_app::scenarios::SavedScenario, String> {
+    lock(&state)?.save_scenario(&name, &changes, today())
+}
+
+#[tauri::command]
+fn delete_scenario(state: Shared, id: u32) -> Result<(), String> {
+    lock(&state)?.delete_scenario(id)
+}
+
+/// Run the current plan and up to three saved scenarios side by side.
+#[tauri::command]
+async fn compare_scenarios(app: tauri::AppHandle, ids: Vec<u32>, runs: usize) -> Result<fin_app::scenarios::CompareReply, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Mutex<Core>>();
+        let prep = lock(&state)?.prepare_compare(&ids, today())?;
+        prep.run(runs)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn make_plan(state: Shared, id: u32) -> Result<Household, String> {
+    lock(&state)?.make_plan(id)
+}
+
+#[tauri::command]
+fn undoable_plan(state: Shared) -> Result<Option<String>, String> {
+    lock(&state)?.undoable_plan()
+}
+
+#[tauri::command]
+fn undo_make_plan(state: Shared) -> Result<Household, String> {
+    lock(&state)?.undo_make_plan()
+}
+
+#[tauri::command]
 fn accounts(state: Shared) -> Result<Vec<AccountRow>, String> {
     lock(&state)?.accounts()
 }
@@ -564,6 +606,13 @@ pub fn run() {
             connections,
             erase_all_data,
             import_folder,
+            list_scenarios,
+            save_scenario,
+            delete_scenario,
+            compare_scenarios,
+            make_plan,
+            undoable_plan,
+            undo_make_plan,
             clear_ai_activity,
             start_model_download,
             model_progress,

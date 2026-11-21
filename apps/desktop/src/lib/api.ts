@@ -642,3 +642,36 @@ export interface FolderReport {
 export async function importFolder(path: string, account: string, kind: string, invoke?: Invoke): Promise<FolderReport> {
   return (await (await resolve(invoke))("import_folder", { path, account, kind })) as FolderReport;
 }
+
+export interface SavedScenario {
+  id: number;
+  name: string;
+  changes: Change[];
+  descriptions: string[];
+}
+export interface CompareColumn {
+  name: string;
+  descriptions: string[];
+  result: QuickPlanResult;
+}
+export async function listScenarios(invoke?: Invoke): Promise<SavedScenario[]> {
+  return (await (await resolve(invoke))("list_scenarios")) as SavedScenario[];
+}
+export async function saveScenario(name: string, changes: Change[], invoke?: Invoke): Promise<SavedScenario> {
+  return (await (await resolve(invoke))("save_scenario", { name, changes })) as SavedScenario;
+}
+export async function deleteScenario(id: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("delete_scenario", { id });
+}
+export async function compareScenarios(ids: number[], runs: number, invoke?: Invoke): Promise<{ columns: CompareColumn[] }> {
+  return (await (await resolve(invoke))("compare_scenarios", { ids, runs })) as { columns: CompareColumn[] };
+}
+export async function makePlan(id: number, invoke?: Invoke): Promise<Household> {
+  return (await (await resolve(invoke))("make_plan", { id })) as Household;
+}
+export async function undoablePlan(invoke?: Invoke): Promise<string | null> {
+  return (await (await resolve(invoke))("undoable_plan")) as string | null;
+}
+export async function undoMakePlan(invoke?: Invoke): Promise<Household> {
+  return (await (await resolve(invoke))("undo_make_plan")) as Household;
+}
