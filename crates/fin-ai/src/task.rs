@@ -180,6 +180,18 @@ pub const SUGGEST_ASSUMPTIONS: TaskSpec = TaskSpec {
     temperature: 0.2,
 };
 
+/// Turn a question about the person's money into a closed request (what, which period, which
+/// category or account). The app answers it from the ledger itself, so the model never writes
+/// an answer and never sees a number.
+pub const ASK_ROUTE: TaskSpec = TaskSpec {
+    id: "ask_route",
+    version: 1,
+    prompt: "{{input}}",
+    schema: include_str!("../prompts/ask_route.schema.json"),
+    max_tokens: 120,
+    temperature: 0.0,
+};
+
 /// Every task, so a completer can find one by the name the app asks for.
 pub const ALL: &[&TaskSpec] = &[
     &WHATIF,
@@ -187,6 +199,7 @@ pub const ALL: &[&TaskSpec] = &[
     &NAME_STATEMENT,
     &EXPLAIN,
     &SUGGEST_ASSUMPTIONS,
+    &ASK_ROUTE,
 ];
 
 pub fn by_id(id: &str) -> Option<&'static TaskSpec> {
