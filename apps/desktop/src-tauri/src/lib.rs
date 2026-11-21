@@ -193,12 +193,17 @@ async fn run_plan(state: Shared<'_>, runs: usize) -> Result<QuickPlanResult, Str
 
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
-async fn whatif(app: tauri::AppHandle, text: String, runs: usize) -> Result<WhatIfReply, String> {
+async fn whatif(
+    app: tauri::AppHandle,
+    text: String,
+    runs: usize,
+    on: Option<u32>,
+) -> Result<WhatIfReply, String> {
     // Reading the question can take seconds when the built-in model answers, so none of this
     // runs on the async runtime's own threads.
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<Mutex<Core>>();
-        let prep = lock(&state)?.prepare_whatif(&text, today())?;
+        let prep = lock(&state)?.prepare_whatif_on(&text, today(), on)?;
         prep.run(runs)
     })
     .await

@@ -210,8 +210,8 @@ export interface WhatIfReply {
   before: QuickPlanResult | null;
   after: QuickPlanResult | null;
 }
-export async function whatIf(text: string, runs: number, invoke?: Invoke): Promise<WhatIfReply> {
-  return (await (await resolve(invoke))("whatif", { text, runs })) as WhatIfReply;
+export async function whatIf(text: string, runs: number, invoke?: Invoke, on?: number): Promise<WhatIfReply> {
+  return (await (await resolve(invoke))("whatif", { text, runs, on: on ?? null })) as WhatIfReply;
 }
 export async function keepWhatIf(changes: Change[], invoke?: Invoke): Promise<Household> {
   return (await (await resolve(invoke))("keep_whatif", { changes })) as Household;

@@ -107,3 +107,34 @@ fn stacked_changes_apply_in_order() {
     let h = a.make_plan(s.id).unwrap();
     assert_eq!(h.people[0].retire_age, 58);
 }
+
+#[test]
+fn a_what_if_can_be_stacked_on_a_saved_scenario() {
+    let a = app();
+    a.save_scenario("Retire at 62", &retire(62), today())
+        .unwrap();
+    let prep = a
+        .prepare_whatif_on("spend $80k a year", today(), Some(1))
+        .unwrap();
+    // The stack carries the scenario's change first, then the new one.
+    let reply = prep.run(30).unwrap();
+    assert!(reply.understood);
+    assert_eq!(reply.changes.len(), 2);
+    assert_eq!(reply.changes[0], retire(62)[0]);
+    assert_eq!(reply.descriptions.len(), 1);
+    // The whole stack can be saved as its own scenario.
+    let s = a
+        .save_scenario("Retire at 62, spend less", &reply.changes, today())
+        .unwrap();
+    assert_eq!(s.changes.len(), 2);
+    // Without a base it behaves as before.
+    let plain = a
+        .prepare_whatif_on("spend $80k a year", today(), None)
+        .unwrap()
+        .run(30)
+        .unwrap();
+    assert_eq!(plain.changes.len(), 1);
+    assert!(a
+        .prepare_whatif_on("spend $80k a year", today(), Some(99))
+        .is_err());
+}

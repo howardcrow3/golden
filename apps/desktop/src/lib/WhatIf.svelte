@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { keepWhatIf, saveScenario, whatIf, type Invoke, type WhatIfReply } from "./api";
+  import { keepWhatIf, listScenarios, saveScenario, whatIf, type Invoke, type SavedScenario, type WhatIfReply } from "./api";
+  import { onMount } from "svelte";
   import { verdict } from "./chart";
   import { formatPercent } from "./money";
   import ModelSetup from "./ModelSetup.svelte";
@@ -23,7 +24,7 @@
     busy = true;
     error = "";
     try {
-      const reply = await whatIf(question, 400, invoke);
+      const reply = await whatIf(question, 400, invoke, base ? Number(base) : undefined);
       turns = [...turns, { question, reply, state: "open" }];
       text = "";
     } catch (e) {
@@ -32,6 +33,19 @@
       busy = false;
     }
   }
+
+  let base = $state("");
+  let scenarios = $state<SavedScenario[]>([]);
+  async function loadScenarios() {
+    try {
+      const list = await listScenarios(invoke);
+      scenarios = Array.isArray(list) ? list : [];
+      if (base && !scenarios.some((s) => String(s.id) === base)) base = "";
+    } catch {
+      scenarios = [];
+    }
+  }
+  onMount(loadScenarios);
 
   let scenarioRefresh = $state(0);
   let saveName = $state<Record<number, string>>({});
@@ -42,6 +56,7 @@
       const s = await saveScenario(saveName[i] ?? "", turns[i].reply.changes, invoke);
       saved[i] = s.name;
       scenarioRefresh++;
+      await loadScenarios();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -68,6 +83,14 @@
 
 <form class="card ask" onsubmit={(e) => { e.preventDefault(); ask(text); }}>
   <label>Your question <input bind:value={text} aria-label="What if question" placeholder="What if I retire at 65?" /></label>
+  {#if scenarios.length}
+    <label>Build on
+      <select bind:value={base} aria-label="Build on">
+        <option value="">Current plan</option>
+        {#each scenarios as sc}<option value={String(sc.id)}>{sc.name}</option>{/each}
+      </select>
+    </label>
+  {/if}
   <button type="submit" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
 </form>
 <div class="chips">

@@ -699,3 +699,22 @@ describe("Forecast", async () => {
     expect(calls[0]).toEqual(["forecast", { months: 24 }]);
   });
 });
+
+describe("WhatIf stacking", () => {
+  it("offers saved scenarios to build on and sends the choice", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      if (cmd === "list_scenarios") return [{ id: 7, name: "Retire at 62", changes: [], descriptions: [] }];
+      if (cmd === "whatif") return { understood: false, message: "I couldn't turn that into a change yet.", changes: [], descriptions: [], before: null, after: null };
+      return null;
+    };
+    render(WhatIf, { invoke });
+    const select = (await screen.findByLabelText("Build on")) as HTMLSelectElement;
+    await fireEvent.change(select, { target: { value: "7" } });
+    await fireEvent.input(screen.getByLabelText("What if question"), { target: { value: "spend $80k" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await screen.findByText(/couldn't turn that/);
+    expect(calls.find(([c]) => c === "whatif")![1]).toMatchObject({ on: 7 });
+  });
+});
