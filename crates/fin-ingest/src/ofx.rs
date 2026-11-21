@@ -66,9 +66,45 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
     Ok(out)
 }
 
+/// The closing (ledger) balance an OFX statement prints, with the date it applies to.
+/// None when the file has no `<LEDGERBAL>` block or its amount is unreadable.
+pub fn ledger_balance(text: &str) -> Option<(fin_core::NaiveDate, Money)> {
+    let upper = text.to_ascii_uppercase();
+    let s = upper.find("<LEDGERBAL>")? + "<LEDGERBAL>".len();
+    let e = upper[s..]
+        .find("</LEDGERBAL>")
+        .map(|x| s + x)
+        .unwrap_or(text.len());
+    let block = &text[s..e];
+    let amount = Money::parse(tag(block, "BALAMT")?).ok()?;
+    let raw = tag(block, "DTASOF")?;
+    let day = parse_date(&raw[..raw.len().min(8)])?;
+    Some((day, amount))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_ledger_balance() {
+        let x = "<OFX><LEDGERBAL><BALAMT>1234.56<DTASOF>20261031120000</LEDGERBAL></OFX>";
+        let (d, m) = ledger_balance(x).unwrap();
+        assert_eq!(d.to_string(), "2026-10-31");
+        assert_eq!(m, Money::from_cents(123_456));
+        let x =
+            "<OFX><LEDGERBAL><BALAMT>-50.00</BALAMT><DTASOF>20261031</DTASOF></LEDGERBAL></OFX>";
+        assert_eq!(ledger_balance(x).unwrap().1, Money::from_cents(-5000));
+    }
+
+    #[test]
+    fn missing_or_bad_ledger_balance_is_none() {
+        assert!(ledger_balance("<OFX></OFX>").is_none());
+        assert!(
+            ledger_balance("<OFX><LEDGERBAL><BALAMT>x<DTASOF>20261031</LEDGERBAL></OFX>").is_none()
+        );
+        assert!(ledger_balance("<OFX><LEDGERBAL><BALAMT>5.00</LEDGERBAL></OFX>").is_none());
+    }
 
     const SGML: &str = "OFXHEADER:100\nDATA:OFXSGML\n\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST>\n<STMTTRN>\n<TRNTYPE>DEBIT\n<DTPOSTED>20261003120000[-5:EST]\n<TRNAMT>-1500.00\n<FITID>1\n<NAME>LANDLORD\n<MEMO>Rent Nov\n</STMTTRN>\n<STMTTRN>\n<TRNTYPE>CREDIT\n<DTPOSTED>20261001\n<TRNAMT>5000.00\n<FITID>2\n<NAME>ACME PAYROLL\n</STMTTRN>\n</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>";
 

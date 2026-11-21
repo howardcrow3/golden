@@ -88,6 +88,28 @@ describe("Import", () => {
     expect(args.name).toBe("oct.csv");
     expect(args.account).toBe("Checking");
   });
+  it("says whether the balance matches the statement", async () => {
+    const base = { account: "A", parsed: 1, added: 1, skippedDuplicates: 0, uncategorized: 0, totalCents: 100, periodEnd: "2026-10-31", filedAs: null };
+    const run = async (extra: Record<string, unknown>) => {
+      const invoke = async (cmd: string) => (cmd === "library_folder" ? "/d" : { ...base, ...extra });
+      const { unmount } = render(Import, { invoke });
+      const file = new File(["x"], "a.ofx");
+      await fireEvent.change(screen.getByLabelText("Statement files"), { target: { files: [file] } });
+      const el = await screen.findByTestId("recon");
+      const text = el.textContent ?? "";
+      unmount();
+      return text;
+    };
+    expect(await run({ statementBalanceCents: 350000, balanceAfterCents: 350000, reconciled: true, differenceCents: 0 })).toMatch(/matches the statement/);
+    expect(await run({ statementBalanceCents: 400000, balanceAfterCents: 350000, reconciled: false, differenceCents: 50000 })).toMatch(/off by \$500\.00/);
+  });
+  it("shows no balance line when the statement prints none", async () => {
+    const invoke = async (cmd: string) => (cmd === "library_folder" ? "/d" : { account: "A", parsed: 1, added: 1, skippedDuplicates: 0, uncategorized: 0, totalCents: 100, periodEnd: null, filedAs: null, reconciled: null });
+    render(Import, { invoke });
+    await fireEvent.change(screen.getByLabelText("Statement files"), { target: { files: [new File(["x"], "a.csv")] } });
+    await screen.findByTestId("report");
+    expect(screen.queryByTestId("recon")).toBeNull();
+  });
   it("shows the engine's error with the file name", async () => {
     const invoke = async () => {
       throw new Error("could not find a date column");

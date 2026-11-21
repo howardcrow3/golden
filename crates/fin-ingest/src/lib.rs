@@ -47,3 +47,14 @@ pub fn read_statement(bytes: &[u8]) -> Result<Vec<ParsedTxn>, IngestError> {
     }
 }
 pub mod library;
+
+/// The closing balance a statement prints, when the format carries one (OFX/QFX do; CSV does not).
+pub fn statement_balance(bytes: &[u8]) -> Option<(NaiveDate, Money)> {
+    let text = String::from_utf8_lossy(bytes);
+    let head = text.trim_start();
+    if head.starts_with("OFXHEADER") || head.contains("<OFX>") || head.contains("<ofx>") {
+        ofx::ledger_balance(&text)
+    } else {
+        None
+    }
+}

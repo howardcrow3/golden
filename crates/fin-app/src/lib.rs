@@ -49,6 +49,15 @@ pub struct ImportReport {
     pub period_end: Option<String>,
     /// Where the original file was filed in the statement library, relative to its folder.
     pub filed_as: Option<String>,
+    /// The closing balance the statement itself prints (OFX/QFX only).
+    pub statement_balance_cents: Option<i64>,
+    /// The account's balance in Golden after this import.
+    pub balance_after_cents: Option<i64>,
+    /// `Some(true)` when Golden's balance equals the statement's; `Some(false)` when it does not
+    /// (statement balance minus Golden's is in `difference_cents`); `None` when the statement
+    /// prints no balance.
+    pub reconciled: Option<bool>,
+    pub difference_cents: Option<i64>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -200,7 +209,21 @@ impl App {
             .collect();
         let summary = self.db.import_batch(&rows).map_err(|e| e.to_string())?;
         self.mark_transfers()?;
+        let printed = fin_ingest::statement_balance(bytes);
+        let balance_after = self
+            .accounts()?
+            .into_iter()
+            .find(|a| a.id == acct.0)
+            .map(|a| a.balance_cents);
+        let (reconciled, difference_cents) = match (printed, balance_after) {
+            (Some((_, p)), Some(b)) => (Some(p.cents() == b), Some(p.cents() - b)),
+            _ => (None, None),
+        };
         Ok(ImportReport {
+            statement_balance_cents: printed.map(|(_, m)| m.cents()),
+            balance_after_cents: balance_after,
+            reconciled,
+            difference_cents,
             account: account.to_string(),
             parsed: parsed.len(),
             added: summary.added,
