@@ -18,3 +18,15 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util
 
 [dev-dependencies]
 tempfile = "3"
+
+[features]
+# The real inference engine. Off by default: it compiles llama.cpp, which needs cmake and clang.
+llama = ["dep:llama-cpp-2"]
+# Vulkan GPU support for Windows. Metal is enabled automatically on Apple silicon.
+llama-vulkan = ["llama", "llama-cpp-2/vulkan"]
+
+[target.'cfg(not(all(target_os = "macos", target_arch = "aarch64")))'.dependencies]
+llama-cpp-2 = { version = "=0.1.161", optional = true, default-features = false, features = ["common"] }
+
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+llama-cpp-2 = { version = "=0.1.161", optional = true, default-features = false, features = ["common", "metal"] }

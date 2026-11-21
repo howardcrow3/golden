@@ -225,3 +225,30 @@ fn changing_the_model_is_blocked_after_the_trial_like_other_edits() {
         .set_model("http://127.0.0.1:11434/api/generate", "m")
         .is_err());
 }
+
+struct Canned(&'static str);
+impl fin_app::model::Completer for Canned {
+    fn complete(&self, _prompt: &str) -> Result<String, String> {
+        Ok(self.0.to_string())
+    }
+}
+
+#[test]
+fn a_model_inside_the_app_answers_and_beats_a_saved_address() {
+    let (port, _req) = serve(b"HTTP/1.1 500 no\r\nContent-Length: 0\r\n\r\n".to_vec());
+    let mut a = App::in_memory().unwrap();
+    a.set_model(&format!("http://127.0.0.1:{port}/api/generate"), "x")
+        .unwrap();
+    // The built-in model's answer is what the what-if chat uses.
+    a.set_embedded_model(Some(std::sync::Arc::new(Canned(CHANGE))));
+    let prep = a
+        .prepare_whatif("make me stop working earlier please", today())
+        .unwrap();
+    assert_eq!(prep.changes.len(), 1);
+    // Taking it away falls back to the phrase rules, which can't read that sentence.
+    a.set_embedded_model(None);
+    let prep = a
+        .prepare_whatif("make me stop working earlier please", today())
+        .unwrap();
+    assert!(prep.changes.is_empty());
+}

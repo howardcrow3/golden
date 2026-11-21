@@ -166,6 +166,14 @@ fn post(ep: &Endpoint, json_body: &str) -> Result<Vec<u8>, String> {
 }
 
 /// Asks a local model server for a completion.
+struct Shared(std::sync::Arc<dyn Completer + Sync>);
+
+impl Completer for Shared {
+    fn complete(&self, prompt: &str) -> Result<String, String> {
+        self.0.complete(prompt)
+    }
+}
+
 pub struct LocalCompleter {
     endpoint: Endpoint,
     model: String,
@@ -257,7 +265,17 @@ impl App {
 
     /// Use the saved local model for the what-if chat, or the built-in phrases when none is set
     /// (or the saved address is no longer acceptable). Call once after opening the database.
+    /// Use a model running inside the app (or stop using it with `None`).
+    pub fn set_embedded_model(&mut self, c: Option<std::sync::Arc<dyn Completer + Sync>>) {
+        self.embedded = c;
+        self.refresh_interpreter();
+    }
+
     pub fn refresh_interpreter(&mut self) {
+        if let Some(c) = &self.embedded {
+            self.interpreter = Box::new(ModelInterpreter::new(Box::new(Shared(c.clone()))));
+            return;
+        }
         let saved = self.model_settings().ok();
         let completer = saved.and_then(|s| {
             let ep = parse_endpoint(&s.endpoint).ok()?;
