@@ -1,9 +1,10 @@
-//! Statement readers: turn bank files (CSV, OFX/QFX) into plain parsed transactions.
+//! Statement readers: turn bank files (CSV, OFX/QFX, text PDFs) into plain parsed transactions.
 //! No database or AI here; reconciliation and categorization happen downstream.
 pub mod csv_reader;
 pub mod dates;
 pub mod ofx;
 pub mod paystub;
+pub mod pdf;
 
 use fin_core::{Money, NaiveDate};
 
@@ -38,6 +39,9 @@ pub fn total(txns: &[ParsedTxn]) -> Money {
 
 /// Detect the file type from its bytes and parse it.
 pub fn read_statement(bytes: &[u8]) -> Result<Vec<ParsedTxn>, IngestError> {
+    if bytes.starts_with(b"%PDF") {
+        return pdf::parse_text(&pdf::extract_text(bytes)?);
+    }
     let text = String::from_utf8_lossy(bytes);
     let head = text.trim_start();
     if head.starts_with("OFXHEADER") || head.contains("<OFX>") || head.contains("<ofx>") {
@@ -50,6 +54,9 @@ pub mod library;
 
 /// The closing balance a statement prints, when the format carries one (OFX/QFX do; CSV does not).
 pub fn statement_balance(bytes: &[u8]) -> Option<(NaiveDate, Money)> {
+    if bytes.starts_with(b"%PDF") {
+        return pdf::closing_balance(&pdf::extract_text(bytes).ok()?);
+    }
     let text = String::from_utf8_lossy(bytes);
     let head = text.trim_start();
     if head.starts_with("OFXHEADER") || head.contains("<OFX>") || head.contains("<ofx>") {
