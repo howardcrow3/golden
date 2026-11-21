@@ -200,7 +200,8 @@ export type Change =
   | { kind: "retireAt"; person: number; age: number }
   | { kind: "spending"; cents: number }
   | { kind: "moveTo"; state: string }
-  | { kind: "oneTime"; label: string; person: number; cents: number; year: number };
+  | { kind: "oneTime"; label: string; person: number; cents: number; year: number }
+  | { kind: "plannedCost"; label: string; cents: number; year: number };
 
 export interface WhatIfReply {
   understood: boolean;

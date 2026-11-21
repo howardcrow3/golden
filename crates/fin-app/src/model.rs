@@ -120,6 +120,12 @@ fn valid(c: &Change, h: &Household, today: NaiveDate) -> bool {
                 && (0..=MAX_DOLLARS_IN_CENTS).contains(cents)
                 && (today.year()..=today.year() + 60).contains(year)
         }
+        Change::PlannedCost { label, cents, year } => {
+            !label.trim().is_empty()
+                && label.len() <= 60
+                && (-MAX_DOLLARS_IN_CENTS..=MAX_DOLLARS_IN_CENTS).contains(cents)
+                && (today.year()..=today.year() + 60).contains(year)
+        }
         Change::SetPick { key, label } => Assumptions::defaults()
             .get(key)
             .map(|p| p.options.iter().any(|o| &o.label == label))

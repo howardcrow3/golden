@@ -43,6 +43,12 @@ pub struct SocialSecurity {
     pub claim_age: i32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct OneTimeCost {
+    pub year: i32,
+    pub amount: Money,
+}
+
 #[derive(Debug, Clone)]
 pub struct PlanInput {
     pub start_year: i32,
@@ -54,6 +60,10 @@ pub struct PlanInput {
     pub social_security: Vec<SocialSecurity>,
     /// Household spending in today's dollars.
     pub annual_spending: Money,
+    /// One-off outflows on top of spending, in today's dollars: a house, tuition, a wedding.
+    /// A negative amount is money coming in that isn't taxed as income (an inheritance, a
+    /// home sale within the exclusion).
+    pub one_time_costs: Vec<OneTimeCost>,
     /// Plan until the primary person reaches this age.
     pub horizon_age: i32,
 }
@@ -148,7 +158,13 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         };
 
         // Money needed after tax; withdrawals are grossed up by iterating (tax depends on withdrawals).
-        let spending = input.annual_spending;
+        let spending = input.annual_spending
+            + input
+                .one_time_costs
+                .iter()
+                .filter(|c| c.year == year)
+                .map(|c| c.amount)
+                .sum::<Money>();
         let income_tax_base = base_tax(base_ordinary, Money::ZERO);
         let mut cash_in = wages - contrib + ss - fica - income_tax_base;
         let mut taxes = fica + income_tax_base;
@@ -291,6 +307,7 @@ pub(crate) mod fixtures {
                 claim_age: 67,
             }],
             annual_spending: Money::from_dollars(110_000),
+            one_time_costs: vec![],
             horizon_age: 95,
         }
     }
@@ -370,6 +387,30 @@ mod tests {
         let row = &p.rows[0];
         assert_eq!(row.taxes, Money::ZERO);
         assert_eq!(row.withdrawals, Money::from_dollars(20_000));
+    }
+
+    #[test]
+    fn one_time_costs_land_in_their_year_and_inflows_are_untaxed() {
+        let mut i = couple();
+        i.one_time_costs = vec![OneTimeCost {
+            year: 2030,
+            amount: Money::from_dollars(200_000),
+        }];
+        let base = project_constant(&couple(), 0.04);
+        let with = project_constant(&i, 0.04);
+        let row = |p: &Projection, y| p.rows.iter().find(|r| r.year == y).unwrap().spending;
+        assert_eq!(
+            row(&with, 2030),
+            row(&base, 2030) + Money::from_dollars(200_000)
+        );
+        assert_eq!(row(&with, 2031), row(&base, 2031));
+        assert!(with.final_balance() < base.final_balance());
+        i.one_time_costs[0].amount = Money::from_dollars(-200_000);
+        let inflow = project_constant(&i, 0.04);
+        assert!(inflow.final_balance() > base.final_balance());
+        // Nothing is taxed on the way in.
+        let t = |p: &Projection, y| p.rows.iter().find(|r| r.year == y).unwrap().taxes;
+        assert_eq!(t(&inflow, 2030), t(&base, 2030));
     }
 
     #[test]
