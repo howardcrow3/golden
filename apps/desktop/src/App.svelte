@@ -8,6 +8,7 @@
   import License from "./lib/License.svelte";
   import About from "./lib/About.svelte";
   import Privacy from "./lib/Privacy.svelte";
+  import PrivacyBadge from "./lib/PrivacyBadge.svelte";
   import { licenseStatus, type LicenseStatus } from "./lib/api";
 
   const pages = ["Overview", "Transactions", "Import", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
@@ -29,7 +30,7 @@
     {/each}
     <div class="spacer"></div>
     {#if badge}<div class="badge" data-testid="badge">{badge}</div>{/if}
-    <div class="mode">Private mode · nothing leaves this computer</div>
+    <PrivacyBadge onclick={() => (page = "Privacy")} />
   </nav>
   <main>
     {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
@@ -44,6 +45,5 @@
   .brand { font-weight: 600; font-size: 18px; margin-bottom: 18px; }
   .spacer { flex: 1; }
   .badge { font-size: 12px; border: 1px solid var(--gold); padding: 6px 8px; }
-  .mode { margin-top: 12px; font-size: 12px; color: var(--muted); }
   main { padding: 32px 40px; max-width: 1100px; }
 </style>
