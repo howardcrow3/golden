@@ -442,7 +442,34 @@ impl App {
     }
 
     pub fn prepare_whatif(&self, text: &str, today: NaiveDate) -> Result<WhatIfPrep, String> {
-        let h = self.household()?;
+        self.prepare_whatif_on(text, today, None)
+    }
+
+    /// A what-if stacked on a saved scenario: the plan "before" is that scenario, and the
+    /// reply's changes are the scenario's own followed by the new ones, so saving or keeping
+    /// the result carries the whole stack.
+    pub fn prepare_whatif_on(
+        &self,
+        text: &str,
+        today: NaiveDate,
+        on: Option<u32>,
+    ) -> Result<WhatIfPrep, String> {
+        let current = self.household()?;
+        let (prior, h) = match on {
+            None => (vec![], current),
+            Some(id) => {
+                let s = self
+                    .list_scenarios()?
+                    .into_iter()
+                    .find(|s| s.id == id)
+                    .ok_or("That scenario no longer exists.")?;
+                let mut h = current;
+                for c in &s.changes {
+                    c.apply(&mut h)?;
+                }
+                (s.changes, h)
+            }
+        };
         let found = self.interpreter.interpret(text, &h, today);
         if found.changes.is_empty() {
             return Ok(WhatIfPrep {
@@ -457,6 +484,8 @@ impl App {
         for c in &found.changes {
             c.apply(&mut alt)?;
         }
+        let mut changes = prior;
+        changes.extend(found.changes.iter().cloned());
         let base = (h.plan_input(today)?, h.picks.clone());
         let altp = (
             alt.plan_input(today)
@@ -466,7 +495,7 @@ impl App {
         let descriptions: Vec<String> = found.changes.iter().map(|c| c.describe(&h)).collect();
         Ok(WhatIfPrep {
             message: format!("Here is what changes: {}.", descriptions.join("; ")),
-            changes: found.changes,
+            changes,
             descriptions,
             base: Some(base),
             alt: Some(altp),
