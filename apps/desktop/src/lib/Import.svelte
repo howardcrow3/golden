@@ -98,6 +98,14 @@
   <section class="card report" data-testid="report">
     <b>{r.account}</b>: {r.added} added, {r.skippedDuplicates} already imported
     ({r.parsed} lines, net {formatCents(r.totalCents)}){#if r.uncategorized > 0}; {r.uncategorized} need a category{/if}.{#if r.filedAs} Filed as <span class="filed">{r.filedAs}</span>.{/if}
+    {#if r.reconciled === true}
+      <span class="ok" data-testid="recon">Balance matches the statement ({formatCents(r.statementBalanceCents ?? 0)}).</span>
+    {:else if r.reconciled === false}
+      <span class="warn" data-testid="recon" role="status">
+        The statement says {formatCents(r.statementBalanceCents ?? 0)} but Golden has {formatCents(r.balanceAfterCents ?? 0)}
+        (off by {formatCents(r.differenceCents ?? 0)}). If this is the account's first statement, set its opening balance to fix it; otherwise a statement may be missing.
+      </span>
+    {/if}
   </section>
 {/each}
 
@@ -105,6 +113,8 @@
 {#key bump}<Withholding {invoke} />{/key}
 
 <style>
+  .ok { color: var(--ok, #2e7d32); }
+  .warn { color: var(--warn, #b26a00); }
   .sub { color: var(--muted); margin: 0 0 20px; }
   .form { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; margin-bottom: 16px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }

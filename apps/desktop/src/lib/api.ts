@@ -83,6 +83,10 @@ export interface ImportReport {
   totalCents: number;
   periodEnd: string | null;
   filedAs: string | null;
+  statementBalanceCents?: number | null;
+  balanceAfterCents?: number | null;
+  reconciled?: boolean | null;
+  differenceCents?: number | null;
 }
 export interface AccountRow {
   id: number;

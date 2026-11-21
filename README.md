@@ -32,11 +32,11 @@ cd apps/desktop && npm ci && npm test && npm run tauri dev
 
 ## Status
 
-Working today: balance sheet with starting balances, paystub reading, monthly projection, budgets, backup/restore, savings allocation suggestions, a read-only assistant (MCP) server, statement import (CSV/OFX) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
+Working today: balance sheet with starting balances, paystub reading, monthly projection, budgets, backup/restore, savings allocation suggestions, a read-only assistant (MCP) server, statement import (CSV/OFX, with a balance check against the balance an OFX statement prints) with auto-filing into a statement library, cash flow at any grain, recategorize with remembered rules, CSV export, household and income streams, assumptions with options and likelihoods, Monte Carlo retirement plan, rule-based what-if chat, encrypted local database with the key in the OS keychain, trial and licence lock.
 
 Known gaps:
 
 - Six states (AR, CT, MD, MN, NY, VT) are flagged approximate; see the notes in `crates/fin-plan/data/states_2026.json`.
 - Licence activation is on: `apps/desktop/src-tauri/license_public_key.txt` holds the public key, and keys are issued by the highturtle billing Lambda on AWS; see [signing and licensing setup](docs/signing-and-licensing-setup.md).
 - Installers are unsigned (no Apple notarization or Windows certificate yet); the same doc lists the steps.
-- The what-if chat is rule-based by default. A language-model interpreter exists (`fin-app/src/model.rs`: validated answers only, no balances or birth dates sent, falls back to the rules) but no model is wired in yet; a `Completer` for a local model or CeeVee is the remaining piece.
+- The built-in model (llama.cpp, downloaded in the app) drives the what-if chat, transaction categories, statement names, plain-English explanations and suggested assumptions, each with a rules fallback. It has only been exercised with fake engines so far; Windows runs on CPU.
