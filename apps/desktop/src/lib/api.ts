@@ -501,3 +501,14 @@ export interface AppInfo {
 export async function appInfo(invoke?: Invoke): Promise<AppInfo> {
   return (await (await resolve(invoke))("app_info")) as AppInfo;
 }
+
+export interface ModelSettings {
+  endpoint: string;
+  name: string;
+}
+export async function modelSettings(invoke?: Invoke): Promise<ModelSettings> {
+  return (await (await resolve(invoke))("model_settings")) as ModelSettings;
+}
+export async function setModel(endpoint: string, name: string, invoke?: Invoke): Promise<ModelSettings> {
+  return (await (await resolve(invoke))("set_model", { endpoint, name })) as ModelSettings;
+}

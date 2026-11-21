@@ -16,6 +16,7 @@ pub mod insights;
 pub mod keystore;
 pub mod library;
 pub mod licensing;
+pub mod localmodel;
 pub mod mcp;
 pub mod model;
 pub mod paystub;
