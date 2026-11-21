@@ -96,6 +96,7 @@ impl App {
             return Err("Choose or type a category.".into());
         }
         let txn = self.db.get_txn(id).map_err(|e| e.to_string())?;
+        self.ensure_open(txn.day)?;
         self.db
             .set_txn_category(id, Some(category))
             .map_err(|e| e.to_string())?;

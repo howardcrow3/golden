@@ -685,3 +685,28 @@ export interface AskAnswer {
 export async function ask(question: string, invoke?: Invoke): Promise<AskAnswer> {
   return (await (await resolve(invoke))("ask", { question })) as AskAnswer;
 }
+
+export interface CloseCheck {
+  kind: string;
+  text: string;
+}
+export interface CloseReport {
+  month: string;
+  closed: boolean;
+  finished: boolean;
+  incomeCents: number;
+  spendingCents: number;
+  netCents: number;
+  count: number;
+  issues: CloseCheck[];
+  summary: string;
+}
+export async function monthCloseCheck(month: string, invoke?: Invoke): Promise<CloseReport> {
+  return (await (await resolve(invoke))("month_close_check", { month })) as CloseReport;
+}
+export async function closeMonth(month: string, invoke?: Invoke): Promise<CloseReport> {
+  return (await (await resolve(invoke))("close_month", { month })) as CloseReport;
+}
+export async function reopenMonth(month: string, invoke?: Invoke): Promise<CloseReport> {
+  return (await (await resolve(invoke))("reopen_month", { month })) as CloseReport;
+}

@@ -10,6 +10,7 @@
   import Debts from "./Debts.svelte";
   import Insights from "./Insights.svelte";
   import Goals from "./Goals.svelte";
+  import MonthClose from "./MonthClose.svelte";
 
   let { onnavigate }: { onnavigate?: (page: string) => void } = $props();
   let grain = $state<Grain>("month");
@@ -36,6 +37,7 @@
 <ThisPeriod {grain} />
 
 <Insights />
+<MonthClose />
 <BalanceSheet />
 <RecurringList />
 <Goals />

@@ -9,6 +9,7 @@ pub mod backup;
 pub mod balance;
 pub mod budget;
 pub mod chat;
+pub mod close;
 pub mod connections;
 pub mod debts;
 pub mod explain;
@@ -191,6 +192,9 @@ impl App {
             return Err("Give the account a name.".into());
         }
         let parsed = fin_ingest::read_statement(bytes).map_err(|e| e.to_string())?;
+        for t in &parsed {
+            self.ensure_open(t.day)?;
+        }
         let acct: AccountId = self
             .db
             .find_or_add_account(account, kind)
