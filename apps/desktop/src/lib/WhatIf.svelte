@@ -4,6 +4,7 @@
   import { formatPercent } from "./money";
   import ModelSetup from "./ModelSetup.svelte";
   import ModelDownload from "./ModelDownload.svelte";
+  import Explain from "./Explain.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   type Turn = { question: string; reply: WhatIfReply; state: "open" | "kept" | "dismissed" };
@@ -74,6 +75,16 @@
         <div><span>With the change</span><b data-testid="after">{formatPercent(t.reply.after.successRate, 0)}</b> <em class={a.tone}>{a.label}</em></div>
         <div class="d">{delta(t.reply.before.successRate, t.reply.after.successRate)}</div>
       </div>
+      <Explain
+        {invoke}
+        facts={{
+          successRate: t.reply.after.successRate,
+          depletedYear: t.reply.after.depletedYear,
+          retireAge: null,
+          horizonAge: t.reply.after.horizonAge,
+          compare: { beforeRate: t.reply.before.successRate, afterRate: t.reply.after.successRate, change: t.reply.descriptions.join(" and ") }
+        }}
+      />
       {#if t.state === "open"}
         <div class="actions">
           <button type="button" onclick={() => keep(i)}>Keep this change</button>

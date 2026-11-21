@@ -174,3 +174,46 @@ fn a_name_the_person_typed_is_kept() {
         "2026/Checking/2026-10 My Joint Account Checking 4821 statement.qfx"
     );
 }
+
+fn facts() -> fin_app::explain::ExplainFacts {
+    serde_json::from_str(
+        r#"{"successRate":0.874,"depletedYear":null,"retireAge":62,"horizonAge":95,"compare":null}"#,
+    )
+    .unwrap()
+}
+
+#[test]
+fn explanations_work_with_no_model() {
+    let app = App::in_memory().unwrap();
+    let e = app.explain_result(&facts());
+    assert_eq!(e.source, "built-in");
+    assert!(e.text.contains("87 out of 100"));
+}
+
+#[test]
+fn the_models_wording_is_used_when_its_numbers_check_out() {
+    let (app, asked) = app_with(
+        r#"{"text":"Your money lasts to age 95 in about 87 of every 100 simulated futures, with retirement at 62."}"#,
+    );
+    let e = app.explain_result(&facts());
+    assert_eq!(e.source, "model");
+    assert!(e.text.contains("age 95"));
+    let a = asked.lock().unwrap();
+    assert_eq!(a[0].0, "explain");
+    // Only the rounded facts went out.
+    assert!(a[0].1.contains("87 out of 100") && a[0].1.contains("62"));
+}
+
+#[test]
+fn text_with_made_up_numbers_or_junk_falls_back() {
+    for bad in [
+        r#"{"text":"You will have $1,200,000 saved by the time you retire at 62."}"#,
+        r#"{"text":"short"}"#,
+        "nonsense",
+        "{}",
+    ] {
+        let (app, _) = app_with(bad);
+        let e = app.explain_result(&facts());
+        assert_eq!(e.source, "built-in", "{bad}");
+    }
+}

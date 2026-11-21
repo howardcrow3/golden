@@ -567,3 +567,19 @@ export interface CategorySuggestion {
 export async function suggestCategories(invoke?: Invoke): Promise<CategorySuggestion[]> {
   return (await (await resolve(invoke))("suggest_categories")) as CategorySuggestion[];
 }
+
+export interface ExplainFacts {
+  successRate: number;
+  depletedYear: number | null;
+  retireAge: number | null;
+  horizonAge: number | null;
+  compare: { beforeRate: number; afterRate: number; change: string } | null;
+}
+export interface Explanation {
+  text: string;
+  /** "model" or "built-in". */
+  source: string;
+}
+export async function explainResult(facts: ExplainFacts, invoke?: Invoke): Promise<Explanation> {
+  return (await (await resolve(invoke))("explain_result", { facts })) as Explanation;
+}
