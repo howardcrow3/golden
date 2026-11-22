@@ -144,6 +144,7 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
         withdrawal_order: Default::default(),
         roth_conversion: None,
         medicare: false,
+        charity: Money::ZERO,
     };
     run_plan(&plan, &req.picks, req.runs)
 }

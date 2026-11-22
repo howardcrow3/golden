@@ -89,3 +89,57 @@ mod tests {
         assert_eq!(required(1950, 80, Money::from_dollars(-5)), Money::ZERO);
     }
 }
+
+/// 2026 limit on qualified charitable distributions per person (inflation indexed).
+const QCD_LIMIT: i64 = 111_000;
+
+/// The part of this year's giving that can go straight from an IRA: only from age 70 and a half
+/// (we use 71 for a whole-year test), never more than the IRA gives up this year (the required
+/// distribution), and within the yearly limit. Source: IRC section 408(d)(8).
+pub fn qcd(age: i32, giving: Money, rmd: Money) -> Money {
+    if age < 71 {
+        return Money::ZERO;
+    }
+    giving
+        .max(Money::ZERO)
+        .min(rmd.max(Money::ZERO))
+        .min(Money::from_dollars(QCD_LIMIT))
+}
+
+#[cfg(test)]
+mod qcd_tests {
+    use super::*;
+
+    #[test]
+    fn giving_comes_out_of_the_required_distribution() {
+        let g = Money::from_dollars(10_000);
+        assert_eq!(qcd(75, g, Money::from_dollars(40_000)), g);
+        assert_eq!(
+            qcd(75, g, Money::from_dollars(4_000)),
+            Money::from_dollars(4_000)
+        );
+    }
+
+    #[test]
+    fn nothing_before_the_age_or_without_a_distribution() {
+        let g = Money::from_dollars(10_000);
+        assert_eq!(qcd(65, g, Money::from_dollars(40_000)), Money::ZERO);
+        assert_eq!(qcd(80, g, Money::ZERO), Money::ZERO);
+        assert_eq!(
+            qcd(80, Money::from_dollars(-5), Money::from_dollars(9)),
+            Money::ZERO
+        );
+    }
+
+    #[test]
+    fn the_yearly_limit_applies() {
+        assert_eq!(
+            qcd(
+                80,
+                Money::from_dollars(500_000),
+                Money::from_dollars(900_000)
+            ),
+            Money::from_dollars(111_000)
+        );
+    }
+}

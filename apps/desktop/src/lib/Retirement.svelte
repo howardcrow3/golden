@@ -144,6 +144,10 @@
       <input type="checkbox" bind:checked={f.medicare} aria-label="Include Medicare premiums" />
       Include Medicare premiums from 65, with the income surcharge (IRMAA)
     </label>
+    <label>Charitable giving per year (part of spending)
+      <input bind:value={f.giving} aria-label="Charitable giving per year" inputmode="numeric" />
+    </label>
+    <p class="hint">From about 71 the plan gives this straight from your IRA, which keeps it out of taxable income.</p>
     <label class="check">
       <input type="checkbox" bind:checked={f.health} aria-label="Include healthcare estimates" />
       Add healthcare estimates: about $9,600 a year each before 65, $5,500 after, and an expected three years of long-term care from 82 (half the chance of $110,000 a year). All grow faster than prices.
