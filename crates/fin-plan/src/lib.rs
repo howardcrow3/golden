@@ -1,8 +1,14 @@
 //! Pure planning math: tax tables and calculators (no I/O).
+pub mod alerts;
 pub mod backtest;
+pub mod daf;
 pub mod debt;
+pub mod estate;
 pub mod estimate;
+pub mod family;
 pub mod healthcare;
+pub mod housing;
+pub mod local;
 pub mod medicare;
 pub mod milestones;
 pub mod montecarlo;
@@ -13,5 +19,6 @@ pub mod rmd;
 pub mod roth;
 pub mod safespend;
 pub mod scenario;
+pub mod sepp;
 pub mod ss;
 pub mod tax;

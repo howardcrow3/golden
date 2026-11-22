@@ -1,9 +1,9 @@
 <script lang="ts">
   import Explain from "./Explain.svelte";
-  import { getHousehold, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
+  import { getHousehold, LOCALITIES, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
   import { formatCents, formatPercent } from "./money";
-  import { fromForm, newPerson, newStream, removePerson, toForm, type Form } from "./household";
+  import { fromForm, newChild, newHome, newPerson, newStream, removePerson, toForm, type Form } from "./household";
   import Assumptions from "./Assumptions.svelte";
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
@@ -14,7 +14,11 @@
   import FanChart from "./FanChart.svelte";
   import TaxInsights from "./TaxInsights.svelte";
   import Milestones from "./Milestones.svelte";
+  import Legacy from "./Legacy.svelte";
+  import Alerts from "./Alerts.svelte";
   import Backtest from "./Backtest.svelte";
+  import Sepp from "./Sepp.svelte";
+  import Daf from "./Daf.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
@@ -88,6 +92,45 @@
     {#if f.people.length < 4}<button type="button" onclick={() => f!.people.push(newPerson())}>Add person</button>{/if}
   </section>
 
+  <section class="card" aria-label="Home">
+    <h2>Home</h2>
+    {#if f.home}
+      <p class="hint">Your yearly spending should already include the mortgage payment; the plan frees that money once the loan is paid off. Leave "Year to sell" empty to stay put.</p>
+      <div class="controls">
+        <label>Value today <input bind:value={f.home.value} aria-label="Home value" inputmode="numeric" /></label>
+        <label>Paid for it (plus improvements) <input bind:value={f.home.basis} aria-label="Home purchase price" inputmode="numeric" /></label>
+        <label>Mortgage owed <input bind:value={f.home.balance} aria-label="Mortgage balance" inputmode="numeric" /></label>
+        <label>Rate % <input bind:value={f.home.rate} aria-label="Mortgage rate" size="4" /></label>
+        <label>Years left <input bind:value={f.home.yearsLeft} aria-label="Mortgage years left" size="3" /></label>
+      </div>
+      <div class="controls">
+        <label>Year to sell <input bind:value={f.home.sellYear} aria-label="Year to sell" size="5" placeholder="stay" /></label>
+        <label>Selling costs % <input bind:value={f.home.sellingCost} aria-label="Selling costs" size="4" /></label>
+        <label>Next home costs <input bind:value={f.home.replacement} aria-label="Cost of the next home" inputmode="numeric" /></label>
+        <label>Or rent per year <input bind:value={f.home.rentAfter} aria-label="Rent after selling" inputmode="numeric" /></label>
+        <button type="button" onclick={() => (f!.home = null)}>Remove home</button>
+      </div>
+    {:else}
+      <p class="hint">Add your home to plan for the mortgage ending, or selling and moving somewhere smaller.</p>
+      <button type="button" onclick={() => (f!.home = newHome())}>Add a home</button>
+    {/if}
+  </section>
+
+  <section class="card" aria-label="Children">
+    <h2>Children</h2>
+    <p class="hint">Costs here are on top of your everyday spending: childcare from birth through age 12, and college for four years from age 18. The child tax credit is counted until 17.</p>
+    {#each f.children as c, i}
+      <div class="controls" data-testid="child-row">
+        <label>Name <input bind:value={c.name} aria-label={`Child ${i + 1} name`} /></label>
+        <label>Born <input bind:value={c.birthYear} aria-label={`Child ${i + 1} birth year`} size="5" /></label>
+        <label>Childcare per year <input bind:value={c.childcare} aria-label={`Child ${i + 1} childcare`} inputmode="numeric" /></label>
+        <label>College per year <input bind:value={c.college} aria-label={`Child ${i + 1} college`} inputmode="numeric" /></label>
+        <button type="button" onclick={() => f!.children.splice(i, 1)}>Remove</button>
+      </div>
+    {/each}
+    <button type="button" onclick={() => f!.children.push(newChild(new Date().getFullYear()))}>Add a child</button>
+  </section>
+
   <section class="card" aria-label="Income">
     <h2>Income</h2>
     <p class="hint">Leave the years empty to earn until that person retires. For a bonus or a stock vest, use "Add one-time income".</p>
@@ -113,6 +156,16 @@
 
   <section class="card controls" aria-label="Household">
     <label>State <input bind:value={f.state} maxlength="2" size="3" aria-label="State" /></label>
+    {#if LOCALITIES.some((l) => l.state === f!.state.trim().toUpperCase())}
+      <label>City or county tax
+        <select bind:value={f.locality} aria-label="City or county tax">
+          <option value="">None</option>
+          {#each LOCALITIES.filter((l) => l.state === f!.state.trim().toUpperCase()) as l}
+            <option value={l.key}>{l.name}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
     <label>Filing
       <select bind:value={f.filing} aria-label="Filing status">
         <option value="single">Single</option>
@@ -185,8 +238,12 @@
     <Backtest {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
+    <Sepp {invoke} />
+    <Daf {invoke} />
     <CashFlowSankey {result} />
+    <Alerts {result} />
     <Milestones {result} />
+    <Legacy {result} />
     <TaxInsights {result} household={scoreHousehold} />
     <PlanReport {invoke} {result} />
     <p class="assumptions">Assumes {formatPercent(result.realReturn)} real return, {formatPercent(result.volatility)} volatility, Social Security at {result.ssClaimAge}. These are estimates, not advice.</p>

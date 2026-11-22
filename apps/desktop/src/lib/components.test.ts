@@ -369,6 +369,19 @@ describe("household form helpers", () => {
     expect(fromForm(toForm(own)).streams[0].selfEmployed).toBe(true);
   });
 
+  it("round-trips a home through the form", () => {
+    const own = { ...h, home: { valueCents: 60_000_000, basisCents: 30_000_000, mortgageBalanceCents: 20_000_000, mortgageRateBp: 450, mortgageYearsLeft: 15, sellYear: 2035, sellingCostBp: 600, replacementCostCents: 25_000_000, rentAfterCents: 0 } };
+    const f = toForm(own);
+    expect(f.home?.rate).toBe("4.5");
+    expect(fromForm(f).home).toEqual(own.home);
+    expect(fromForm(toForm(h)).home).toBeUndefined();
+  });
+  it("refuses an out-of-range mortgage rate", () => {
+    const f = toForm({ ...h, home: { valueCents: 1, basisCents: 1, mortgageBalanceCents: 1, mortgageRateBp: 450, mortgageYearsLeft: 1, sellYear: null, sellingCostBp: 600, replacementCostCents: 0, rentAfterCents: 0 } });
+    f.home!.rate = "99";
+    expect(() => fromForm(f)).toThrow(/Mortgage rate/);
+  });
+
   it("round-trips a household through the form", () => {
     expect(fromForm(toForm(h))).toEqual({ ...h, events: [], spendingRule: "fixed", withdrawalOrder: "standard", medicare: true });
   });

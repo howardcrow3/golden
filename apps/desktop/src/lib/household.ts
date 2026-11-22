@@ -20,7 +20,46 @@ export interface Form {
   medicare: boolean;
   health: boolean;
   giving: string;
+  /** The home, when it is part of the plan. */
+  home: HomeForm | null;
+  children: ChildForm[];
+  locality: string;
 }
+
+export interface ChildForm {
+  name: string;
+  birthYear: string;
+  childcare: string;
+  college: string;
+}
+
+export function newChild(thisYear: number): ChildForm {
+  return { name: "", birthYear: String(thisYear), childcare: "0", college: "0" };
+}
+
+export interface HomeForm {
+  value: string;
+  basis: string;
+  balance: string;
+  /** Percent, such as 4.5. */
+  rate: string;
+  yearsLeft: string;
+  sellYear: string;
+  /** Percent of the price. */
+  sellingCost: string;
+  replacement: string;
+  rentAfter: string;
+}
+
+export function newHome(): HomeForm {
+  return { value: "0", basis: "0", balance: "0", rate: "4.5", yearsLeft: "25", sellYear: "", sellingCost: "6", replacement: "0", rentAfter: "0" };
+}
+
+const bp = (text: string, label: string): number => {
+  const n = Number(text.trim());
+  if (!Number.isFinite(n) || n < 0 || n > 30) throw new Error(`${label}: enter a percentage from 0 to 30.`);
+  return Math.round(n * 100);
+};
 
 const dollars = (c: number) => formatCents(c, { whole: true }).replace("$", "");
 
@@ -50,6 +89,26 @@ export function toForm(h: Household): Form {
     medicare: h.medicare ?? true,
     health: h.health ?? false,
     giving: dollars(h.givingCents ?? 0),
+    home: h.home
+      ? {
+          value: dollars(h.home.valueCents),
+          basis: dollars(h.home.basisCents),
+          balance: dollars(h.home.mortgageBalanceCents),
+          rate: String(h.home.mortgageRateBp / 100),
+          yearsLeft: String(h.home.mortgageYearsLeft),
+          sellYear: h.home.sellYear?.toString() ?? "",
+          sellingCost: String(h.home.sellingCostBp / 100),
+          replacement: dollars(h.home.replacementCostCents),
+          rentAfter: dollars(h.home.rentAfterCents),
+        }
+      : null,
+    locality: h.locality ?? "",
+    children: (h.children ?? []).map((c) => ({
+      name: c.name,
+      birthYear: String(c.birthYear),
+      childcare: dollars(c.childcareCents),
+      college: dollars(c.collegeCents),
+    })),
   };
 }
 
@@ -103,6 +162,37 @@ export function fromForm(f: Form): Household {
     medicare: f.medicare,
     ...(f.health ? { health: true } : {}),
     ...(money(f.giving || "0", "Charitable giving") > 0 ? { givingCents: money(f.giving, "Charitable giving") } : {}),
+    ...(f.home
+      ? {
+          home: {
+            valueCents: money(f.home.value, "Home value"),
+            basisCents: money(f.home.basis, "Home purchase price"),
+            mortgageBalanceCents: money(f.home.balance, "Mortgage balance"),
+            mortgageRateBp: bp(f.home.rate, "Mortgage rate"),
+            mortgageYearsLeft: Math.max(0, Math.round(Number(f.home.yearsLeft) || 0)),
+            sellYear: year(f.home.sellYear, "Year to sell"),
+            sellingCostBp: bp(f.home.sellingCost, "Selling costs"),
+            replacementCostCents: money(f.home.replacement, "Cost of the next home"),
+            rentAfterCents: money(f.home.rentAfter, "Rent after selling"),
+          },
+        }
+      : {}),
+    ...(f.locality ? { locality: f.locality } : {}),
+    ...(f.children.length > 0
+      ? {
+          children: f.children.map((c, i) => {
+            const name = c.name.trim() || `Child ${i + 1}`;
+            const by = year(c.birthYear, `${name} birth year`);
+            if (by === null) throw new Error(`${name} birth year: enter a four-digit year.`);
+            return {
+              name,
+              birthYear: by,
+              childcareCents: money(c.childcare, `${name} childcare`),
+              collegeCents: money(c.college, `${name} college`),
+            };
+          }),
+        }
+      : {}),
   };
 }
 

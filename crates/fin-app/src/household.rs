@@ -78,6 +78,54 @@ pub struct Household {
     /// the IRA, which lowers taxable income.
     #[serde(default)]
     pub giving_cents: i64,
+    /// The home the household owns, if it is part of the plan.
+    #[serde(default)]
+    pub home: Option<HomeRow>,
+    /// Children: childcare, college and the child tax credit.
+    #[serde(default)]
+    pub children: Vec<ChildRow>,
+    /// City or county income tax key (see `fin_plan::local`), if one applies.
+    #[serde(default)]
+    pub locality: Option<String>,
+}
+
+/// A child, with what you expect to pay on top of everyday spending.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChildRow {
+    pub name: String,
+    pub birth_year: i32,
+    /// Yearly childcare cost from birth through age 12.
+    #[serde(default)]
+    pub childcare_cents: i64,
+    /// Yearly college cost you will pay for four years from age 18.
+    #[serde(default)]
+    pub college_cents: i64,
+}
+
+/// The home: its value, what is owed, and an optional sale.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HomeRow {
+    pub value_cents: i64,
+    pub basis_cents: i64,
+    pub mortgage_balance_cents: i64,
+    /// Hundredths of a percent: 450 is 4.5%.
+    pub mortgage_rate_bp: i32,
+    pub mortgage_years_left: i32,
+    #[serde(default)]
+    pub sell_year: Option<i32>,
+    /// Hundredths of a percent of the price: 600 is 6%.
+    #[serde(default = "default_selling_cost")]
+    pub selling_cost_bp: i32,
+    #[serde(default)]
+    pub replacement_cost_cents: i64,
+    #[serde(default)]
+    pub rent_after_cents: i64,
+}
+
+fn default_selling_cost() -> i32 {
+    600
 }
 
 fn default_true() -> bool {
@@ -177,8 +225,15 @@ impl From<LegacyHousehold> for Household {
             medicare: true,
             health: false,
             giving_cents: 0,
+            home: None,
+            children: vec![],
+            locality: None,
         }
     }
+}
+
+fn age_in(p: &Person, today: NaiveDate) -> i32 {
+    p.age_on(today)
 }
 
 fn age_of(birth: &str, today: NaiveDate) -> Result<(NaiveDate, i32), String> {
@@ -351,6 +406,103 @@ impl Household {
                 self_employed: s.self_employed,
             });
         }
+        let home_costs = match &self.home {
+            Some(r) => {
+                if r.value_cents < 0 || r.basis_cents < 0 || r.mortgage_balance_cents < 0 {
+                    return Err("Home amounts cannot be negative.".into());
+                }
+                if !(0..=3000).contains(&r.mortgage_rate_bp)
+                    || !(0..=3000).contains(&r.selling_cost_bp)
+                {
+                    return Err(
+                        "Mortgage rate and selling costs should be between 0 and 30 percent."
+                            .into(),
+                    );
+                }
+                fin_plan::housing::yearly_costs(
+                    &fin_plan::housing::Home {
+                        value: Money::from_cents(r.value_cents),
+                        basis: Money::from_cents(r.basis_cents),
+                        mortgage_balance: Money::from_cents(r.mortgage_balance_cents),
+                        mortgage_rate: r.mortgage_rate_bp as f64 / 10_000.0,
+                        mortgage_years_left: r.mortgage_years_left,
+                        sell_year: r.sell_year,
+                        selling_cost: r.selling_cost_bp as f64 / 10_000.0,
+                        replacement_cost: Money::from_cents(r.replacement_cost_cents),
+                        rent_after: Money::from_cents(r.rent_after_cents),
+                    },
+                    filing,
+                    year,
+                    year + 95 - people.first().map_or(40, |p| age_in(p, today)),
+                )
+            }
+            None => vec![],
+        };
+        let family_costs = {
+            for c in &self.children {
+                if c.childcare_cents < 0 || c.college_cents < 0 {
+                    return Err("Childcare and college costs cannot be negative.".into());
+                }
+                if !(1900..=2200).contains(&c.birth_year) {
+                    return Err(format!("{}: enter a four-digit birth year.", c.name));
+                }
+            }
+            let kids: Vec<fin_plan::family::Child> = self
+                .children
+                .iter()
+                .map(|c| fin_plan::family::Child {
+                    birth_year: c.birth_year,
+                    childcare: Money::from_cents(c.childcare_cents),
+                    college: Money::from_cents(c.college_cents),
+                })
+                .collect();
+            let streams_ref = &streams;
+            fin_plan::family::yearly_costs(
+                &kids,
+                filing,
+                year,
+                year + 95 - people.first().map_or(40, |p| age_in(p, today)),
+                |y| {
+                    streams_ref
+                        .iter()
+                        .filter(|s| s.start_year <= y && y <= s.end_year)
+                        .map(|s| s.annual_gross)
+                        .fold(Money::ZERO, |a, b| a + b)
+                },
+            )
+        };
+        let local_costs = match self.locality.as_deref().filter(|k| !k.is_empty()) {
+            None => vec![],
+            Some(key) => {
+                let loc = fin_plan::local::find(key)
+                    .ok_or_else(|| format!("Unknown city or county tax: {key}."))?;
+                if !loc.state.eq_ignore_ascii_case(&self.state) {
+                    return Err(format!(
+                        "{} is a {} tax, but the household's state is {}.",
+                        loc.name, loc.state, self.state
+                    ));
+                }
+                let std = fin_plan::tax::FederalTaxYear::y2026().standard_deduction(filing);
+                let streams_ref = &streams;
+                (year..=year + 95 - people.first().map_or(40, |p| age_in(p, today)))
+                    .filter_map(|y| {
+                        let earned = streams_ref
+                            .iter()
+                            .filter(|s| s.start_year <= y && y <= s.end_year)
+                            .map(|s| s.annual_gross)
+                            .fold(Money::ZERO, |a, b| a + b);
+                        let t = fin_plan::local::tax(
+                            loc,
+                            filing,
+                            earned,
+                            (earned - std).max(Money::ZERO),
+                        );
+                        (t > Money::ZERO)
+                            .then_some(fin_plan::projection::OneTimeCost { year: y, amount: t })
+                    })
+                    .collect::<Vec<_>>()
+            }
+        };
         let health_costs = if self.health {
             fin_plan::healthcare::yearly_costs(
                 &fin_plan::healthcare::HealthCosts::defaults(),
@@ -386,6 +538,9 @@ impl Household {
                     })
                     .collect();
                 costs.extend(health_costs);
+                costs.extend(home_costs);
+                costs.extend(family_costs);
+                costs.extend(local_costs);
                 costs
             },
             horizon_age: 95,
