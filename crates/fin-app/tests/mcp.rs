@@ -236,7 +236,7 @@ fn planning_tools_answer_from_the_saved_household_and_change_nothing() {
     let spend = payload(&call(&a, "safe_spend", json!({"target": 0.85})));
     assert!(spend["spendingCents"].is_i64());
     let when = payload(&call(&a, "retire_when", json!({"target": 0.8})));
-    assert!(when["tries"].as_array().unwrap().len() > 0);
+    assert!(!when["tries"].as_array().unwrap().is_empty());
     assert_eq!(a.household().unwrap(), before);
 }
 
