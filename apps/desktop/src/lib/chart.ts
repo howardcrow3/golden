@@ -35,3 +35,21 @@ export function bandPath(lower: number[], upper: number[], width: number, height
     .reverse();
   return `M${[...top, ...bottom].join(" L")} Z`;
 }
+
+/** Two series drawn on one shared scale, for comparing them. */
+export function pairPoints(a: number[], b: number[], width: number, height: number, pad = 4): [string, string] {
+  const all = [...a, ...b];
+  if (all.length === 0) return ["", ""];
+  const max = Math.max(...all, 1);
+  const min = Math.min(...all, 0);
+  const span = max - min || 1;
+  const draw = (v: number[]) =>
+    v
+      .map((n, i) => {
+        const x = pad + (v.length === 1 ? 0 : (i * (width - 2 * pad)) / (v.length - 1));
+        const y = height - pad - ((n - min) / span) * (height - 2 * pad);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  return [draw(a), draw(b)];
+}
