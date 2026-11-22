@@ -62,6 +62,12 @@ export interface YearPoint {
   agiCents?: number;
   incomeTaxCents?: number;
   marginalRate?: number;
+  /** Where the year's money came from. */
+  earnedCents?: number;
+  socialSecurityCents?: number;
+  withdrawalsCents?: number;
+  rmdCents?: number;
+  medicareCents?: number;
 }
 export interface HistogramBin {
   fromCents: number;

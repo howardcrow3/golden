@@ -14,6 +14,7 @@
   import FanChart from "./FanChart.svelte";
   import TaxInsights from "./TaxInsights.svelte";
   import Milestones from "./Milestones.svelte";
+  import CashFlowSankey from "./CashFlowSankey.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
@@ -177,6 +178,7 @@
     <SafeSpend {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
+    <CashFlowSankey {result} />
     <Milestones {result} />
     <TaxInsights {result} household={scoreHousehold} />
     <PlanReport {invoke} {result} />

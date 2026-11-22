@@ -50,6 +50,13 @@ pub struct YearPoint {
     pub agi_cents: i64,
     pub income_tax_cents: i64,
     pub marginal_rate: f64,
+    /// Where the year's money came from: wages, Social Security and withdrawals (required
+    /// distributions included), plus the Medicare premiums inside spending.
+    pub earned_cents: i64,
+    pub social_security_cents: i64,
+    pub withdrawals_cents: i64,
+    pub rmd_cents: i64,
+    pub medicare_cents: i64,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -320,6 +327,11 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
                     agi_cents: y.agi.cents(),
                     income_tax_cents: y.income_tax.cents(),
                     marginal_rate: y.marginal_rate,
+                    earned_cents: y.earned.cents(),
+                    social_security_cents: y.social_security.cents(),
+                    withdrawals_cents: y.withdrawals.cents(),
+                    rmd_cents: y.rmd.cents(),
+                    medicare_cents: y.medicare.cents(),
                 }
             })
             .collect(),
@@ -341,6 +353,45 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         ss_claim_age: r.inputs.ss_claim_age,
         milestones: crate::milestones::find(plan, &r.projection, r.inputs.real_return),
     })
+}
+
+#[cfg(test)]
+mod flow_tests {
+    use super::*;
+    use crate::projection::fixtures::couple;
+
+    #[test]
+    fn each_year_reports_where_the_money_came_from() {
+        let r = run_plan(&couple(), &Picks::new(), 20).unwrap();
+        let first = &r.years[0];
+        assert!(first.earned_cents > 0);
+        assert_eq!(first.social_security_cents, 0);
+        let last = r.years.last().unwrap();
+        assert_eq!(last.earned_cents, 0);
+        assert!(last.social_security_cents > 0);
+        let v = serde_json::to_value(first).unwrap();
+        assert!(v["earnedCents"].is_number() && v["withdrawalsCents"].is_number());
+    }
+
+    #[test]
+    fn money_in_covers_spending_and_tax_while_the_plan_holds() {
+        let r = run_plan(&couple(), &Picks::new(), 20).unwrap();
+        for y in r
+            .years
+            .iter()
+            .filter(|y| r.depleted_year.is_none() && y.balance_cents > 0)
+        {
+            let inflow =
+                y.earned_cents + y.social_security_cents + y.rmd_cents + y.withdrawals_cents;
+            assert!(
+                inflow + 100 >= y.spending_cents,
+                "{} {} {}",
+                y.year,
+                inflow,
+                y.spending_cents
+            );
+        }
+    }
 }
 
 #[cfg(test)]
