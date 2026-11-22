@@ -251,6 +251,15 @@ async fn ss_explore(state: Shared<'_>) -> Result<quickplan::SsExplore, String> {
         .map_err(|e| e.to_string())?
 }
 
+/// Replay the saved household's plan through every start year in US market history.
+#[tauri::command]
+async fn backtest(state: Shared<'_>, stock_share: f64) -> Result<quickplan::BacktestResult, String> {
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::backtest(&plan, &picks, stock_share))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
 async fn whatif(
@@ -775,6 +784,7 @@ pub fn run() {
             safe_spend,
             roth_explore,
             ss_explore,
+            backtest,
             whatif,
             keep_whatif,
             pricing,

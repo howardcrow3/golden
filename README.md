@@ -36,7 +36,7 @@ Working today: balance sheet with starting balances, paystub reading, monthly pr
 
 Known gaps:
 
-- Six states (AR, CT, MD, MN, NY, VT) are flagged approximate; see the notes in `crates/fin-plan/data/states_2026.json`.
+- Five states (AR, MD, MN, NY, VT) are flagged approximate; see the notes in `crates/fin-plan/data/states_2026.json`.
 - Licence activation is on: `apps/desktop/src-tauri/license_public_key.txt` holds the public key, and keys are issued by the highturtle billing Lambda on AWS; see [signing and licensing setup](docs/signing-and-licensing-setup.md).
 - Installers are unsigned (no Apple notarization or Windows certificate yet); the same doc lists the steps.
 - The built-in model (llama.cpp, downloaded in the app) drives the what-if chat, transaction categories, statement names, plain-English explanations and suggested assumptions, each with a rules fallback. It has only been exercised with fake engines so far; Windows runs on CPU.

@@ -14,6 +14,7 @@
   import FanChart from "./FanChart.svelte";
   import TaxInsights from "./TaxInsights.svelte";
   import Milestones from "./Milestones.svelte";
+  import Backtest from "./Backtest.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -180,6 +181,7 @@
     </label>
     <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <SafeSpend {invoke} refresh={result} />
+    <Backtest {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
     <CashFlowSankey {result} />

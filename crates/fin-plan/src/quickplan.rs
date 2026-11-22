@@ -291,6 +291,60 @@ pub fn ss_explore(plan: &PlanInput, picks: &Picks) -> Result<SsExplore, String> 
     })
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BacktestWindow {
+    pub start_year: i32,
+    pub succeeded: bool,
+    pub final_cents: i64,
+    pub depleted_year: Option<i32>,
+    pub annualised_return: f64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BacktestResult {
+    pub stock_share: f64,
+    pub years: usize,
+    pub success_rate: f64,
+    pub first_year: i32,
+    pub last_year: i32,
+    pub windows: Vec<BacktestWindow>,
+    /// Start years of the three weakest windows, worst first (by money left, failures first).
+    pub worst: Vec<i32>,
+}
+
+/// Replay the plan from every start year in US market history since 1928.
+pub fn backtest(
+    plan: &PlanInput,
+    picks: &Picks,
+    stock_share: f64,
+) -> Result<BacktestResult, String> {
+    let b = crate::backtest::run(plan, picks, stock_share)?;
+    let windows: Vec<BacktestWindow> = b
+        .windows
+        .iter()
+        .map(|w| BacktestWindow {
+            start_year: w.start_year,
+            succeeded: w.succeeded,
+            final_cents: w.final_balance_cents,
+            depleted_year: w.depleted_year,
+            annualised_return: w.annualised_return,
+        })
+        .collect();
+    let mut order: Vec<&BacktestWindow> = windows.iter().collect();
+    order.sort_by_key(|w| (w.succeeded, w.final_cents, w.start_year));
+    Ok(BacktestResult {
+        stock_share: b.stock_share,
+        years: b.years,
+        success_rate: b.success_rate,
+        first_year: b.first_year,
+        last_year: b.last_year,
+        worst: order.iter().take(3).map(|w| w.start_year).collect(),
+        windows,
+    })
+}
+
 const SEED: u64 = 20_260_101;
 
 /// Run any household plan (any number of people and income streams) with what-if picks.
@@ -354,6 +408,31 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         ss_claim_age: r.inputs.ss_claim_age,
         milestones: crate::milestones::find(plan, &r.projection, r.inputs.real_return),
     })
+}
+
+#[cfg(test)]
+mod backtest_tests {
+    use super::*;
+    use crate::projection::fixtures::couple;
+
+    #[test]
+    fn backtest_reports_windows_and_the_worst_starts() {
+        let r = backtest(&couple(), &Picks::new(), 0.6).unwrap();
+        assert_eq!(r.windows.len(), 52);
+        assert_eq!(r.worst.len(), 3);
+        let v = serde_json::to_value(&r).unwrap();
+        assert!(v["windows"][0]["startYear"].is_number() && v["successRate"].is_number());
+        // The worst start is no better than the best.
+        let worst = r
+            .windows
+            .iter()
+            .find(|w| w.start_year == r.worst[0])
+            .unwrap();
+        assert!(r
+            .windows
+            .iter()
+            .all(|w| (w.succeeded, w.final_cents) >= (worst.succeeded, worst.final_cents)));
+    }
 }
 
 #[cfg(test)]

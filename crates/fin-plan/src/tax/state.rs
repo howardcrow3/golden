@@ -36,6 +36,13 @@ pub struct StateRules {
     /// A minimum tax of `rate` x AGI once AGI is over `agi_over` (Vermont).
     #[serde(default)]
     pub agi_floor_tax: Option<AgiFloorTax>,
+    /// Explicit head-of-household brackets (Connecticut).
+    #[serde(default)]
+    pub head_brackets: Option<BracketTable>,
+    /// Connecticut style schedule where the exemption, an add-back, a recapture and a personal
+    /// credit all step with adjusted gross income.
+    #[serde(default)]
+    pub agi_tables: Option<AgiTables>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -53,6 +60,54 @@ pub struct Recapture {
     /// Taxable-income ceilings of the recapture tiers (single / joint).
     pub tops_single: Vec<Money>,
     pub tops_joint: Vec<Money>,
+}
+
+/// Step tables keyed by filing status ("single", "joint", "separate", "head"). Each row is
+/// `[above, value]`: the value applies when AGI is more than `above` and up to the next row's
+/// `above`. Money is in cents; the credit is a decimal share of the tax that is forgiven.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgiTables {
+    pub exemption: BTreeMap<String, Vec<(i64, i64)>>,
+    pub addback: BTreeMap<String, Vec<(i64, i64)>>,
+    pub recapture: BTreeMap<String, Vec<(i64, i64)>>,
+    pub credit: BTreeMap<String, Vec<(i64, f64)>>,
+}
+
+fn step<T: Copy>(rows: &[(i64, T)], agi: Money, below: T) -> T {
+    // The first row's `above` is zero for money tables; for the credit it is the point under
+    // which the whole tax is forgiven, so `below` stands in for incomes at or under it.
+    let a = agi.cents();
+    match rows.iter().rev().find(|(above, _)| a > *above) {
+        Some((_, v)) => *v,
+        None => below,
+    }
+}
+
+impl AgiTables {
+    fn key(fs: FilingStatus) -> &'static str {
+        match fs {
+            FilingStatus::Single => "single",
+            FilingStatus::MarriedJoint => "joint",
+            FilingStatus::MarriedSeparate => "separate",
+            FilingStatus::HeadOfHousehold => "head",
+        }
+    }
+
+    pub fn exemption(&self, fs: FilingStatus, agi: Money) -> Money {
+        let rows = &self.exemption[Self::key(fs)];
+        Money::from_cents(step(rows, agi, rows[0].1))
+    }
+
+    pub fn tax(&self, fs: FilingStatus, agi: Money, initial: Money) -> Money {
+        let k = Self::key(fs);
+        let rows = &self.addback[k];
+        let add = Money::from_cents(step(rows, agi, rows[0].1));
+        let rows = &self.recapture[k];
+        let rec = Money::from_cents(step(rows, agi, rows[0].1));
+        let credit = step(&self.credit[k], agi, 1.0);
+        let total = initial + add + rec;
+        total - total.mul_rate(credit)
+    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -135,6 +190,16 @@ impl StateTaxYear {
             return Some(Money::ZERO);
         }
         let joint = fs == FilingStatus::MarriedJoint;
+        if let Some(t) = &r.agi_tables {
+            // Connecticut: no standard deduction; the exemption steps down with AGI.
+            let taxable = (income - t.exemption(fs, income)).max(Money::ZERO);
+            let table = match (fs, joint, &r.head_brackets, &r.joint_brackets) {
+                (FilingStatus::HeadOfHousehold, _, Some(h), _) => h,
+                (_, true, _, Some(j)) => j,
+                _ => &r.brackets,
+            };
+            return Some(t.tax(fs, income, table.tax(taxable)).max(Money::ZERO));
+        }
         let taxable = (income - if joint { r.std_joint } else { r.std_single }).max(Money::ZERO);
         let table = if let (true, Some(jb)) = (joint, r.joint_brackets.as_ref()) {
             jb.clone()
@@ -286,7 +351,7 @@ mod tests {
     #[test]
     fn partially_modelled_states_stay_flagged() {
         let y = StateTaxYear::y2026();
-        for c in ["AR", "CT", "MD", "MN", "NY", "VT"] {
+        for c in ["AR", "MD", "MN", "NY", "VT"] {
             assert!(y.rules(c).unwrap().approximate, "{c}");
         }
     }
@@ -461,5 +526,54 @@ mod tests {
         );
         let vt = StateTaxYear::y2026();
         assert!(vt.rules("VT").unwrap().agi_floor_tax.is_some());
+    }
+
+    // Connecticut, checked by hand against the CT-1040 TCS tables and its worked examples.
+    fn ct(fs: FilingStatus, agi: i64) -> Money {
+        StateTaxYear::y2026().income_tax("CT", fs, m(agi)).unwrap()
+    }
+
+    #[test]
+    fn connecticut_is_no_longer_an_estimate() {
+        assert!(!StateTaxYear::y2026().rules("CT").unwrap().approximate);
+    }
+
+    #[test]
+    fn connecticut_low_income_pays_nothing() {
+        assert_eq!(ct(FilingStatus::Single, 10_000), Money::ZERO);
+        assert_eq!(ct(FilingStatus::MarriedJoint, 20_000), Money::ZERO);
+    }
+
+    #[test]
+    fn connecticut_single_60k_uses_addback_and_credit() {
+        // 60,000 taxable: 2,550 + 25 add-back, less the 10% credit.
+        assert_eq!(ct(FilingStatus::Single, 60_000), Money::from_cents(231_750));
+    }
+
+    #[test]
+    fn connecticut_joint_over_a_million_adds_recapture_and_loses_the_credit() {
+        // Worked example in the form: 69,490, plus 500 add-back and 6,800 recapture.
+        assert_eq!(ct(FilingStatus::MarriedJoint, 1_100_000), m(76_790));
+    }
+
+    #[test]
+    fn connecticut_head_of_household_has_its_own_brackets_and_exemption() {
+        // AGI 39,000: exemption 18,000, taxable 21,000 -> 320 + 4.5% x 5,000 = 545; credit 15%.
+        assert_eq!(
+            ct(FilingStatus::HeadOfHousehold, 39_000),
+            Money::from_cents(46_325)
+        );
+    }
+
+    #[test]
+    fn connecticut_tax_rises_with_income_in_broad_strokes() {
+        let mut last = Money::ZERO;
+        for agi in (0..=1_200_000).step_by(50_000) {
+            let t = ct(FilingStatus::Single, agi);
+            assert!(t + m(300) >= last, "{agi}: {t:?} < {last:?}");
+            last = t;
+        }
+        let high = ct(FilingStatus::Single, 600_000);
+        assert!(high > m(35_000) && high < m(42_000), "{high:?}");
     }
 }

@@ -279,6 +279,27 @@ export async function ssExplore(invoke?: Invoke): Promise<SsExplore> {
   return (await (await resolve(invoke))("ss_explore")) as SsExplore;
 }
 
+export interface BacktestWindow {
+  startYear: number;
+  succeeded: boolean;
+  finalCents: number;
+  depletedYear: number | null;
+  annualisedReturn: number;
+}
+export interface BacktestResult {
+  stockShare: number;
+  years: number;
+  successRate: number;
+  firstYear: number;
+  lastYear: number;
+  windows: BacktestWindow[];
+  worst: number[];
+}
+
+export async function backtest(stockShare: number, invoke?: Invoke): Promise<BacktestResult> {
+  return (await (await resolve(invoke))("backtest", { stockShare })) as BacktestResult;
+}
+
 export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
   return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
 }
