@@ -16,6 +16,7 @@
   import Milestones from "./Milestones.svelte";
   import Legacy from "./Legacy.svelte";
   import Alerts from "./Alerts.svelte";
+  import SelfEmployedRoom from "./SelfEmployedRoom.svelte";
   import Backtest from "./Backtest.svelte";
   import Sepp from "./Sepp.svelte";
   import Daf from "./Daf.svelte";
@@ -243,6 +244,7 @@
     <CashFlowSankey {result} />
     <Alerts {result} />
     <Milestones {result} />
+    <SelfEmployedRoom {result} />
     <Legacy {result} />
     <TaxInsights {result} household={scoreHousehold} />
     <PlanReport {invoke} {result} />

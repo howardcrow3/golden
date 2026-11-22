@@ -97,6 +97,15 @@ export interface QuickPlanResult {
   milestones?: Milestone[];
   legacy?: Legacy;
   alerts?: Alert[];
+  selfEmployedLimits?: SelfEmployedLimit[];
+}
+
+export interface SelfEmployedLimit {
+  label: string;
+  netEarningsCents: number;
+  solo401kCents: number;
+  sepIraCents: number;
+  savingCents: number;
 }
 
 export interface Alert {
