@@ -267,7 +267,10 @@ export type Change =
   | { kind: "moveTo"; state: string }
   | { kind: "oneTime"; label: string; person: number; cents: number; year: number }
   | { kind: "raise"; person: number; bp: number }
-  | { kind: "plannedCost"; label: string; cents: number; year: number };
+  | { kind: "plannedCost"; label: string; cents: number; year: number }
+  | { kind: "setBalance"; account: "cash" | "taxable" | "traditional" | "roth"; cents: number }
+  | { kind: "spendingRule"; rule: "fixed" | "guardrails" | "percent" | "vpw" }
+  | { kind: "withdrawalOrder"; order: "standard" | "traditional_first" | "roth_first" | "blended" };
 
 export interface WhatIfReply {
   understood: boolean;
