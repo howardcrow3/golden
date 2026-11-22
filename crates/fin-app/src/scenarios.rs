@@ -136,6 +136,77 @@ impl App {
         self.store_scenarios(&list)
     }
 
+    /// Give a scenario a new name (up to 60 characters, unique ignoring case).
+    pub fn rename_scenario(&self, id: u32, name: &str) -> Result<SavedScenario, String> {
+        self.require_edit()?;
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 60 {
+            return Err("Give the scenario a name of up to 60 characters.".into());
+        }
+        let mut list = self.list_scenarios()?;
+        if list
+            .iter()
+            .any(|s| s.id != id && s.name.eq_ignore_ascii_case(name))
+        {
+            return Err("A scenario with that name already exists.".into());
+        }
+        let found = list
+            .iter_mut()
+            .find(|s| s.id == id)
+            .ok_or("That scenario no longer exists.")?;
+        found.name = name.to_string();
+        let out = found.clone();
+        self.store_scenarios(&list)?;
+        Ok(out)
+    }
+
+    /// Copy a scenario under "<name> copy" (numbered if that is taken), right after the original.
+    pub fn duplicate_scenario(&self, id: u32) -> Result<SavedScenario, String> {
+        self.require_edit()?;
+        let mut list = self.list_scenarios()?;
+        if list.len() >= MAX_SCENARIOS {
+            return Err(format!(
+                "You can keep up to {MAX_SCENARIOS} scenarios. Delete one first."
+            ));
+        }
+        let at = list
+            .iter()
+            .position(|s| s.id == id)
+            .ok_or("That scenario no longer exists.")?;
+        let original = list[at].clone();
+        let taken = |n: &str| list.iter().any(|s| s.name.eq_ignore_ascii_case(n));
+        let base: String = original.name.chars().take(54).collect();
+        let mut name = format!("{base} copy");
+        let mut n = 2;
+        while taken(&name) {
+            name = format!("{base} copy {n}");
+            n += 1;
+        }
+        let copy = SavedScenario {
+            id: list.iter().map(|s| s.id).max().unwrap_or(0) + 1,
+            name,
+            ..original
+        };
+        list.insert(at + 1, copy.clone());
+        self.store_scenarios(&list)?;
+        Ok(copy)
+    }
+
+    /// Move a scenario up (negative) or down (positive) the list by `by` places, stopping at the ends.
+    pub fn move_scenario(&self, id: u32, by: i32) -> Result<Vec<SavedScenario>, String> {
+        self.require_edit()?;
+        let mut list = self.list_scenarios()?;
+        let at = list
+            .iter()
+            .position(|s| s.id == id)
+            .ok_or("That scenario no longer exists.")?;
+        let to = (at as i64 + by as i64).clamp(0, list.len() as i64 - 1) as usize;
+        let item = list.remove(at);
+        list.insert(to, item);
+        self.store_scenarios(&list)?;
+        Ok(list)
+    }
+
     /// Set up a side-by-side of the current plan and up to three saved scenarios.
     pub fn prepare_compare(&self, ids: &[u32], today: NaiveDate) -> Result<ComparePrep, String> {
         if ids.is_empty() {

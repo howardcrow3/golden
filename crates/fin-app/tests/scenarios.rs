@@ -138,3 +138,73 @@ fn a_what_if_can_be_stacked_on_a_saved_scenario() {
         .prepare_whatif_on("spend $80k a year", today(), Some(99))
         .is_err());
 }
+
+fn names(a: &App) -> Vec<String> {
+    a.list_scenarios()
+        .unwrap()
+        .into_iter()
+        .map(|s| s.name)
+        .collect()
+}
+
+#[test]
+fn renames_without_clashing() {
+    let a = app();
+    a.save_scenario("Retire at 62", &retire(62), today())
+        .unwrap();
+    a.save_scenario("Retire at 67", &retire(67), today())
+        .unwrap();
+    let r = a.rename_scenario(1, "  Early  ").unwrap();
+    assert_eq!(r.name, "Early");
+    assert_eq!(r.changes, retire(62));
+    assert!(a.rename_scenario(1, "retire at 67").is_err());
+    assert!(a.rename_scenario(1, "   ").is_err());
+    assert!(a.rename_scenario(1, &"x".repeat(61)).is_err());
+    assert!(a.rename_scenario(99, "Nope").is_err());
+    // Keeping its own name (different case) is fine.
+    assert_eq!(a.rename_scenario(1, "EARLY").unwrap().name, "EARLY");
+}
+
+#[test]
+fn duplicates_sit_after_the_original_with_a_free_name() {
+    let a = app();
+    a.save_scenario("Retire at 62", &retire(62), today())
+        .unwrap();
+    a.save_scenario("Retire at 67", &retire(67), today())
+        .unwrap();
+    let c = a.duplicate_scenario(1).unwrap();
+    assert_eq!(c.name, "Retire at 62 copy");
+    assert_eq!(c.id, 3);
+    assert_eq!(c.changes, retire(62));
+    assert_eq!(
+        names(&a),
+        ["Retire at 62", "Retire at 62 copy", "Retire at 67"]
+    );
+    assert_eq!(a.duplicate_scenario(1).unwrap().name, "Retire at 62 copy 2");
+    assert!(a.duplicate_scenario(42).is_err());
+}
+
+#[test]
+fn moves_up_and_down_and_stops_at_the_ends() {
+    let a = app();
+    for (n, age) in [("A", 60), ("B", 62), ("C", 64)] {
+        a.save_scenario(n, &retire(age), today()).unwrap();
+    }
+    a.move_scenario(3, -1).unwrap();
+    assert_eq!(names(&a), ["A", "C", "B"]);
+    a.move_scenario(3, -5).unwrap();
+    assert_eq!(names(&a), ["C", "A", "B"]);
+    a.move_scenario(3, 9).unwrap();
+    assert_eq!(names(&a), ["A", "B", "C"]);
+    assert!(a.move_scenario(77, 1).is_err());
+}
+
+#[test]
+fn the_copy_cap_applies_to_duplicates() {
+    let a = app();
+    a.save_scenario("Base", &retire(62), today()).unwrap();
+    for _ in 1..fin_app::scenarios::MAX_SCENARIOS {
+        a.duplicate_scenario(1).unwrap();
+    }
+    assert!(a.duplicate_scenario(1).is_err());
+}
