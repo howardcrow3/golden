@@ -61,6 +61,13 @@ pub fn standard_options(plan: &PlanInput, until_age: i32) -> Vec<RothOption> {
         make("Fill the 12% bracket", 0.12),
         make("Fill the 22% bracket", 0.22),
         make("Fill the 24% bracket", 0.24),
+        RothOption {
+            label: "Stay under the Medicare surcharge".into(),
+            conversion: Some(RothConversion {
+                target: ConversionTarget::UnderIrmaa,
+                ..make("", 0.0).conversion.expect("conversion")
+            }),
+        },
     ]
 }
 
@@ -127,7 +134,7 @@ mod tests {
     fn the_standard_options_start_the_year_after_the_last_paycheck() {
         let p = plan();
         let o = standard_options(&p, 72);
-        assert_eq!(o.len(), 4);
+        assert_eq!(o.len(), 5);
         assert!(o[0].conversion.is_none());
         let c = o[1].conversion.unwrap();
         assert_eq!(c.start_year, 2031);
@@ -161,5 +168,12 @@ mod tests {
     #[test]
     fn the_same_inputs_give_the_same_answer() {
         assert_eq!(run(&plan()), run(&plan()));
+    }
+
+    #[test]
+    fn the_surcharge_option_converts_something() {
+        let r = run(&plan());
+        assert_eq!(r[4].label, "Stay under the Medicare surcharge");
+        assert!(r[4].converted_total > Money::ZERO);
     }
 }
