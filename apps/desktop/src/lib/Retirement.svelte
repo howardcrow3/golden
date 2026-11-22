@@ -8,6 +8,7 @@
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
   import RothExplorer from "./RothExplorer.svelte";
+  import SsExplorer from "./SsExplorer.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
@@ -62,7 +63,7 @@
         <label>Name <input bind:value={p.name} aria-label={`Name ${i + 1}`} /></label>
         <label>Birth date <input bind:value={p.birthDate} aria-label={`Birth date ${i + 1}`} placeholder="YYYY-MM-DD" /></label>
         <label>Retire at <input type="number" bind:value={p.retireAge} min="18" max="100" aria-label={`Retire at ${i + 1}`} /></label>
-        <label>Social Security per year <input bind:value={p.ss} aria-label={`Social Security ${i + 1}`} inputmode="numeric" /></label>
+        <label>Social Security per year at full retirement age <input bind:value={p.ss} aria-label={`Social Security ${i + 1}`} inputmode="numeric" /></label>
         {#if i > 0}<button type="button" onclick={() => (f = removePerson(f!, i))} aria-label={`Remove ${p.name || `person ${i + 1}`}`}>Remove</button>{/if}
       </div>
     {/each}
@@ -140,6 +141,7 @@
     <svg viewBox="0 0 640 180" role="img" aria-label="Projected balance by year"><polyline fill="none" stroke="var(--gold)" stroke-width="2" {points} /></svg>
     <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <SafeSpend {invoke} refresh={result} />
+    <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
     <p class="assumptions">Assumes {formatPercent(result.realReturn)} real return, {formatPercent(result.volatility)} volatility, Social Security at {result.ssClaimAge}. These are estimates, not advice.</p>
   </section>

@@ -8,4 +8,5 @@ pub mod quickplan;
 pub mod roth;
 pub mod safespend;
 pub mod scenario;
+pub mod ss;
 pub mod tax;

@@ -27,6 +27,16 @@ pub fn resolve(
     a: &Assumptions,
     picks: &Picks,
 ) -> Result<(PlanInput, ResolvedInputs), ParamError> {
+    resolve_with(base, a, picks, true)
+}
+
+/// Like `resolve`, but `set_claim_age` false keeps each benefit's own claiming age.
+pub fn resolve_with(
+    base: &PlanInput,
+    a: &Assumptions,
+    picks: &Picks,
+    set_claim_age: bool,
+) -> Result<(PlanInput, ResolvedInputs), ParamError> {
     let r = ResolvedInputs {
         real_return: a.value("real_return", picks)?,
         volatility: a.value("return_volatility", picks)?,
@@ -36,8 +46,10 @@ pub fn resolve(
     };
     let mut plan = base.clone();
     plan.horizon_age = r.horizon_age;
-    for b in &mut plan.social_security {
-        b.claim_age = r.ss_claim_age;
+    if set_claim_age {
+        for b in &mut plan.social_security {
+            b.claim_age = r.ss_claim_age;
+        }
     }
     // Real spending drifts by `spending_change` a year after the first year; the engine takes one
     // flat figure, so use the average over the horizon.
@@ -54,7 +66,29 @@ pub fn run(
     runs: usize,
     seed: u64,
 ) -> Result<ScenarioResult, ParamError> {
-    let (plan, inputs) = resolve(base, a, picks)?;
+    run_inner(base, a, picks, runs, seed, true)
+}
+
+/// Run with the claiming ages already set on the plan (the Social Security explorer).
+pub fn run_keep_claim_ages(
+    base: &PlanInput,
+    a: &Assumptions,
+    picks: &Picks,
+    runs: usize,
+    seed: u64,
+) -> Result<ScenarioResult, ParamError> {
+    run_inner(base, a, picks, runs, seed, false)
+}
+
+fn run_inner(
+    base: &PlanInput,
+    a: &Assumptions,
+    picks: &Picks,
+    runs: usize,
+    seed: u64,
+    set_claim_age: bool,
+) -> Result<ScenarioResult, ParamError> {
+    let (plan, inputs) = resolve_with(base, a, picks, set_claim_age)?;
     let projection = project_constant(&plan, inputs.real_return);
     let monte_carlo = montecarlo::run(
         &plan,
