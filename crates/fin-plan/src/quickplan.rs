@@ -650,6 +650,6 @@ mod legacy_tests {
             l.net_to_heirs_cents,
             l.gross_cents - l.estate_tax_cents - l.heir_income_tax_cents
         );
-        assert!(l.exemption_cents >= 15_000_000_00);
+        assert!(l.exemption_cents >= 1_500_000_000);
     }
 }
