@@ -290,6 +290,12 @@ async fn retire_when(
     .map_err(|e| e.to_string())?
 }
 
+/// Rent or buy: net worth after some years each way.
+#[tauri::command]
+fn rent_vs_buy(req: fin_plan::rentbuy::Request) -> Result<fin_plan::rentbuy::Outcome, String> {
+    fin_plan::rentbuy::run(&req)
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -864,6 +870,7 @@ pub fn run() {
             retire_when,
             roth_explore,
             sepp,
+            rent_vs_buy,
             daf_bunching,
             ss_explore,
             backtest,

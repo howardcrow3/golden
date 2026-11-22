@@ -1022,3 +1022,31 @@ export interface RetireWhen {
 export async function retireWhen(target: number, invoke?: Invoke): Promise<RetireWhen> {
   return (await (await resolve(invoke))("retire_when", { target })) as RetireWhen;
 }
+
+export interface RentBuyRequest {
+  priceCents: number;
+  downPaymentCents: number;
+  mortgageRateBp: number;
+  mortgageYears: number;
+  carryingBp: number;
+  upkeepBp: number;
+  appreciationBp: number;
+  sellingCostBp: number;
+  monthlyRentCents: number;
+  rentGrowthBp: number;
+  investReturnBp: number;
+  years: number;
+}
+
+export interface RentBuyOutcome {
+  years: number;
+  buyNetWorthCents: number;
+  rentNetWorthCents: number;
+  buyAdvantageCents: number;
+  monthlyPaymentCents: number;
+  breakEvenYear: number | null;
+}
+
+export async function rentVsBuy(req: RentBuyRequest, invoke?: Invoke): Promise<RentBuyOutcome> {
+  return (await (await resolve(invoke))("rent_vs_buy", { req })) as RentBuyOutcome;
+}
