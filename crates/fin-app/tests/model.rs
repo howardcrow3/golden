@@ -170,3 +170,43 @@ fn the_prompt_offers_raises_and_planned_costs() {
     let p = ModelInterpreter::prompt("what if I get a 3% raise", &household(), today());
     assert!(p.contains("\"kind\":\"raise\"") && p.contains("\"kind\":\"plannedCost\""));
 }
+
+#[test]
+fn balances_spending_rules_and_withdrawal_orders_from_the_model_are_checked_and_applied() {
+    let mut h = household();
+    let ok = r#"{"changes":[{"kind":"setBalance","account":"roth","cents":9000000},{"kind":"spendingRule","rule":"guardrails"},{"kind":"withdrawalOrder","order":"roth_first"}]}"#;
+    let changes = parse_reply(ok, &h, today()).unwrap();
+    assert_eq!(changes.len(), 3);
+    for c in &changes {
+        c.apply(&mut h).unwrap();
+    }
+    assert_eq!(h.roth_cents, 9_000_000);
+    assert_eq!(h.spending_rule, "guardrails");
+    assert_eq!(h.withdrawal_order, "roth_first");
+    let said: Vec<String> = changes.iter().map(|c| c.describe(&h)).collect();
+    assert!(said[0].contains("$90,000") && said[0].contains("roth"));
+    assert!(said[1].contains("guardrails"));
+    assert!(said[2].contains("Roth"));
+    for bad in [
+        r#"{"changes":[{"kind":"setBalance","account":"gold","cents":5}]}"#,
+        r#"{"changes":[{"kind":"setBalance","account":"cash","cents":-5}]}"#,
+        r#"{"changes":[{"kind":"spendingRule","rule":"yolo"}]}"#,
+        r#"{"changes":[{"kind":"withdrawalOrder","order":"random"}]}"#,
+    ] {
+        assert!(parse_reply(bad, &h, today()).is_none(), "{bad}");
+    }
+    assert!(Change::SetBalance {
+        account: "x".into(),
+        cents: 1
+    }
+    .apply(&mut h)
+    .is_err());
+}
+
+#[test]
+fn the_prompt_offers_balances_rules_and_orders() {
+    let p = ModelInterpreter::prompt("move my money to Roth", &household(), today());
+    for k in ["setBalance", "spendingRule", "withdrawalOrder"] {
+        assert!(p.contains(&format!("\"kind\":\"{k}\"")), "{k}");
+    }
+}

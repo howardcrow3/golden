@@ -38,6 +38,39 @@ pub enum Change {
         cents: i64,
         year: i32,
     },
+    /// Set what is in one kind of account: "cash", "taxable", "traditional" or "roth".
+    #[serde(rename_all = "camelCase")]
+    SetBalance { account: String, cents: i64 },
+    /// How retirement spending is set: "fixed", "guardrails", "percent" or "vpw".
+    #[serde(rename_all = "camelCase")]
+    SpendingRule { rule: String },
+    /// Which accounts are drawn first: "standard", "traditional_first", "roth_first" or "blended".
+    #[serde(rename_all = "camelCase")]
+    WithdrawalOrder { order: String },
+}
+
+pub const ACCOUNTS: [&str; 4] = ["cash", "taxable", "traditional", "roth"];
+pub const SPENDING_RULES: [&str; 4] = ["fixed", "guardrails", "percent", "vpw"];
+pub const WITHDRAWAL_ORDERS: [&str; 4] = ["standard", "traditional_first", "roth_first", "blended"];
+
+fn spending_rule_words(rule: &str) -> &str {
+    match rule {
+        "fixed" => "the same spending every year",
+        "guardrails" => "guardrails spending",
+        "percent" => "spending 4% of the portfolio",
+        "vpw" => "variable spending that spends down evenly",
+        other => other,
+    }
+}
+
+fn order_words(order: &str) -> &str {
+    match order {
+        "standard" => "cash, taxable, traditional, then Roth",
+        "traditional_first" => "cash, traditional, taxable, then Roth",
+        "roth_first" => "cash, Roth, taxable, then traditional",
+        "blended" => "all accounts in proportion",
+        other => other,
+    }
 }
 
 impl Change {
@@ -66,6 +99,13 @@ impl Change {
                 },
                 *bp as f64 / 100.0
             ),
+            Change::SetBalance { account, cents } => {
+                format!("Have ${} in {account}", group(*cents / 100))
+            }
+            Change::SpendingRule { rule } => format!("Use {}", spending_rule_words(rule)),
+            Change::WithdrawalOrder { order } => {
+                format!("Draw accounts in this order: {}", order_words(order))
+            }
             Change::PlannedCost {
                 label, cents, year, ..
             } if *cents < 0 => format!("{label}: ${} comes in during {year}", group(-*cents / 100)),
@@ -111,6 +151,25 @@ impl Change {
                     s.annual_cents = s.annual_cents * (10_000 + *bp as i64) / 10_000;
                     s.contribution_cents = s.contribution_cents * (10_000 + *bp as i64) / 10_000;
                 }
+            }
+            Change::SetBalance { account, cents } => match account.as_str() {
+                "cash" => h.cash_cents = *cents,
+                "taxable" => h.taxable_cents = *cents,
+                "traditional" => h.traditional_cents = *cents,
+                "roth" => h.roth_cents = *cents,
+                _ => return Err("Choose cash, taxable, traditional or roth.".into()),
+            },
+            Change::SpendingRule { rule } => {
+                if !SPENDING_RULES.contains(&rule.as_str()) {
+                    return Err("Choose a spending rule from the list.".into());
+                }
+                h.spending_rule = rule.clone();
+            }
+            Change::WithdrawalOrder { order } => {
+                if !WITHDRAWAL_ORDERS.contains(&order.as_str()) {
+                    return Err("Choose a withdrawal order from the list.".into());
+                }
+                h.withdrawal_order = order.clone();
             }
             Change::PlannedCost { label, cents, year } => h.events.push(EventRow {
                 label: label.clone(),

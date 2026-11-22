@@ -70,7 +70,7 @@ fn the_whatif_schema_compiles_to_a_grammar() {
     let g = WHATIF.grammar().unwrap();
     assert!(g.contains("root ::="));
     assert!(g.contains("retireAt") && g.contains("setPick"));
-    assert_eq!(WHATIF.version, 2);
+    assert_eq!(WHATIF.version, 3);
     assert!(g.contains("raise") && g.contains("plannedCost"));
 }
 
@@ -87,6 +87,9 @@ fn the_schema_accepts_good_changes_and_refuses_bad_ones() {
         r#"{"changes":[{"kind":"raise","person":0,"bp":300}]}"#,
         r#"{"changes":[{"kind":"plannedCost","label":"New roof","cents":2500000,"year":2028}]}"#,
         r#"{"changes":[{"kind":"plannedCost","label":"Inheritance","cents":-5000000,"year":2030}]}"#,
+        r#"{"changes":[{"kind":"setBalance","account":"roth","cents":9000000}]}"#,
+        r#"{"changes":[{"kind":"spendingRule","rule":"guardrails"}]}"#,
+        r#"{"changes":[{"kind":"withdrawalOrder","order":"roth_first"}]}"#,
     ] {
         assert!(check_output(&schema, good).is_ok(), "{good}");
     }
@@ -94,6 +97,10 @@ fn the_schema_accepts_good_changes_and_refuses_bad_ones() {
         r#"{"changes":[{"kind":"raise","person":0,"bp":0}]}"#,
         r#"{"changes":[{"kind":"raise","person":0}]}"#,
         r#"{"changes":[{"kind":"plannedCost","label":"","cents":5,"year":2028}]}"#,
+        r#"{"changes":[{"kind":"setBalance","account":"gold","cents":5}]}"#,
+        r#"{"changes":[{"kind":"setBalance","account":"roth","cents":-5}]}"#,
+        r#"{"changes":[{"kind":"spendingRule","rule":"yolo"}]}"#,
+        r#"{"changes":[{"kind":"withdrawalOrder","order":"random"}]}"#,
         r#"{"changes":[]}"#,
         r#"{"changes":[{"kind":"retireAt","person":0,"age":20}]}"#,
         r#"{"changes":[{"kind":"spending","cents":-5}]}"#,
@@ -117,7 +124,7 @@ fn a_good_first_answer_is_used_with_the_grammar_on() {
     .unwrap();
     assert_eq!(
         (out.raw.as_str(), out.attempts, out.task_id, out.version),
-        (GOOD, 1, "whatif", 2)
+        (GOOD, 1, "whatif", 3)
     );
     let seen = seen.lock().unwrap();
     assert_eq!(seen.len(), 1);
