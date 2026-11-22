@@ -58,6 +58,10 @@ export interface YearPoint {
   p10Cents?: number;
   p50Cents?: number;
   p90Cents?: number;
+  /** Income on the return, income tax on it and the federal rate on the next dollar. */
+  agiCents?: number;
+  incomeTaxCents?: number;
+  marginalRate?: number;
 }
 export interface HistogramBin {
   fromCents: number;

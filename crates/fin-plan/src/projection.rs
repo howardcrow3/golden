@@ -138,6 +138,12 @@ pub struct YearRow {
     pub converted: Money,
     /// Required minimum distribution taken this year.
     pub rmd: Money,
+    /// Income counted on the return (wages, withdrawals, taxable Social Security, gains).
+    pub agi: Money,
+    /// Federal and state income tax for the year (payroll tax is in `taxes` only).
+    pub income_tax: Money,
+    /// Federal rate on the next dollar of ordinary income.
+    pub marginal_rate: f64,
     /// Medicare premiums included in spending this year.
     pub medicare: Money,
     pub end_balance: Money,
@@ -495,6 +501,20 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         if i == 0 {
             magi_before = Some((final_ord - converted).max(Money::ZERO) + final_gains);
         }
+        let taxable_ss_final = taxable_social_security(input.filing, ss, final_ord + final_gains);
+        let agi = final_ord + final_gains + taxable_ss_final;
+        let marginal_rate = fed
+            .income_tax(
+                input.filing,
+                FederalInput {
+                    ordinary_income: final_ord + taxable_ss_final,
+                    long_term_gains: final_gains,
+                    seniors,
+                    senior_bonus: year <= 2028,
+                    ..Default::default()
+                },
+            )
+            .marginal_rate;
         magi_hist.push(
             final_ord
                 + final_gains
@@ -517,6 +537,9 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             withdrawals: withdrawn,
             converted,
             rmd,
+            agi,
+            income_tax: (taxes - fica).max(Money::ZERO),
+            marginal_rate,
             medicare,
             end_balance: acc.total(),
         });
@@ -534,6 +557,9 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     withdrawals: Money::ZERO,
                     converted: Money::ZERO,
                     rmd: Money::ZERO,
+                    agi: Money::ZERO,
+                    income_tax: Money::ZERO,
+                    marginal_rate: 0.0,
                     medicare: Money::ZERO,
                     end_balance: Money::ZERO,
                 });
@@ -1045,5 +1071,24 @@ mod tests {
         });
         let total = |p: &Projection| p.rows.iter().map(|r| r.rmd).sum::<Money>();
         assert!(total(&project_constant(&conv, 0.03)) < total(&project_constant(&base, 0.03)));
+    }
+
+    #[test]
+    fn rows_report_income_tax_and_the_rate_on_the_next_dollar() {
+        let p = project_constant(&couple(), 0.04);
+        for r in &p.rows {
+            assert!(r.income_tax <= r.taxes);
+            assert!(
+                (0.0..=0.37).contains(&r.marginal_rate),
+                "{}",
+                r.marginal_rate
+            );
+        }
+        // A working year has income on the return and tax on it.
+        let first = &p.rows[0];
+        assert!(first.agi > Money::ZERO && first.income_tax > Money::ZERO);
+        // The couple earns more than a retiree on savings alone, so their rate is not lower.
+        let retired_rate = project_constant(&retired(), 0.03).rows[0].marginal_rate;
+        assert!(first.marginal_rate >= retired_rate);
     }
 }
