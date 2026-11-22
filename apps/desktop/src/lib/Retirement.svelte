@@ -16,6 +16,8 @@
   import Milestones from "./Milestones.svelte";
   import Legacy from "./Legacy.svelte";
   import Backtest from "./Backtest.svelte";
+  import Sepp from "./Sepp.svelte";
+  import Daf from "./Daf.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
@@ -210,6 +212,8 @@
     <Backtest {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
+    <Sepp {invoke} />
+    <Daf {invoke} />
     <CashFlowSankey {result} />
     <Milestones {result} />
     <Legacy {result} />

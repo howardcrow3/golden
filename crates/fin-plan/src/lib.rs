@@ -1,5 +1,6 @@
 //! Pure planning math: tax tables and calculators (no I/O).
 pub mod backtest;
+pub mod daf;
 pub mod debt;
 pub mod estate;
 pub mod estimate;
@@ -15,5 +16,6 @@ pub mod rmd;
 pub mod roth;
 pub mod safespend;
 pub mod scenario;
+pub mod sepp;
 pub mod ss;
 pub mod tax;

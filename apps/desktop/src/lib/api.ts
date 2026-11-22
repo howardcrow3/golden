@@ -918,3 +918,33 @@ export async function closeMonth(month: string, invoke?: Invoke): Promise<CloseR
 export async function reopenMonth(month: string, invoke?: Invoke): Promise<CloseReport> {
   return (await (await resolve(invoke))("reopen_month", { month })) as CloseReport;
 }
+
+export interface SeppRow {
+  method: "required_minimum" | "fixed_amortization";
+  yearlyCents: number;
+  level: boolean;
+  earliestStopAge: number;
+}
+
+export async function sepp(balanceCents: number, age: number, rateBp: number, invoke?: Invoke): Promise<SeppRow[]> {
+  return (await (await resolve(invoke))("sepp", { balanceCents, age, rateBp })) as SeppRow[];
+}
+
+export interface Bunching {
+  years: number;
+  taxEachYearCents: number;
+  taxBunchedCents: number;
+  savedCents: number;
+  itemizesAnyway: boolean;
+}
+
+export async function dafBunching(
+  filing: string,
+  incomeCents: number,
+  otherItemizedCents: number,
+  givingCents: number,
+  years: number,
+  invoke?: Invoke,
+): Promise<Bunching> {
+  return (await (await resolve(invoke))("daf_bunching", { filing, incomeCents, otherItemizedCents, givingCents, years })) as Bunching;
+}

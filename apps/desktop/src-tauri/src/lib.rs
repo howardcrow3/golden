@@ -276,6 +276,24 @@ async fn bootstrap(
     .map_err(|e| e.to_string())?
 }
 
+/// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
+#[tauri::command]
+fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
+    fin_plan::sepp::calculate_cents(balance_cents, age, rate_bp)
+}
+
+/// Whether bunching several years of charity into one donor-advised fund gift saves tax.
+#[tauri::command]
+fn daf_bunching(
+    filing: fin_plan::tax::FilingStatus,
+    income_cents: i64,
+    other_itemized_cents: i64,
+    giving_cents: i64,
+    years: i32,
+) -> Result<fin_plan::daf::Bunching, String> {
+    fin_plan::daf::bunching_cents(filing, income_cents, other_itemized_cents, giving_cents, years)
+}
+
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
 async fn whatif(
@@ -818,6 +836,8 @@ pub fn run() {
             run_plan,
             safe_spend,
             roth_explore,
+            sepp,
+            daf_bunching,
             ss_explore,
             backtest,
             bootstrap,
