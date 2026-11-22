@@ -30,6 +30,7 @@ pub mod paystub;
 pub mod progress;
 pub mod recurring;
 pub mod report;
+pub mod retire_when;
 pub mod scenarios;
 pub mod setup;
 pub mod suggest;

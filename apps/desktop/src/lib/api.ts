@@ -997,3 +997,14 @@ export const LOCALITIES: { key: string; name: string; state: string }[] = [
   { key: "baltimore", name: "Baltimore City", state: "MD" },
   { key: "montgomery_md", name: "Montgomery County, Maryland", state: "MD" },
 ];
+
+export interface RetireWhen {
+  target: number;
+  age: number | null;
+  currentAge: number;
+  tries: { age: number; successRate: number }[];
+}
+
+export async function retireWhen(target: number, invoke?: Invoke): Promise<RetireWhen> {
+  return (await (await resolve(invoke))("retire_when", { target })) as RetireWhen;
+}

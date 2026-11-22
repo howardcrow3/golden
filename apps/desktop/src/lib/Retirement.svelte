@@ -7,6 +7,7 @@
   import Assumptions from "./Assumptions.svelte";
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
+  import RetireWhen from "./RetireWhen.svelte";
   import RothExplorer from "./RothExplorer.svelte";
   import SsExplorer from "./SsExplorer.svelte";
   import PlanReport from "./PlanReport.svelte";
@@ -248,6 +249,7 @@
     </label>
     <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <SafeSpend {invoke} refresh={result} />
+    <RetireWhen {invoke} refresh={result} />
     <Backtest {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />

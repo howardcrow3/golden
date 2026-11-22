@@ -276,6 +276,20 @@ async fn bootstrap(
     .map_err(|e| e.to_string())?
 }
 
+/// The earliest retirement age at which the saved household's plan works in `target` of trials.
+#[tauri::command]
+async fn retire_when(
+    state: Shared<'_>,
+    target: f64,
+) -> Result<fin_app::retire_when::RetireWhen, String> {
+    let household = lock(&state)?.household()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        fin_app::retire_when::scan(&household, today(), target, 200)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -835,6 +849,7 @@ pub fn run() {
             assumptions,
             run_plan,
             safe_spend,
+            retire_when,
             roth_explore,
             sepp,
             daf_bunching,
