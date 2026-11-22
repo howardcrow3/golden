@@ -64,6 +64,13 @@ pub struct Household {
     /// Which accounts to draw first: standard, traditional_first, roth_first or blended.
     #[serde(default = "default_withdrawal_order")]
     pub withdrawal_order: String,
+    /// Charge Medicare premiums (with IRMAA) from age 65.
+    #[serde(default = "default_true")]
+    pub medicare: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_spending_rule() -> String {
@@ -155,6 +162,7 @@ impl From<LegacyHousehold> for Household {
             picks: l.picks,
             spending_rule: default_spending_rule(),
             withdrawal_order: default_withdrawal_order(),
+            medicare: true,
         }
     }
 }
@@ -355,6 +363,7 @@ impl Household {
             spending_rule: self.spending_rule_value()?,
             withdrawal_order: self.withdrawal_order_value()?,
             roth_conversion: None,
+            medicare: self.medicare,
         })
     }
 }

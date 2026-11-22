@@ -121,6 +121,8 @@ pub struct PlanInput {
     pub spending_rule: SpendingRule,
     pub withdrawal_order: WithdrawalOrder,
     pub roth_conversion: Option<RothConversion>,
+    /// Charge Medicare Part B and D premiums, with IRMAA, from age 65.
+    pub medicare: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -134,6 +136,8 @@ pub struct YearRow {
     pub withdrawals: Money,
     /// Traditional money moved to Roth this year.
     pub converted: Money,
+    /// Medicare premiums included in spending this year.
+    pub medicare: Money,
     pub end_balance: Money,
 }
 
@@ -168,6 +172,10 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
     let mut depleted = None;
     let mut spend_now = input.annual_spending;
     let mut start_rate: Option<f64> = None;
+    // Income each year, for the two-year IRMAA lookback.
+    let mut magi_hist: Vec<Money> = Vec::new();
+    // Year-one income without any conversion: stands in for the two years before the plan.
+    let mut magi_before: Option<Money> = None;
 
     for i in 0..years {
         let year = input.start_year + i as i32;
@@ -255,7 +263,30 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 }
             }
         }
+        let on_medicare = if input.medicare {
+            input
+                .people
+                .iter()
+                .filter(|p| !p.is_dependent && p.age_on(chrono_start(year)) >= 65)
+                .count() as i64
+        } else {
+            0
+        };
+        let medicare = if on_medicare > 0 {
+            // IRMAA uses income from two years back; before that, this year's income without
+            // withdrawals is the best guess.
+            let magi = if i >= 2 {
+                magi_hist[i - 2]
+            } else {
+                magi_before.unwrap_or(earned_ordinary + ss.mul_rate(0.85))
+            };
+            let one = crate::medicare::annual_premium(input.filing, magi);
+            Money::from_cents(one.cents() * on_medicare)
+        } else {
+            Money::ZERO
+        };
         let spending = spend_now
+            + medicare
             + input
                 .one_time_costs
                 .iter()
@@ -348,6 +379,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let mut cash_in = wages - contrib + ss - fica - income_tax_base;
         let mut taxes = fica + income_tax_base;
         let mut withdrawn = Money::ZERO;
+        let mut final_ord = base_ordinary;
+        let mut final_gains = Money::ZERO;
         let mut gap = spending - cash_in;
 
         if gap > Money::ZERO {
@@ -418,6 +451,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                         }
                     }
                 }
+                final_ord = ord;
+                final_gains = gains;
                 let new_tax = base_tax(ord, gains);
                 let extra_tax = new_tax - income_tax_base;
                 let target = gap + extra_tax;
@@ -443,6 +478,15 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             acc.traditional += contrib;
         }
 
+        if i == 0 {
+            magi_before = Some((final_ord - converted).max(Money::ZERO) + final_gains);
+        }
+        magi_hist.push(
+            final_ord
+                + final_gains
+                + taxable_social_security(input.filing, ss, final_ord + final_gains),
+        );
+
         // Grow what is left.
         acc.cash = acc.cash.mul_rate(1.0);
         acc.taxable = acc.taxable.mul_rate(1.0 + r);
@@ -458,6 +502,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             taxes,
             withdrawals: withdrawn,
             converted,
+            medicare,
             end_balance: acc.total(),
         });
         if depleted.is_some() {
@@ -473,6 +518,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     taxes: Money::ZERO,
                     withdrawals: Money::ZERO,
                     converted: Money::ZERO,
+                    medicare: Money::ZERO,
                     end_balance: Money::ZERO,
                 });
             }
@@ -539,6 +585,7 @@ pub(crate) mod fixtures {
             spending_rule: SpendingRule::Fixed,
             withdrawal_order: WithdrawalOrder::Standard,
             roth_conversion: None,
+            medicare: false,
         }
     }
 }
@@ -883,5 +930,43 @@ mod tests {
         let total: Money = p.rows.iter().map(|r| r.converted).sum();
         assert!(total <= Money::from_dollars(500_000) + Money::from_dollars(1));
         assert_eq!(p.final_accounts.traditional, Money::ZERO);
+    }
+
+    #[test]
+    fn medicare_premiums_start_at_65_and_cost_the_plan() {
+        let mut on = retired();
+        on.medicare = true;
+        let off = retired();
+        let (a, b) = (project_constant(&on, 0.03), project_constant(&off, 0.03));
+        // Born 1961: 65 in 2026 (age reached by year end), so premiums run from the start.
+        assert!(a
+            .rows
+            .iter()
+            .all(|r| r.age < 65 || r.medicare > Money::ZERO));
+        assert!(a
+            .rows
+            .iter()
+            .all(|r| r.age >= 65 || r.medicare == Money::ZERO));
+        assert!(b.rows.iter().all(|r| r.medicare == Money::ZERO));
+        assert!(a.final_balance() < b.final_balance());
+        // Spending in a row includes the premium.
+        let r = a.rows.iter().find(|r| r.medicare > Money::ZERO).unwrap();
+        assert!(r.spending >= Money::from_dollars(40_000) + r.medicare);
+    }
+
+    #[test]
+    fn a_big_conversion_raises_premiums_two_years_later() {
+        let mut base = retired();
+        base.medicare = true;
+        base.start_year = 2026;
+        let mut conv = base.clone();
+        conv.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2026,
+            target: ConversionTarget::Fixed(Money::from_dollars(300_000)),
+        });
+        let (a, c) = (project_constant(&base, 0.03), project_constant(&conv, 0.03));
+        assert_eq!(a.rows[1].medicare, c.rows[1].medicare);
+        assert!(c.rows[2].medicare > a.rows[2].medicare);
     }
 }

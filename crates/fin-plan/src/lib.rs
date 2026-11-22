@@ -1,6 +1,7 @@
 //! Pure planning math: tax tables and calculators (no I/O).
 pub mod debt;
 pub mod estimate;
+pub mod medicare;
 pub mod montecarlo;
 pub mod params;
 pub mod projection;
