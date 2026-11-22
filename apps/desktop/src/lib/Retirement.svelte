@@ -7,6 +7,7 @@
   import Assumptions from "./Assumptions.svelte";
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
+  import RetireWhen from "./RetireWhen.svelte";
   import RothExplorer from "./RothExplorer.svelte";
   import SsExplorer from "./SsExplorer.svelte";
   import PlanReport from "./PlanReport.svelte";
@@ -20,6 +21,9 @@
   import Backtest from "./Backtest.svelte";
   import Sepp from "./Sepp.svelte";
   import Daf from "./Daf.svelte";
+  import RentBuy from "./RentBuy.svelte";
+  import Harvest from "./Harvest.svelte";
+  import Investments from "./Investments.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
@@ -248,11 +252,15 @@
     </label>
     <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <SafeSpend {invoke} refresh={result} />
+    <RetireWhen {invoke} refresh={result} />
     <Backtest {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
     <Sepp {invoke} />
     <Daf {invoke} />
+    <Harvest {invoke} />
+    <Investments {invoke} />
+    <RentBuy {invoke} />
     <CashFlowSankey {result} />
     <Alerts {result} />
     <Milestones {result} />

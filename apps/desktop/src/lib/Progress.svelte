@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { getProgress, startProgress, stopProgress, type Invoke, type ProgressReport } from "./api";
+  import { addJournalEntry, getProgress, removeJournalEntry, startProgress, stopProgress, type Invoke, type ProgressReport } from "./api";
   import { pairPoints } from "./chart";
-  import { formatCents } from "./money";
+  import { formatCents, parseDollars } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let report = $state<ProgressReport | null>(null);
@@ -31,6 +31,21 @@
   $effect(() => {
     load();
   });
+  let jDate = $state(new Date().toISOString().slice(0, 10));
+  let jAmount = $state("");
+  let jNote = $state("");
+  async function addEntry() {
+    const cents = parseDollars(jAmount);
+    if (cents === null) {
+      error = "Savings total: enter a dollar amount.";
+      return;
+    }
+    await act(() => addJournalEntry(jDate, cents, jNote, invoke));
+    if (!error) {
+      jAmount = "";
+      jNote = "";
+    }
+  }
   const lines = $derived(report ? pairPoints(report.points.map((p) => p.actualChangeCents), report.points.map((p) => p.projectedChangeCents), W, H) : ["", ""]);
 </script>
 
@@ -54,6 +69,25 @@
       {:else}
         <p class="hint">Come back next month: one more month of statements gives a line to compare.</p>
       {/if}
+      <h4>Your own check-ins</h4>
+      <p class="hint">Write down what your savings add up to on a day, for accounts the statements do not cover. Each one is compared with what the plan projected for that day.</p>
+      <div class="jform">
+        <label>Date <input type="date" bind:value={jDate} aria-label="Check-in date" /></label>
+        <label>Savings total <input bind:value={jAmount} aria-label="Savings total" inputmode="numeric" /></label>
+        <label>Note <input bind:value={jNote} aria-label="Check-in note" /></label>
+        <button type="button" onclick={addEntry}>Add check-in</button>
+      </div>
+      {#if report.journal && report.journal.length > 0}
+        <ul class="journal">
+          {#each report.journal as j (j.date)}
+            <li data-testid="journal-row">
+              {j.date}: {formatCents(j.savingsCents, { whole: true })}, plan said {formatCents(j.projectedCents, { whole: true })}
+              ({j.aheadCents >= 0 ? "ahead" : "behind"} by {formatCents(Math.abs(j.aheadCents), { whole: true })}){j.note ? ` – ${j.note}` : ""}
+              <button type="button" aria-label={`Remove check-in ${j.date}`} onclick={() => act(() => removeJournalEntry(j.date, invoke))}>Remove</button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
       <button type="button" onclick={() => act(() => stopProgress(invoke))}>Stop tracking</button>
       <button type="button" onclick={() => act(() => startProgress(invoke))}>Restart from today</button>
     {/if}
@@ -67,4 +101,8 @@
   svg { width: 100%; max-width: 640px; height: auto; display: block; margin: 6px 0; }
   .hint { color: var(--muted); font-size: 12px; margin: 4px 0; }
   .err { color: var(--bad); }
+  h4 { margin: 12px 0 4px; font-size: 13px; }
+  .jform { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  .jform label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+  .journal { font-size: 13px; padding-left: 18px; }
 </style>

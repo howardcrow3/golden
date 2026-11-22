@@ -276,6 +276,55 @@ async fn bootstrap(
     .map_err(|e| e.to_string())?
 }
 
+/// The earliest retirement age at which the saved household's plan works in `target` of trials.
+#[tauri::command]
+async fn retire_when(
+    state: Shared<'_>,
+    target: f64,
+) -> Result<fin_app::retire_when::RetireWhen, String> {
+    let household = lock(&state)?.household()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        fin_app::retire_when::scan(&household, today(), target, 200)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Rent or buy: net worth after some years each way.
+#[tauri::command]
+fn rent_vs_buy(req: fin_plan::rentbuy::Request) -> Result<fin_plan::rentbuy::Outcome, String> {
+    fin_plan::rentbuy::run(&req)
+}
+
+/// Room to realize gains at a 0% rate, and the distance to the ACA subsidy cliff.
+#[tauri::command]
+fn harvest_plan(
+    filing: fin_plan::tax::FilingStatus,
+    income_cents: i64,
+    gains_cents: i64,
+    household_size: i64,
+) -> Result<fin_plan::harvest::HarvestPlan, String> {
+    fin_plan::harvest::plan_cents(filing, income_cents, gains_cents, household_size)
+}
+
+#[tauri::command]
+fn holdings(state: Shared) -> Result<Vec<fin_plan::investments::Holding>, String> {
+    lock(&state)?.holdings()
+}
+
+#[tauri::command]
+fn save_holdings(state: Shared, holdings: Vec<fin_plan::investments::Holding>) -> Result<(), String> {
+    lock(&state)?.save_holdings(&holdings)
+}
+
+#[tauri::command]
+fn investment_checkup(
+    state: Shared,
+    risk: fin_plan::investments::Risk,
+) -> Result<fin_plan::investments::Checkup, String> {
+    lock(&state)?.investment_checkup(risk)
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -659,6 +708,16 @@ fn stop_progress(state: Shared) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn add_journal_entry(state: Shared, date: String, savings_cents: i64, note: String) -> Result<(), String> {
+    lock(&state)?.add_journal_entry(&date, savings_cents, &note)
+}
+
+#[tauri::command]
+fn remove_journal_entry(state: Shared, date: String) -> Result<(), String> {
+    lock(&state)?.remove_journal_entry(&date)
+}
+
+#[tauri::command]
 fn progress(state: Shared) -> Result<Option<fin_app::progress::ProgressReport>, String> {
     lock(&state)?.progress()
 }
@@ -810,6 +869,8 @@ pub fn run() {
             net_worth_history,
             start_progress,
             stop_progress,
+            add_journal_entry,
+            remove_journal_entry,
             progress,
             goals,
             set_goal,
@@ -835,8 +896,14 @@ pub fn run() {
             assumptions,
             run_plan,
             safe_spend,
+            retire_when,
             roth_explore,
             sepp,
+            holdings,
+            save_holdings,
+            investment_checkup,
+            harvest_plan,
+            rent_vs_buy,
             daf_bunching,
             ss_explore,
             backtest,

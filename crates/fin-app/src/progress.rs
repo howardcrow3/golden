@@ -10,6 +10,7 @@ use fin_plan::quickplan;
 use serde::{Deserialize, Serialize};
 
 const KEY: &str = "progress.baseline";
+const JOURNAL_KEY: &str = "progress.journal";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +39,27 @@ pub struct ProgressReport {
     pub started: String,
     pub points: Vec<ProgressPoint>,
     /// Latest actual change minus latest projected change; positive is ahead of the plan.
+    pub ahead_cents: i64,
+    /// Savings totals you wrote down yourself, each against what the plan projected that day.
+    pub journal: Vec<JournalPoint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct JournalEntry {
+    date: String,
+    savings_cents: i64,
+    note: String,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct JournalPoint {
+    pub date: String,
+    pub note: String,
+    pub savings_cents: i64,
+    pub projected_cents: i64,
+    /// Your figure minus the plan's; positive is ahead.
     pub ahead_cents: i64,
 }
 
@@ -137,11 +159,76 @@ impl App {
         let ahead = points
             .last()
             .map_or(0, |p| p.actual_change_cents - p.projected_change_cents);
+        let mut journal = Vec::new();
+        for e in self.journal_entries()? {
+            let day = NaiveDate::parse_from_str(&e.date, "%Y-%m-%d").map_err(|x| x.to_string())?;
+            let projected = projected_on(b.start_savings_cents, &b.years, day);
+            journal.push(JournalPoint {
+                date: e.date,
+                note: e.note,
+                savings_cents: e.savings_cents,
+                projected_cents: projected,
+                ahead_cents: e.savings_cents - projected,
+            });
+        }
         Ok(Some(ProgressReport {
             started: b.started,
             points,
             ahead_cents: ahead,
+            journal,
         }))
+    }
+
+    fn journal_entries(&self) -> Result<Vec<JournalEntry>, String> {
+        match self
+            .db
+            .get_setting(JOURNAL_KEY)
+            .map_err(|e| e.to_string())?
+        {
+            Some(raw) if !raw.is_empty() => serde_json::from_str(&raw).map_err(|e| e.to_string()),
+            _ => Ok(vec![]),
+        }
+    }
+
+    fn save_journal(&self, mut v: Vec<JournalEntry>) -> Result<(), String> {
+        v.sort_by(|a, b| a.date.cmp(&b.date));
+        self.db
+            .set_setting(
+                JOURNAL_KEY,
+                &serde_json::to_string(&v).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())
+    }
+
+    /// Write down what your savings total on `date` (yyyy-mm-dd). A second entry for the same
+    /// date replaces the first.
+    pub fn add_journal_entry(
+        &self,
+        date: &str,
+        savings_cents: i64,
+        note: &str,
+    ) -> Result<(), String> {
+        self.require_edit()?;
+        NaiveDate::parse_from_str(date, "%Y-%m-%d")
+            .map_err(|_| "Enter the date as year-month-day.".to_string())?;
+        if savings_cents < 0 {
+            return Err("Savings cannot be negative.".into());
+        }
+        let mut v = self.journal_entries()?;
+        v.retain(|e| e.date != date);
+        v.push(JournalEntry {
+            date: date.into(),
+            savings_cents,
+            note: note.trim().chars().take(200).collect(),
+        });
+        self.save_journal(v)
+    }
+
+    pub fn remove_journal_entry(&self, date: &str) -> Result<(), String> {
+        self.require_edit()?;
+        let mut v = self.journal_entries()?;
+        v.retain(|e| e.date != date);
+        self.save_journal(v)
     }
 }
 

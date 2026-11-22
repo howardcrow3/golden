@@ -682,6 +682,20 @@ export interface ProgressReport {
   started: string;
   points: ProgressPoint[];
   aheadCents: number;
+  journal?: JournalPoint[];
+}
+export interface JournalPoint {
+  date: string;
+  note: string;
+  savingsCents: number;
+  projectedCents: number;
+  aheadCents: number;
+}
+export async function addJournalEntry(date: string, savingsCents: number, note: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("add_journal_entry", { date, savingsCents, note });
+}
+export async function removeJournalEntry(date: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("remove_journal_entry", { date });
 }
 export async function getProgress(invoke?: Invoke): Promise<ProgressReport | null> {
   const r = (await (await resolve(invoke))("progress")) as ProgressReport | null;
@@ -997,3 +1011,82 @@ export const LOCALITIES: { key: string; name: string; state: string }[] = [
   { key: "baltimore", name: "Baltimore City", state: "MD" },
   { key: "montgomery_md", name: "Montgomery County, Maryland", state: "MD" },
 ];
+
+export interface RetireWhen {
+  target: number;
+  age: number | null;
+  currentAge: number;
+  tries: { age: number; successRate: number }[];
+}
+
+export async function retireWhen(target: number, invoke?: Invoke): Promise<RetireWhen> {
+  return (await (await resolve(invoke))("retire_when", { target })) as RetireWhen;
+}
+
+export interface RentBuyRequest {
+  priceCents: number;
+  downPaymentCents: number;
+  mortgageRateBp: number;
+  mortgageYears: number;
+  carryingBp: number;
+  upkeepBp: number;
+  appreciationBp: number;
+  sellingCostBp: number;
+  monthlyRentCents: number;
+  rentGrowthBp: number;
+  investReturnBp: number;
+  years: number;
+}
+
+export interface RentBuyOutcome {
+  years: number;
+  buyNetWorthCents: number;
+  rentNetWorthCents: number;
+  buyAdvantageCents: number;
+  monthlyPaymentCents: number;
+  breakEvenYear: number | null;
+}
+
+export async function rentVsBuy(req: RentBuyRequest, invoke?: Invoke): Promise<RentBuyOutcome> {
+  return (await (await resolve(invoke))("rent_vs_buy", { req })) as RentBuyOutcome;
+}
+
+export interface HarvestPlan {
+  zeroRateRoomCents: number;
+  taxSavedCents: number;
+  acaCliffCents: number;
+  acaRoomCents: number;
+  gainCrossesAcaCliff: boolean;
+}
+
+export async function harvestPlan(filing: string, incomeCents: number, gainsCents: number, householdSize: number, invoke?: Invoke): Promise<HarvestPlan> {
+  return (await (await resolve(invoke))("harvest_plan", { filing, incomeCents, gainsCents, householdSize })) as HarvestPlan;
+}
+
+export type AssetClass = "stock" | "bond" | "cash" | "other";
+export type RiskProfile = "conservative" | "moderate" | "aggressive";
+export interface Holding {
+  name: string;
+  valueCents: number;
+  class: AssetClass;
+  expenseBp: number;
+  singleStock: boolean;
+}
+export interface Checkup {
+  totalCents: number;
+  mix: { class: AssetClass; share: number; target: number }[];
+  stockGap: number;
+  weightedFee: number;
+  yearlyFeeCents: number;
+  feeCost20yCents: number;
+  flags: { name: string; share: number; reason: string }[];
+}
+export async function getHoldings(invoke?: Invoke): Promise<Holding[]> {
+  return (await (await resolve(invoke))("holdings")) as Holding[];
+}
+export async function saveHoldings(holdings: Holding[], invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("save_holdings", { holdings });
+}
+export async function investmentCheckup(risk: RiskProfile, invoke?: Invoke): Promise<Checkup> {
+  return (await (await resolve(invoke))("investment_checkup", { risk })) as Checkup;
+}
