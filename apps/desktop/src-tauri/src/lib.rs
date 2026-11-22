@@ -210,6 +210,18 @@ async fn run_plan(state: Shared<'_>, runs: usize) -> Result<QuickPlanResult, Str
         .map_err(|e| e.to_string())?
 }
 
+/// The most the saved household can spend a year while the plan works in `target` of the trials.
+#[tauri::command]
+async fn safe_spend(
+    state: Shared<'_>,
+    target: f64,
+) -> Result<quickplan::SafeSpendResult, String> {
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::safe_spend(&plan, &picks, target))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
 async fn whatif(
@@ -712,6 +724,7 @@ pub fn run() {
             set_pick,
             assumptions,
             run_plan,
+            safe_spend,
             whatif,
             keep_whatif,
             pricing,

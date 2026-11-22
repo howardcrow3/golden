@@ -113,6 +113,38 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
     run_plan(&plan, &req.picks, req.runs)
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SafeSpendResult {
+    pub target: f64,
+    pub spending_cents: i64,
+    pub current_cents: i64,
+    pub nothing_safe: bool,
+    pub capped: bool,
+}
+
+/// The most the household can spend a year (today's dollars) while the plan still works in
+/// `target` of the trials.
+pub fn safe_spend(plan: &PlanInput, picks: &Picks, target: f64) -> Result<SafeSpendResult, String> {
+    let target = target.clamp(0.5, 0.99);
+    let r = crate::safespend::safe_spend(
+        plan,
+        &Assumptions::defaults(),
+        picks,
+        target,
+        300,
+        20_260_101,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(SafeSpendResult {
+        target: r.target,
+        spending_cents: r.spending.cents(),
+        current_cents: r.current.cents(),
+        nothing_safe: r.nothing_safe,
+        capped: r.capped,
+    })
+}
+
 /// Run any household plan (any number of people and income streams) with what-if picks.
 pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPlanResult, String> {
     let r = scenario::run(
