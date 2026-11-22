@@ -296,6 +296,17 @@ fn rent_vs_buy(req: fin_plan::rentbuy::Request) -> Result<fin_plan::rentbuy::Out
     fin_plan::rentbuy::run(&req)
 }
 
+/// Room to realize gains at a 0% rate, and the distance to the ACA subsidy cliff.
+#[tauri::command]
+fn harvest_plan(
+    filing: fin_plan::tax::FilingStatus,
+    income_cents: i64,
+    gains_cents: i64,
+    household_size: i64,
+) -> Result<fin_plan::harvest::HarvestPlan, String> {
+    fin_plan::harvest::plan_cents(filing, income_cents, gains_cents, household_size)
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -870,6 +881,7 @@ pub fn run() {
             retire_when,
             roth_explore,
             sepp,
+            harvest_plan,
             rent_vs_buy,
             daf_bunching,
             ss_explore,

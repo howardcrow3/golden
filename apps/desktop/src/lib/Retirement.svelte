@@ -22,6 +22,7 @@
   import Sepp from "./Sepp.svelte";
   import Daf from "./Daf.svelte";
   import RentBuy from "./RentBuy.svelte";
+  import Harvest from "./Harvest.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
@@ -256,6 +257,7 @@
     <RothExplorer {invoke} refresh={result} />
     <Sepp {invoke} />
     <Daf {invoke} />
+    <Harvest {invoke} />
     <RentBuy {invoke} />
     <CashFlowSankey {result} />
     <Alerts {result} />

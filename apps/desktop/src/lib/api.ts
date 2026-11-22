@@ -1050,3 +1050,15 @@ export interface RentBuyOutcome {
 export async function rentVsBuy(req: RentBuyRequest, invoke?: Invoke): Promise<RentBuyOutcome> {
   return (await (await resolve(invoke))("rent_vs_buy", { req })) as RentBuyOutcome;
 }
+
+export interface HarvestPlan {
+  zeroRateRoomCents: number;
+  taxSavedCents: number;
+  acaCliffCents: number;
+  acaRoomCents: number;
+  gainCrossesAcaCliff: boolean;
+}
+
+export async function harvestPlan(filing: string, incomeCents: number, gainsCents: number, householdSize: number, invoke?: Invoke): Promise<HarvestPlan> {
+  return (await (await resolve(invoke))("harvest_plan", { filing, incomeCents, gainsCents, householdSize })) as HarvestPlan;
+}
