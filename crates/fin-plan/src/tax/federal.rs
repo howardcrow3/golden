@@ -21,6 +21,9 @@ impl FilingStatus {
     ];
 }
 
+mod extras;
+pub use extras::{early_withdrawal_penalty, salt_deduction};
+
 #[derive(Debug, Clone, Deserialize)]
 struct Fica {
     ss_wage_base: Money,
@@ -65,6 +68,8 @@ pub struct FederalInput {
     pub seniors: u8,
     /// Apply the temporary extra deduction for filers 65 and older (tax years 2025 to 2028).
     pub senior_bonus: bool,
+    /// State and local tax inside `itemized`; AMT does not allow it.
+    pub salt_in_itemized: Money,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -76,6 +81,8 @@ pub struct FederalResult {
     pub ltcg_tax: Money,
     /// Net investment income tax (3.8%), included in `income_tax`.
     pub niit: Money,
+    /// Alternative minimum tax on top of the regular tax; already inside `income_tax`.
+    pub amt: Money,
     pub income_tax: Money,
     pub marginal_rate: f64,
 }
@@ -162,16 +169,20 @@ impl FederalTaxYear {
             .min((agi - niit_threshold(fs)).max(Money::ZERO))
             .max(Money::ZERO)
             .mul_rate(0.038);
-        FederalResult {
+        let mut result = FederalResult {
             agi,
             deduction,
             taxable_income: taxable,
             ordinary_tax,
             ltcg_tax,
             niit,
+            amt: Money::ZERO,
             income_tax: ordinary_tax + ltcg_tax + niit,
             marginal_rate: self.brackets[&fs].marginal_rate(ordinary_taxable),
-        }
+        };
+        result.amt = self.amt(fs, &i, &result, Money::ZERO);
+        result.income_tax += result.amt;
+        result
     }
 
     /// Employee-side FICA for one earner: Social Security to the wage base plus Medicare,
