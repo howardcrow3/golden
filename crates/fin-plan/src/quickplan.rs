@@ -116,6 +116,7 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
                 traditional_contribution: Money::from_cents(
                     req.contribution_cents.min(req.salary_cents),
                 ),
+                self_employed: false,
             }]
         } else {
             vec![]

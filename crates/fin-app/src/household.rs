@@ -32,6 +32,9 @@ pub struct StreamRow {
     /// Index into `people`.
     pub person: usize,
     pub annual_cents: i64,
+    /// Business income: pays self-employment tax and gets the QBI deduction.
+    #[serde(default)]
+    pub self_employed: bool,
     #[serde(default)]
     pub start_year: Option<i32>,
     #[serde(default)]
@@ -144,6 +147,7 @@ impl From<LegacyHousehold> for Household {
                     label: "Salary".into(),
                     person: 0,
                     annual_cents: l.salary_cents,
+                    self_employed: false,
                     start_year: None,
                     end_year: None,
                     contribution_cents: l.contribution_cents,
@@ -334,6 +338,7 @@ impl Household {
                 traditional_contribution: Money::from_cents(
                     s.contribution_cents.min(s.annual_cents),
                 ),
+                self_employed: s.self_employed,
             });
         }
         Ok(PlanInput {

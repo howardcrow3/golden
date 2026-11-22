@@ -33,6 +33,9 @@ pub struct IncomeStream {
     pub end_year: i32,
     /// Pre-tax 401(k)-style contribution per year while earning.
     pub traditional_contribution: Money,
+    /// Self-employment income: pays self-employment tax instead of FICA and gets the QBI
+    /// deduction.
+    pub self_employed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -199,10 +202,14 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         acc.traditional -= rmd;
 
         let mut wages = Money::ZERO;
+        let mut se_net = Money::ZERO;
         let mut contrib = Money::ZERO;
         for s in &input.streams {
             if year >= s.start_year && year <= s.end_year {
                 wages += s.annual_gross;
+                if s.self_employed {
+                    se_net += s.annual_gross;
+                }
                 contrib += s.traditional_contribution;
             }
         }
@@ -218,8 +225,22 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         }
 
         // Tax on income that does not depend on withdrawals.
-        let fica = fed.fica_for_wages(input.filing, wages);
-        let earned_ordinary = (wages - contrib + rmd).max(Money::ZERO);
+        let employee_wages = wages - se_net;
+        let se = fed.self_employment_tax(input.filing, se_net, employee_wages);
+        let fica = fed.fica_for_wages(input.filing, employee_wages) + se.tax;
+        // Half the self-employment tax and the qualified business income deduction come off
+        // ordinary income.
+        let qbi = if se_net > Money::ZERO {
+            let before = (wages - contrib + rmd - se.deduction).max(Money::ZERO);
+            crate::tax::federal::qbi_deduction(
+                input.filing,
+                (se_net - se.deduction).max(Money::ZERO),
+                before,
+            )
+        } else {
+            Money::ZERO
+        };
+        let earned_ordinary = (wages - contrib + rmd - se.deduction - qbi).max(Money::ZERO);
         let seniors = input
             .people
             .iter()
@@ -646,6 +667,7 @@ pub(crate) mod fixtures {
                 start_year: 2026,
                 end_year: 2041,
                 traditional_contribution: Money::from_dollars(23_500),
+                self_employed: false,
             }],
             social_security: vec![SocialSecurity {
                 person: 0,
@@ -1169,5 +1191,33 @@ mod tests {
             .iter()
             .filter(|r| r.year <= 2036)
             .all(|r| tier(r) == 0));
+    }
+
+    #[test]
+    fn self_employment_pays_more_payroll_tax_but_less_income_tax() {
+        let employee = couple();
+        let mut owner = couple();
+        owner.streams[0].self_employed = true;
+        let a = project_constant(&employee, 0.04);
+        let b = project_constant(&owner, 0.04);
+        assert!(
+            b.rows[0].taxes > a.rows[0].taxes,
+            "{:?} {:?}",
+            b.rows[0].taxes,
+            a.rows[0].taxes
+        );
+        assert!(b.rows[0].income_tax < a.rows[0].income_tax);
+        // Retired years are unchanged by how the work was classed.
+        let last = a.rows.len() - 1;
+        assert_eq!(a.rows[last].earned, b.rows[last].earned);
+    }
+
+    #[test]
+    fn a_loss_making_business_pays_no_self_employment_tax() {
+        let mut owner = couple();
+        owner.streams[0].annual_gross = Money::ZERO;
+        owner.streams[0].self_employed = true;
+        let p = project_constant(&owner, 0.04);
+        assert_eq!(p.rows[0].income_tax, Money::ZERO);
     }
 }

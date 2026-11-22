@@ -137,6 +137,7 @@ impl Change {
                 label: label.clone(),
                 person: *person,
                 annual_cents: *cents,
+                self_employed: false,
                 start_year: Some(*year),
                 end_year: Some(*year),
                 contribution_cents: 0,

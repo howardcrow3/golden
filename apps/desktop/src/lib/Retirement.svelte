@@ -100,6 +100,7 @@
         <label>First year <input bind:value={s.start} aria-label={`First year ${i + 1}`} size="5" placeholder="now" /></label>
         <label>Last year <input bind:value={s.end} aria-label={`Last year ${i + 1}`} size="5" placeholder="retirement" /></label>
         <label>401(k) saving <input bind:value={s.contribution} aria-label={`401(k) saving ${i + 1}`} inputmode="numeric" /></label>
+        <label class="check"><input type="checkbox" bind:checked={s.selfEmployed} aria-label={`Self-employed ${i + 1}`} /> Self-employed</label>
         <button type="button" onclick={() => f!.streams.splice(i, 1)} aria-label={`Remove income ${i + 1}`}>Remove</button>
       </div>
     {/each}

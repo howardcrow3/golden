@@ -4,7 +4,7 @@ import { formatCents, parseDollars } from "./money";
 /** Editable text version of a household: money and years are strings while being typed. */
 export interface Form {
   people: { name: string; birthDate: string; retireAge: number; ss: string }[];
-  streams: { label: string; person: number; amount: string; start: string; end: string; contribution: string }[];
+  streams: { label: string; person: number; amount: string; start: string; end: string; contribution: string; selfEmployed: boolean }[];
   filing: Household["filing"];
   state: string;
   spending: string;
@@ -32,6 +32,7 @@ export function toForm(h: Household): Form {
       start: s.startYear?.toString() ?? "",
       end: s.endYear?.toString() ?? "",
       contribution: dollars(s.contributionCents),
+      selfEmployed: s.selfEmployed ?? false,
     })),
     filing: h.filing,
     state: h.state,
@@ -78,6 +79,7 @@ export function fromForm(f: Form): Household {
       startYear: year(s.start, `${label} first year`),
       endYear: year(s.end, `${label} last year`),
       contributionCents: money(s.contribution, `${label} 401(k) saving`),
+      ...(s.selfEmployed ? { selfEmployed: true } : {}),
     };
   });
   return {
@@ -104,8 +106,8 @@ export function newPerson(): Form["people"][number] {
 
 export function newStream(oneTime: boolean, thisYear: number): Form["streams"][number] {
   return oneTime
-    ? { label: "Bonus", person: 0, amount: "0", start: String(thisYear + 1), end: String(thisYear + 1), contribution: "0" }
-    : { label: "Income", person: 0, amount: "0", start: "", end: "", contribution: "0" };
+    ? { label: "Bonus", person: 0, amount: "0", start: String(thisYear + 1), end: String(thisYear + 1), contribution: "0", selfEmployed: false }
+    : { label: "Income", person: 0, amount: "0", start: "", end: "", contribution: "0", selfEmployed: false };
 }
 
 /** Removing a person drops their income and re-points everyone after them. */

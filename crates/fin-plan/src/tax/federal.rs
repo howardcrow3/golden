@@ -22,7 +22,10 @@ impl FilingStatus {
 }
 
 mod extras;
-pub use extras::{early_withdrawal_penalty, salt_deduction};
+pub use extras::{
+    early_withdrawal_penalty, qbi_deduction, salt_deduction, sep_ira_limit, solo_401k_limit,
+    SelfEmploymentTax,
+};
 
 #[derive(Debug, Clone, Deserialize)]
 struct Fica {

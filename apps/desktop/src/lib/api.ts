@@ -176,6 +176,8 @@ export interface StreamRow {
   startYear: number | null;
   endYear: number | null;
   contributionCents: number;
+  /** Business income: self-employment tax instead of FICA, and the QBI deduction. */
+  selfEmployed?: boolean;
 }
 export interface Household {
   people: PersonRow[];
