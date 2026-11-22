@@ -249,6 +249,17 @@ export interface Household {
   children?: ChildRow[];
   /** Key of a city or county income tax, such as "nyc". */
   locality?: string;
+  /** Your own healthcare figures instead of the built-in estimates. */
+  healthDetail?: HealthRow;
+}
+export interface HealthRow {
+  pre65Cents: number;
+  post65Cents: number;
+  excessInflationBp: number;
+  ltcStartAge: number;
+  ltcYears: number;
+  ltcAnnualCents: number;
+  ltcChanceBp: number;
 }
 export interface ChildRow {
   name: string;

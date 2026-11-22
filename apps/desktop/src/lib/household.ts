@@ -24,7 +24,21 @@ export interface Form {
   home: HomeForm | null;
   children: ChildForm[];
   locality: string;
+  healthDetail: HealthForm;
 }
+
+/** Healthcare figures as typed: dollars, whole years, and percentages. */
+export interface HealthForm {
+  pre65: string;
+  post65: string;
+  excessInflation: string;
+  ltcStartAge: string;
+  ltcYears: string;
+  ltcAnnual: string;
+  ltcChance: string;
+}
+
+export const DEFAULT_HEALTH: HealthForm = { pre65: "9,600", post65: "5,500", excessInflation: "1.5", ltcStartAge: "82", ltcYears: "3", ltcAnnual: "110,000", ltcChance: "50" };
 
 export interface ChildForm {
   name: string;
@@ -58,6 +72,12 @@ export function newHome(): HomeForm {
 const bp = (text: string, label: string): number => {
   const n = Number(text.trim());
   if (!Number.isFinite(n) || n < 0 || n > 30) throw new Error(`${label}: enter a percentage from 0 to 30.`);
+  return Math.round(n * 100);
+};
+
+const pct = (text: string, label: string, max: number): number => {
+  const n = Number(text.trim());
+  if (!Number.isFinite(n) || n < 0 || n > max) throw new Error(`${label}: enter a percentage from 0 to ${max}.`);
   return Math.round(n * 100);
 };
 
@@ -103,6 +123,17 @@ export function toForm(h: Household): Form {
         }
       : null,
     locality: h.locality ?? "",
+    healthDetail: h.healthDetail
+      ? {
+          pre65: dollars(h.healthDetail.pre65Cents),
+          post65: dollars(h.healthDetail.post65Cents),
+          excessInflation: String(h.healthDetail.excessInflationBp / 100),
+          ltcStartAge: String(h.healthDetail.ltcStartAge),
+          ltcYears: String(h.healthDetail.ltcYears),
+          ltcAnnual: dollars(h.healthDetail.ltcAnnualCents),
+          ltcChance: String(h.healthDetail.ltcChanceBp / 100),
+        }
+      : { ...DEFAULT_HEALTH },
     children: (h.children ?? []).map((c) => ({
       name: c.name,
       birthYear: String(c.birthYear),
@@ -174,6 +205,19 @@ export function fromForm(f: Form): Household {
             sellingCostBp: bp(f.home.sellingCost, "Selling costs"),
             replacementCostCents: money(f.home.replacement, "Cost of the next home"),
             rentAfterCents: money(f.home.rentAfter, "Rent after selling"),
+          },
+        }
+      : {}),
+    ...(f.health && JSON.stringify(f.healthDetail) !== JSON.stringify(DEFAULT_HEALTH)
+      ? {
+          healthDetail: {
+            pre65Cents: money(f.healthDetail.pre65, "Healthcare before 65"),
+            post65Cents: money(f.healthDetail.post65, "Healthcare from 65"),
+            excessInflationBp: pct(f.healthDetail.excessInflation, "Healthcare cost growth", 10),
+            ltcStartAge: Math.max(0, Math.round(Number(f.healthDetail.ltcStartAge) || 0)),
+            ltcYears: Math.max(0, Math.round(Number(f.healthDetail.ltcYears) || 0)),
+            ltcAnnualCents: money(f.healthDetail.ltcAnnual, "Long-term care cost"),
+            ltcChanceBp: pct(f.healthDetail.ltcChance, "Chance of needing care", 100),
           },
         }
       : {}),

@@ -208,6 +208,18 @@
       <input type="checkbox" bind:checked={f.health} aria-label="Include healthcare estimates" />
       Add healthcare estimates: about $9,600 a year each before 65, $5,500 after, and an expected three years of long-term care from 82 (half the chance of $110,000 a year). All grow faster than prices.
     </label>
+    {#if f.health}
+      <div class="controls" data-testid="health-detail">
+        <label>Per person before 65 <input bind:value={f.healthDetail.pre65} aria-label="Healthcare before 65" inputmode="numeric" /></label>
+        <label>Per person from 65 <input bind:value={f.healthDetail.post65} aria-label="Healthcare from 65" inputmode="numeric" /></label>
+        <label>Grows above prices % <input bind:value={f.healthDetail.excessInflation} aria-label="Healthcare cost growth" size="4" /></label>
+        <label>Care starts at age <input bind:value={f.healthDetail.ltcStartAge} aria-label="Long-term care start age" size="3" /></label>
+        <label>For years <input bind:value={f.healthDetail.ltcYears} aria-label="Long-term care years" size="3" /></label>
+        <label>Cost per year <input bind:value={f.healthDetail.ltcAnnual} aria-label="Long-term care cost" inputmode="numeric" /></label>
+        <label>Chance % <input bind:value={f.healthDetail.ltcChance} aria-label="Chance of needing care" size="4" /></label>
+      </div>
+      <p class="hint">Change these to match your area and plan. Set the start age to 0 to leave long-term care out. Costs differ a lot by state: care often runs $80,000 to $150,000 a year.</p>
+    {/if}
     <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>
   </section>
 </form>

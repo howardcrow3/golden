@@ -37,3 +37,24 @@ describe("city or county tax in the household form", () => {
     expect(fromForm(toForm(h)).locality).toBe("philadelphia");
   });
 });
+
+describe("healthcare figures in the household form", () => {
+  it("sends nothing while they are the defaults, and the figures once changed", () => {
+    const f = toForm({ ...base, health: true });
+    expect("healthDetail" in fromForm(f)).toBe(false);
+    f.healthDetail.pre65 = "12,000";
+    f.healthDetail.ltcChance = "25";
+    const back = fromForm(f);
+    expect(back.healthDetail?.pre65Cents).toBe(1_200_000);
+    expect(back.healthDetail?.ltcChanceBp).toBe(2500);
+    expect(toForm(back).healthDetail.pre65).toBe("12,000");
+  });
+  it("does not send them when healthcare is off and rejects a bad percentage", () => {
+    const f = toForm(base);
+    f.healthDetail.pre65 = "1";
+    expect("healthDetail" in fromForm(f)).toBe(false);
+    f.health = true;
+    f.healthDetail.ltcChance = "150";
+    expect(() => fromForm(f)).toThrow(/Chance of needing care/);
+  });
+});

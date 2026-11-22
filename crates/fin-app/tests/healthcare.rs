@@ -70,3 +70,38 @@ fn giving_is_carried_into_the_plan_and_defaults_to_nothing() {
     h.giving_cents = -5;
     assert_eq!(h.plan_input(today()).unwrap().charity.cents(), 0);
 }
+
+#[test]
+fn your_own_healthcare_figures_replace_the_defaults() {
+    use fin_app::household::HealthRow;
+    let today = fin_core::NaiveDate::from_ymd_opt(2026, 11, 16).unwrap();
+    let mut h = Household::sample();
+    h.health = true;
+    let total = |h: &Household| -> i64 {
+        h.plan_input(today)
+            .unwrap()
+            .one_time_costs
+            .iter()
+            .map(|c| c.amount.cents())
+            .sum()
+    };
+    let default_total = total(&h);
+    h.health_detail = Some(HealthRow {
+        pre_65_cents: 0,
+        post_65_cents: 0,
+        excess_inflation_bp: 0,
+        ltc_start_age: 0,
+        ltc_years: 0,
+        ltc_annual_cents: 0,
+        ltc_chance_bp: 0,
+    });
+    assert_eq!(total(&h), 0);
+    assert!(default_total > 0);
+    // Ignored while the switch is off.
+    h.health = false;
+    assert_eq!(total(&h), 0);
+    // Bad figures are readable errors.
+    h.health = true;
+    h.health_detail.as_mut().unwrap().ltc_chance_bp = 20_000;
+    assert!(h.plan_input(today).unwrap_err().contains("chance"));
+}
