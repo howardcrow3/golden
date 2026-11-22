@@ -234,6 +234,15 @@ async fn roth_explore(
         .map_err(|e| e.to_string())?
 }
 
+/// Compare Social Security claiming ages 62 to 70 for the saved household.
+#[tauri::command]
+async fn ss_explore(state: Shared<'_>) -> Result<quickplan::SsExplore, String> {
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::ss_explore(&plan, &picks))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
 async fn whatif(
@@ -738,6 +747,7 @@ pub fn run() {
             run_plan,
             safe_spend,
             roth_explore,
+            ss_explore,
             whatif,
             keep_whatif,
             pricing,

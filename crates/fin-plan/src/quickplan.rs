@@ -191,6 +191,73 @@ pub fn roth_explore(
         .collect())
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SsRow {
+    pub claim_age: i32,
+    /// Yearly benefit per person at this claiming age.
+    pub annual_cents: Vec<i64>,
+    pub lifetime_cents: i64,
+    pub legacy_cents: i64,
+    pub success_rate: f64,
+    pub depleted_year: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BreakEven {
+    pub earlier: i32,
+    pub later: i32,
+    /// Age at which the later claim has paid out as much in total, for the first person.
+    pub age: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SsExplore {
+    pub rows: Vec<SsRow>,
+    pub break_evens: Vec<BreakEven>,
+}
+
+/// Compare claiming Social Security at every age from 62 to 70.
+pub fn ss_explore(plan: &PlanInput, picks: &Picks) -> Result<SsExplore, String> {
+    if plan.social_security.is_empty() {
+        return Err("Add a Social Security amount for someone first.".into());
+    }
+    let out = crate::ss::explore(plan, &Assumptions::defaults(), picks, 200, 20_260_101)
+        .map_err(|e| e.to_string())?;
+    let first = |age: i32| {
+        out.iter()
+            .find(|o| o.claim_age == age)
+            .map(|o| o.annual_benefits[0])
+    };
+    let break_evens = [(62, 67), (67, 70), (62, 70)]
+        .into_iter()
+        .map(|(e, l)| BreakEven {
+            earlier: e,
+            later: l,
+            age: match (first(e), first(l)) {
+                (Some(a), Some(b)) => crate::ss::break_even_age(e, a, l, b),
+                _ => None,
+            },
+        })
+        .collect();
+    Ok(SsExplore {
+        rows: out
+            .into_iter()
+            .map(|o| SsRow {
+                claim_age: o.claim_age,
+                annual_cents: o.annual_benefits.iter().map(|m| m.cents()).collect(),
+                lifetime_cents: o.lifetime_benefits.cents(),
+                legacy_cents: o.after_tax_legacy.cents(),
+                success_rate: o.success_rate,
+                depleted_year: o.depleted_year,
+            })
+            .collect(),
+        break_evens,
+    })
+}
+
 /// Run any household plan (any number of people and income streams) with what-if picks.
 pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPlanResult, String> {
     let r = scenario::run(
@@ -224,6 +291,37 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         horizon_age: r.inputs.horizon_age,
         ss_claim_age: r.inputs.ss_claim_age,
     })
+}
+
+#[cfg(test)]
+mod ss_tests {
+    use super::*;
+    use crate::projection::fixtures::couple;
+
+    #[test]
+    fn explore_returns_nine_ages_and_break_evens() {
+        let r = ss_explore(&couple(), &Picks::new()).unwrap();
+        assert_eq!(r.rows.len(), 9);
+        assert_eq!(r.break_evens.len(), 3);
+        let b = r
+            .break_evens
+            .iter()
+            .find(|b| (b.earlier, b.later) == (62, 70))
+            .unwrap();
+        let age = b.age.unwrap();
+        assert!(age > 78.0 && age < 84.0, "{age}");
+        let v = serde_json::to_value(&r).unwrap();
+        assert!(v["rows"][0]["claimAge"].is_number());
+    }
+
+    #[test]
+    fn nobody_with_a_benefit_is_a_clear_error() {
+        let mut p = couple();
+        p.social_security.clear();
+        assert!(ss_explore(&p, &Picks::new())
+            .unwrap_err()
+            .contains("Social Security"));
+    }
 }
 
 #[cfg(test)]

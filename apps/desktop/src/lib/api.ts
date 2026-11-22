@@ -226,6 +226,23 @@ export async function rothExplore(untilAge: number, invoke?: Invoke): Promise<Ro
   return (await (await resolve(invoke))("roth_explore", { untilAge })) as RothRow[];
 }
 
+export interface SsRow {
+  claimAge: number;
+  annualCents: number[];
+  lifetimeCents: number;
+  legacyCents: number;
+  successRate: number;
+  depletedYear: number | null;
+}
+export interface SsExplore {
+  rows: SsRow[];
+  breakEvens: { earlier: number; later: number; age: number | null }[];
+}
+
+export async function ssExplore(invoke?: Invoke): Promise<SsExplore> {
+  return (await (await resolve(invoke))("ss_explore")) as SsExplore;
+}
+
 export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
   return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
 }

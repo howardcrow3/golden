@@ -38,7 +38,8 @@ pub struct IncomeStream {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SocialSecurity {
     pub person: usize,
-    /// Annual benefit in today's dollars if claimed at `claim_age`.
+    /// Annual benefit in today's dollars if claimed at full retirement age (the figure on the
+    /// person's Social Security statement); `claim_age` raises or lowers what is actually paid.
     pub annual_benefit: Money,
     pub claim_age: i32,
 }
@@ -184,7 +185,10 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         for b in &input.social_security {
             let age = input.people[b.person].age_on(chrono_start(year));
             if age >= b.claim_age {
-                ss += b.annual_benefit;
+                let birth_year = year - age;
+                ss += b
+                    .annual_benefit
+                    .mul_rate(crate::ss::claim_factor(birth_year, b.claim_age * 12));
             }
         }
 
@@ -608,11 +612,13 @@ mod tests {
         }];
         i.annual_spending = Money::from_dollars(50_000);
         let p = project_constant(&i, 0.04);
-        // $30k of benefits and nothing else is under the joint threshold: nothing is taxed,
-        // so the only gap is spending less benefits, paid from Roth.
+        // The benefit is $30k at full retirement age; claiming before 62 counts as 62, which pays
+        // 70% for someone born in 1976. $21k and nothing else is under the joint threshold:
+        // nothing is taxed, so the only gap is spending less benefits, paid from Roth.
         let row = &p.rows[0];
         assert_eq!(row.taxes, Money::ZERO);
-        assert_eq!(row.withdrawals, Money::from_dollars(20_000));
+        assert_eq!(row.social_security, Money::from_dollars(21_000));
+        assert_eq!(row.withdrawals, Money::from_dollars(29_000));
     }
 
     #[test]
