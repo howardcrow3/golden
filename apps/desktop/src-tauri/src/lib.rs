@@ -222,6 +222,18 @@ async fn safe_spend(
         .map_err(|e| e.to_string())?
 }
 
+/// Compare Roth conversion strategies for the saved household.
+#[tauri::command]
+async fn roth_explore(
+    state: Shared<'_>,
+    until_age: i32,
+) -> Result<Vec<quickplan::RothRow>, String> {
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::roth_explore(&plan, &picks, until_age))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
 async fn whatif(
@@ -725,6 +737,7 @@ pub fn run() {
             assumptions,
             run_plan,
             safe_spend,
+            roth_explore,
             whatif,
             keep_whatif,
             pricing,
