@@ -4,6 +4,7 @@ pub mod daf;
 pub mod debt;
 pub mod estate;
 pub mod estimate;
+pub mod family;
 pub mod healthcare;
 pub mod housing;
 pub mod medicare;

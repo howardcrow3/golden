@@ -22,6 +22,18 @@ export interface Form {
   giving: string;
   /** The home, when it is part of the plan. */
   home: HomeForm | null;
+  children: ChildForm[];
+}
+
+export interface ChildForm {
+  name: string;
+  birthYear: string;
+  childcare: string;
+  college: string;
+}
+
+export function newChild(thisYear: number): ChildForm {
+  return { name: "", birthYear: String(thisYear), childcare: "0", college: "0" };
 }
 
 export interface HomeForm {
@@ -89,6 +101,12 @@ export function toForm(h: Household): Form {
           rentAfter: dollars(h.home.rentAfterCents),
         }
       : null,
+    children: (h.children ?? []).map((c) => ({
+      name: c.name,
+      birthYear: String(c.birthYear),
+      childcare: dollars(c.childcareCents),
+      college: dollars(c.collegeCents),
+    })),
   };
 }
 
@@ -155,6 +173,21 @@ export function fromForm(f: Form): Household {
             replacementCostCents: money(f.home.replacement, "Cost of the next home"),
             rentAfterCents: money(f.home.rentAfter, "Rent after selling"),
           },
+        }
+      : {}),
+    ...(f.children.length > 0
+      ? {
+          children: f.children.map((c, i) => {
+            const name = c.name.trim() || `Child ${i + 1}`;
+            const by = year(c.birthYear, `${name} birth year`);
+            if (by === null) throw new Error(`${name} birth year: enter a four-digit year.`);
+            return {
+              name,
+              birthYear: by,
+              childcareCents: money(c.childcare, `${name} childcare`),
+              collegeCents: money(c.college, `${name} college`),
+            };
+          }),
         }
       : {}),
   };

@@ -3,7 +3,7 @@
   import { getHousehold, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
   import { formatCents, formatPercent } from "./money";
-  import { fromForm, newHome, newPerson, newStream, removePerson, toForm, type Form } from "./household";
+  import { fromForm, newChild, newHome, newPerson, newStream, removePerson, toForm, type Form } from "./household";
   import Assumptions from "./Assumptions.svelte";
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
@@ -113,6 +113,21 @@
       <p class="hint">Add your home to plan for the mortgage ending, or selling and moving somewhere smaller.</p>
       <button type="button" onclick={() => (f!.home = newHome())}>Add a home</button>
     {/if}
+  </section>
+
+  <section class="card" aria-label="Children">
+    <h2>Children</h2>
+    <p class="hint">Costs here are on top of your everyday spending: childcare from birth through age 12, and college for four years from age 18. The child tax credit is counted until 17.</p>
+    {#each f.children as c, i}
+      <div class="controls" data-testid="child-row">
+        <label>Name <input bind:value={c.name} aria-label={`Child ${i + 1} name`} /></label>
+        <label>Born <input bind:value={c.birthYear} aria-label={`Child ${i + 1} birth year`} size="5" /></label>
+        <label>Childcare per year <input bind:value={c.childcare} aria-label={`Child ${i + 1} childcare`} inputmode="numeric" /></label>
+        <label>College per year <input bind:value={c.college} aria-label={`Child ${i + 1} college`} inputmode="numeric" /></label>
+        <button type="button" onclick={() => f!.children.splice(i, 1)}>Remove</button>
+      </div>
+    {/each}
+    <button type="button" onclick={() => f!.children.push(newChild(new Date().getFullYear()))}>Add a child</button>
   </section>
 
   <section class="card" aria-label="Income">

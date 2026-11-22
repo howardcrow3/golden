@@ -229,6 +229,14 @@ export interface Household {
   givingCents?: number;
   /** The home, with a mortgage and an optional sale. */
   home?: HomeRow | null;
+  /** Children: childcare, college and the child tax credit. */
+  children?: ChildRow[];
+}
+export interface ChildRow {
+  name: string;
+  birthYear: number;
+  childcareCents: number;
+  collegeCents: number;
 }
 export interface EventRow {
   label: string;

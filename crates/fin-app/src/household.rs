@@ -81,6 +81,23 @@ pub struct Household {
     /// The home the household owns, if it is part of the plan.
     #[serde(default)]
     pub home: Option<HomeRow>,
+    /// Children: childcare, college and the child tax credit.
+    #[serde(default)]
+    pub children: Vec<ChildRow>,
+}
+
+/// A child, with what you expect to pay on top of everyday spending.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChildRow {
+    pub name: String,
+    pub birth_year: i32,
+    /// Yearly childcare cost from birth through age 12.
+    #[serde(default)]
+    pub childcare_cents: i64,
+    /// Yearly college cost you will pay for four years from age 18.
+    #[serde(default)]
+    pub college_cents: i64,
 }
 
 /// The home: its value, what is owed, and an optional sale.
@@ -206,6 +223,7 @@ impl From<LegacyHousehold> for Household {
             health: false,
             giving_cents: 0,
             home: None,
+            children: vec![],
         }
     }
 }
@@ -416,6 +434,39 @@ impl Household {
             }
             None => vec![],
         };
+        let family_costs = {
+            for c in &self.children {
+                if c.childcare_cents < 0 || c.college_cents < 0 {
+                    return Err("Childcare and college costs cannot be negative.".into());
+                }
+                if !(1900..=2200).contains(&c.birth_year) {
+                    return Err(format!("{}: enter a four-digit birth year.", c.name));
+                }
+            }
+            let kids: Vec<fin_plan::family::Child> = self
+                .children
+                .iter()
+                .map(|c| fin_plan::family::Child {
+                    birth_year: c.birth_year,
+                    childcare: Money::from_cents(c.childcare_cents),
+                    college: Money::from_cents(c.college_cents),
+                })
+                .collect();
+            let streams_ref = &streams;
+            fin_plan::family::yearly_costs(
+                &kids,
+                filing,
+                year,
+                year + 95 - people.first().map_or(40, |p| age_in(p, today)),
+                |y| {
+                    streams_ref
+                        .iter()
+                        .filter(|s| s.start_year <= y && y <= s.end_year)
+                        .map(|s| s.annual_gross)
+                        .fold(Money::ZERO, |a, b| a + b)
+                },
+            )
+        };
         let health_costs = if self.health {
             fin_plan::healthcare::yearly_costs(
                 &fin_plan::healthcare::HealthCosts::defaults(),
@@ -452,6 +503,7 @@ impl Household {
                     .collect();
                 costs.extend(health_costs);
                 costs.extend(home_costs);
+                costs.extend(family_costs);
                 costs
             },
             horizon_age: 95,
