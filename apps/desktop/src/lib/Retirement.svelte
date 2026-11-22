@@ -1,6 +1,6 @@
 <script lang="ts">
   import Explain from "./Explain.svelte";
-  import { getHousehold, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
+  import { getHousehold, LOCALITIES, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
   import { formatCents, formatPercent } from "./money";
   import { fromForm, newChild, newHome, newPerson, newStream, removePerson, toForm, type Form } from "./household";
@@ -156,6 +156,16 @@
 
   <section class="card controls" aria-label="Household">
     <label>State <input bind:value={f.state} maxlength="2" size="3" aria-label="State" /></label>
+    {#if LOCALITIES.some((l) => l.state === f!.state.trim().toUpperCase())}
+      <label>City or county tax
+        <select bind:value={f.locality} aria-label="City or county tax">
+          <option value="">None</option>
+          {#each LOCALITIES.filter((l) => l.state === f!.state.trim().toUpperCase()) as l}
+            <option value={l.key}>{l.name}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
     <label>Filing
       <select bind:value={f.filing} aria-label="Filing status">
         <option value="single">Single</option>

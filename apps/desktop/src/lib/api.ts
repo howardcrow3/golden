@@ -238,6 +238,8 @@ export interface Household {
   home?: HomeRow | null;
   /** Children: childcare, college and the child tax credit. */
   children?: ChildRow[];
+  /** Key of a city or county income tax, such as "nyc". */
+  locality?: string;
 }
 export interface ChildRow {
   name: string;
@@ -963,3 +965,15 @@ export async function dafBunching(
 ): Promise<Bunching> {
   return (await (await resolve(invoke))("daf_bunching", { filing, incomeCents, otherItemizedCents, givingCents, years })) as Bunching;
 }
+
+/** City and county income taxes the plan knows (mirrors the engine's list). */
+export const LOCALITIES: { key: string; name: string; state: string }[] = [
+  { key: "nyc", name: "New York City (resident)", state: "NY" },
+  { key: "philadelphia", name: "Philadelphia (resident wage tax)", state: "PA" },
+  { key: "pittsburgh", name: "Pittsburgh (resident)", state: "PA" },
+  { key: "columbus", name: "Columbus, Ohio", state: "OH" },
+  { key: "cleveland", name: "Cleveland, Ohio", state: "OH" },
+  { key: "detroit", name: "Detroit (resident)", state: "MI" },
+  { key: "baltimore", name: "Baltimore City", state: "MD" },
+  { key: "montgomery_md", name: "Montgomery County, Maryland", state: "MD" },
+];

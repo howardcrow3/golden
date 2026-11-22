@@ -84,6 +84,9 @@ pub struct Household {
     /// Children: childcare, college and the child tax credit.
     #[serde(default)]
     pub children: Vec<ChildRow>,
+    /// City or county income tax key (see `fin_plan::local`), if one applies.
+    #[serde(default)]
+    pub locality: Option<String>,
 }
 
 /// A child, with what you expect to pay on top of everyday spending.
@@ -224,6 +227,7 @@ impl From<LegacyHousehold> for Household {
             giving_cents: 0,
             home: None,
             children: vec![],
+            locality: None,
         }
     }
 }
@@ -467,6 +471,38 @@ impl Household {
                 },
             )
         };
+        let local_costs = match self.locality.as_deref().filter(|k| !k.is_empty()) {
+            None => vec![],
+            Some(key) => {
+                let loc = fin_plan::local::find(key)
+                    .ok_or_else(|| format!("Unknown city or county tax: {key}."))?;
+                if !loc.state.eq_ignore_ascii_case(&self.state) {
+                    return Err(format!(
+                        "{} is a {} tax, but the household's state is {}.",
+                        loc.name, loc.state, self.state
+                    ));
+                }
+                let std = fin_plan::tax::FederalTaxYear::y2026().standard_deduction(filing);
+                let streams_ref = &streams;
+                (year..=year + 95 - people.first().map_or(40, |p| age_in(p, today)))
+                    .filter_map(|y| {
+                        let earned = streams_ref
+                            .iter()
+                            .filter(|s| s.start_year <= y && y <= s.end_year)
+                            .map(|s| s.annual_gross)
+                            .fold(Money::ZERO, |a, b| a + b);
+                        let t = fin_plan::local::tax(
+                            loc,
+                            filing,
+                            earned,
+                            (earned - std).max(Money::ZERO),
+                        );
+                        (t > Money::ZERO)
+                            .then_some(fin_plan::projection::OneTimeCost { year: y, amount: t })
+                    })
+                    .collect::<Vec<_>>()
+            }
+        };
         let health_costs = if self.health {
             fin_plan::healthcare::yearly_costs(
                 &fin_plan::healthcare::HealthCosts::defaults(),
@@ -504,6 +540,7 @@ impl Household {
                 costs.extend(health_costs);
                 costs.extend(home_costs);
                 costs.extend(family_costs);
+                costs.extend(local_costs);
                 costs
             },
             horizon_age: 95,

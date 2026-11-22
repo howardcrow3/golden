@@ -23,6 +23,7 @@ export interface Form {
   /** The home, when it is part of the plan. */
   home: HomeForm | null;
   children: ChildForm[];
+  locality: string;
 }
 
 export interface ChildForm {
@@ -101,6 +102,7 @@ export function toForm(h: Household): Form {
           rentAfter: dollars(h.home.rentAfterCents),
         }
       : null,
+    locality: h.locality ?? "",
     children: (h.children ?? []).map((c) => ({
       name: c.name,
       birthYear: String(c.birthYear),
@@ -175,6 +177,7 @@ export function fromForm(f: Form): Household {
           },
         }
       : {}),
+    ...(f.locality ? { locality: f.locality } : {}),
     ...(f.children.length > 0
       ? {
           children: f.children.map((c, i) => {

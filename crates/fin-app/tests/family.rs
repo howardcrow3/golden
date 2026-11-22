@@ -56,3 +56,25 @@ fn old_saved_households_without_children_still_load() {
     let back: Household = serde_json::from_value(v).unwrap();
     assert!(back.children.is_empty());
 }
+
+#[test]
+fn a_city_tax_adds_yearly_costs_while_earning() {
+    let mut h = Household::sample();
+    h.state = "PA".into();
+    h.locality = Some("philadelphia".into());
+    let p = h.plan_input(today()).unwrap();
+    let first = p.one_time_costs.iter().find(|c| c.year == 2026).unwrap();
+    assert!(first.amount.cents() > 0);
+}
+
+#[test]
+fn a_city_tax_must_match_the_state_and_be_known() {
+    let mut h = Household::sample();
+    h.locality = Some("philadelphia".into());
+    h.state = "TX".into();
+    assert!(h.plan_input(today()).unwrap_err().contains("PA"));
+    h.locality = Some("atlantis".into());
+    assert!(h.plan_input(today()).unwrap_err().contains("Unknown"));
+    h.locality = Some(String::new());
+    assert!(h.plan_input(today()).is_ok());
+}

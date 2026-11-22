@@ -8,6 +8,7 @@ pub mod estimate;
 pub mod family;
 pub mod healthcare;
 pub mod housing;
+pub mod local;
 pub mod medicare;
 pub mod milestones;
 pub mod montecarlo;

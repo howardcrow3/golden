@@ -29,3 +29,11 @@ describe("children in the household form", () => {
     expect(() => fromForm(f)).toThrow(/childcare/);
   });
 });
+
+describe("city or county tax in the household form", () => {
+  it("is omitted when unset and round-trips when set", () => {
+    expect("locality" in fromForm(toForm(base))).toBe(false);
+    const h = { ...base, state: "PA", locality: "philadelphia" };
+    expect(fromForm(toForm(h)).locality).toBe("philadelphia");
+  });
+});
