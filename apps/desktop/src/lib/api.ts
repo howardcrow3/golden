@@ -185,6 +185,18 @@ export interface StreamRow {
   /** Business income: self-employment tax instead of FICA, and the QBI deduction. */
   selfEmployed?: boolean;
 }
+export interface HomeRow {
+  valueCents: number;
+  basisCents: number;
+  mortgageBalanceCents: number;
+  /** Hundredths of a percent: 450 is 4.5%. */
+  mortgageRateBp: number;
+  mortgageYearsLeft: number;
+  sellYear?: number | null;
+  sellingCostBp: number;
+  replacementCostCents: number;
+  rentAfterCents: number;
+}
 export interface Household {
   people: PersonRow[];
   streams: StreamRow[];
@@ -205,6 +217,8 @@ export interface Household {
   health?: boolean;
   /** Yearly charitable giving, part of spending. */
   givingCents?: number;
+  /** The home, with a mortgage and an optional sale. */
+  home?: HomeRow | null;
 }
 export interface EventRow {
   label: string;

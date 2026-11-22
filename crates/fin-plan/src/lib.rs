@@ -3,6 +3,7 @@ pub mod backtest;
 pub mod debt;
 pub mod estimate;
 pub mod healthcare;
+pub mod housing;
 pub mod medicare;
 pub mod milestones;
 pub mod montecarlo;
