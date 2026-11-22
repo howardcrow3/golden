@@ -54,6 +54,15 @@ export interface YearPoint {
   balanceCents: number;
   spendingCents: number;
   taxesCents: number;
+  /** Balance percentiles across the simulated runs. */
+  p10Cents?: number;
+  p50Cents?: number;
+  p90Cents?: number;
+}
+export interface HistogramBin {
+  fromCents: number;
+  toCents: number;
+  count: number;
 }
 export interface QuickPlanResult {
   successRate: number;
@@ -62,6 +71,9 @@ export interface QuickPlanResult {
   p50Cents: number;
   p90Cents: number;
   years: YearPoint[];
+  histogram?: HistogramBin[];
+  runs?: number;
+  seed?: number;
   realReturn: number;
   volatility: number;
   horizonAge: number;

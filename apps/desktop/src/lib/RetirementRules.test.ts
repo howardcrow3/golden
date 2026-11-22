@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import Retirement from "./Retirement.svelte";
 import type { Household } from "./api";
 import { fromForm, toForm } from "./household";
@@ -52,5 +52,23 @@ describe("retirement spending rule and withdrawal order", () => {
     expect(saved.spendingRule).toBe("guardrails");
     expect(saved.withdrawalOrder).toBe("roth_first");
     expect(saved.events).toEqual(household.events);
+  });
+
+  it("runs the plan with the chosen number of simulated futures", async () => {
+    const runs: number[] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === "household") return household;
+      if (cmd === "assumptions") return [];
+      if (cmd === "run_plan") {
+        runs.push(args!.runs as number);
+        return planResult;
+      }
+      return undefined;
+    };
+    render(Retirement, { invoke });
+    await fireEvent.click(await screen.findByRole("button", { name: "Save and run plan" }));
+    await screen.findByTestId("success");
+    await fireEvent.change(screen.getByLabelText("Simulated futures"), { target: { value: "1000" } });
+    await vi.waitFor(() => expect(runs).toEqual([400, 1000]));
   });
 });
