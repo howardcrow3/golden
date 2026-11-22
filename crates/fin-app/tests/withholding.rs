@@ -74,6 +74,9 @@ fn a_job_without_a_paystub_is_named_not_guessed() {
     let mut h = a.household().unwrap();
     h.streams.push(fin_app::household::StreamRow {
         self_employed: false,
+        kind: None,
+        employer_match_cents: 0,
+        hsa_cents: 0,
         label: "Side gig".into(),
         person: 0,
         annual_cents: 2_000_000,
@@ -92,6 +95,9 @@ fn one_time_amounts_are_left_out() {
     let mut h = a.household().unwrap();
     h.streams.push(fin_app::household::StreamRow {
         self_employed: false,
+        kind: None,
+        employer_match_cents: 0,
+        hsa_cents: 0,
         label: "Bonus".into(),
         person: 0,
         annual_cents: 5_000_000,

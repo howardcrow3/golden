@@ -78,3 +78,46 @@ fn a_city_tax_must_match_the_state_and_be_known() {
     h.locality = Some(String::new());
     assert!(h.plan_input(today()).is_ok());
 }
+
+#[test]
+fn a_pension_starts_at_retirement_and_pays_no_payroll_tax() {
+    use fin_app::household::StreamRow;
+    let mut h = Household::sample();
+    h.streams.push(StreamRow {
+        label: "Pension".into(),
+        person: 0,
+        annual_cents: 2_400_000,
+        self_employed: false,
+        start_year: None,
+        end_year: None,
+        contribution_cents: 999,
+        kind: Some("pension".into()),
+        employer_match_cents: 5,
+        hsa_cents: 5,
+    });
+    let p = h.plan_input(today()).unwrap();
+    let s = p.streams.last().unwrap();
+    assert!(s.payroll_exempt);
+    // Savings fields are ignored for a pension.
+    assert_eq!(s.traditional_contribution.cents(), 0);
+    assert_eq!(s.hsa.cents(), 0);
+    // It starts after the first job's last year and runs for decades.
+    let job_end = p.streams[0].end_year;
+    assert!(s.start_year >= job_end);
+    assert!(s.end_year >= s.start_year + 30);
+}
+
+#[test]
+fn match_and_hsa_carry_through_and_bad_kinds_are_errors() {
+    let mut h = Household::sample();
+    h.streams[0].employer_match_cents = 300_000;
+    h.streams[0].hsa_cents = 400_000;
+    let p = h.plan_input(today()).unwrap();
+    assert_eq!(p.streams[0].employer_match.cents(), 300_000);
+    assert_eq!(p.streams[0].hsa.cents(), 400_000);
+    h.streams[0].kind = Some("lottery".into());
+    assert!(h.plan_input(today()).unwrap_err().contains("income type"));
+    h.streams[0].kind = None;
+    h.streams[0].hsa_cents = -1;
+    assert!(h.plan_input(today()).unwrap_err().contains("negative"));
+}

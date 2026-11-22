@@ -2,6 +2,7 @@
 //! No database or AI here; reconciliation and categorization happen downstream.
 pub mod csv_reader;
 pub mod dates;
+pub mod docclass;
 pub mod ofx;
 pub mod paystub;
 pub mod pdf;

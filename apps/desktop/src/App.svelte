@@ -3,6 +3,7 @@
   import TaxCalculator from "./lib/TaxCalculator.svelte";
   import Retirement from "./lib/Retirement.svelte";
   import Import from "./lib/Import.svelte";
+  import Documents from "./lib/Documents.svelte";
   import Transactions from "./lib/Transactions.svelte";
   import WhatIf from "./lib/WhatIf.svelte";
   import License from "./lib/License.svelte";
@@ -13,7 +14,7 @@
   import { licenseStatus, type LicenseStatus } from "./lib/api";
   import { setHideAmounts } from "./lib/money";
 
-  const pages = ["Overview", "Transactions", "Import", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
+  const pages = ["Overview", "Transactions", "Import", "Documents", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
   let page = $state<(typeof pages)[number]>("Overview");
   let lic = $state<LicenseStatus | null>(null);
   $effect(() => {
@@ -55,7 +56,7 @@
   </nav>
   <main>
     {#key hide}
-    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
 </div>

@@ -58,3 +58,25 @@ describe("healthcare figures in the household form", () => {
     expect(() => fromForm(f)).toThrow(/Chance of needing care/);
   });
 });
+
+describe("income types in the household form", () => {
+  const withStream = (extra: object): Household => ({
+    ...base,
+    streams: [{ label: "Pension", person: 0, annualCents: 2_400_000, startYear: null, endYear: null, contributionCents: 0, ...extra }],
+  });
+
+  it("round-trips a pension, a match and an HSA, and omits them when unset", () => {
+    expect(fromForm(toForm(withStream({ kind: "pension" }))).streams[0].kind).toBe("pension");
+    const j = fromForm(toForm(withStream({ employerMatchCents: 300_000, hsaCents: 400_000 }))).streams[0];
+    expect(j.employerMatchCents).toBe(300_000);
+    expect(j.hsaCents).toBe(400_000);
+    const plain = fromForm(toForm(withStream({}))).streams[0];
+    expect("kind" in plain || "employerMatchCents" in plain || "hsaCents" in plain).toBe(false);
+  });
+
+  it("rejects a bad match amount with a readable error", () => {
+    const f = toForm(withStream({}));
+    f.streams[0].match = "lots";
+    expect(() => fromForm(f)).toThrow(/employer match/);
+  });
+});

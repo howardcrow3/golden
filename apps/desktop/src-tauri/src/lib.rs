@@ -325,6 +325,50 @@ fn investment_checkup(
     lock(&state)?.investment_checkup(risk)
 }
 
+/// The saved plan as the text of a plan file, for the screen to save or send.
+#[tauri::command]
+fn export_plan_file(state: Shared) -> Result<String, String> {
+    lock(&state)?.export_plan_file()
+}
+
+/// Replace the saved plan with the contents of a plan file.
+#[tauri::command]
+fn import_plan_file(state: Shared, text: String) -> Result<fin_app::planfile::Imported, String> {
+    lock(&state)?.import_plan_file(&text)
+}
+
+/// Put a file in the encrypted document vault.
+#[tauri::command]
+fn vault_add(state: Shared, name: String, bytes: Vec<u8>) -> Result<fin_app::vault::DocumentRow, String> {
+    lock(&state)?.vault_add(&name, &bytes)
+}
+
+#[tauri::command]
+fn vault_list(state: Shared, query: String) -> Result<Vec<fin_app::vault::DocumentRow>, String> {
+    lock(&state)?.vault_list(&query)
+}
+
+#[tauri::command]
+fn vault_delete(state: Shared, id: i64) -> Result<(), String> {
+    lock(&state)?.vault_delete(id)
+}
+
+/// Copy a vault document out to the Exports folder and return where it went.
+#[tauri::command]
+fn vault_export(app: tauri::AppHandle, state: Shared, id: i64) -> Result<String, String> {
+    let (name, bytes) = lock(&state)?.vault_get(id)?;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("Exports");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    // Keep only the file name part, so a stored name can't point outside the folder.
+    let safe: String = name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || matches!(c, '.' | '-' | '_' | ' ') { c } else { '_' })
+        .collect();
+    let path = dir.join(format!("vault-{id}-{}", safe.trim_start_matches('.')));
+    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -899,6 +943,12 @@ pub fn run() {
             retire_when,
             roth_explore,
             sepp,
+            vault_add,
+            vault_list,
+            vault_delete,
+            vault_export,
+            export_plan_file,
+            import_plan_file,
             holdings,
             save_holdings,
             investment_checkup,

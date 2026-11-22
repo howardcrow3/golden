@@ -28,6 +28,7 @@ pub mod localmodel;
 pub mod mcp;
 pub mod model;
 pub mod paystub;
+pub mod planfile;
 pub mod progress;
 pub mod recurring;
 pub mod report;
@@ -37,6 +38,7 @@ pub mod setup;
 pub mod suggest;
 pub mod transactions;
 pub mod transfers;
+pub mod vault;
 pub mod watch;
 pub mod withholding;
 

@@ -36,6 +36,13 @@ pub struct IncomeStream {
     /// Self-employment income: pays self-employment tax instead of FICA and gets the QBI
     /// deduction.
     pub self_employed: bool,
+    /// Income that pays no payroll tax: a pension, rental income, an annuity. It is still
+    /// ordinary income.
+    pub payroll_exempt: bool,
+    /// Employer match per year while working, added to the pre-tax account (not income to you).
+    pub employer_match: Money,
+    /// Pre-tax HSA saving per year, kept as tax-free money for medical costs.
+    pub hsa: Money,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -208,13 +215,21 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let mut wages = Money::ZERO;
         let mut se_net = Money::ZERO;
         let mut contrib = Money::ZERO;
+        let mut hsa_total = Money::ZERO;
+        let mut match_total = Money::ZERO;
+        let mut exempt = Money::ZERO;
         for s in &input.streams {
             if year >= s.start_year && year <= s.end_year {
                 wages += s.annual_gross;
                 if s.self_employed {
                     se_net += s.annual_gross;
                 }
-                contrib += s.traditional_contribution;
+                if s.payroll_exempt {
+                    exempt += s.annual_gross;
+                }
+                contrib += s.traditional_contribution + s.hsa;
+                hsa_total += s.hsa;
+                match_total += s.employer_match;
             }
         }
         let mut ss = Money::ZERO;
@@ -229,7 +244,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         }
 
         // Tax on income that does not depend on withdrawals.
-        let employee_wages = wages - se_net;
+        let employee_wages = wages - se_net - exempt;
         let se = fed.self_employment_tax(input.filing, se_net, employee_wages);
         let fica = fed.fica_for_wages(input.filing, employee_wages) + se.tax;
         // Half the self-employment tax and the qualified business income deduction come off
@@ -548,12 +563,15 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             }
         } else {
             // Surplus is saved: pre-tax contributions plus leftover cash to the taxable account.
-            acc.traditional += contrib;
+            acc.traditional += contrib - hsa_total;
+            acc.roth += hsa_total;
             acc.taxable += -gap;
         }
         if contrib > Money::ZERO && gap > Money::ZERO {
-            acc.traditional += contrib;
+            acc.traditional += contrib - hsa_total;
+            acc.roth += hsa_total;
         }
+        acc.traditional += match_total;
 
         if i == 0 {
             magi_before = Some((final_ord - converted).max(Money::ZERO) + final_gains);
@@ -587,7 +605,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         rows.push(YearRow {
             year,
             age: primary.age_on(chrono_start(year)),
-            earned: wages,
+            earned: wages - exempt,
             social_security: ss,
             spending,
             taxes,
@@ -673,6 +691,9 @@ pub(crate) mod fixtures {
                 end_year: 2041,
                 traditional_contribution: Money::from_dollars(23_500),
                 self_employed: false,
+                payroll_exempt: false,
+                employer_match: Money::ZERO,
+                hsa: Money::ZERO,
             }],
             social_security: vec![SocialSecurity {
                 person: 0,
@@ -1244,5 +1265,42 @@ mod tests {
             .zip(&b.rows)
             .any(|(x, y)| x.age >= 75 && x.rmd > Money::ZERO && x.income_tax < y.income_tax);
         assert!(found, "giving never lowered tax");
+    }
+}
+
+#[cfg(test)]
+mod income_kind_tests {
+    use super::*;
+    use fixtures::couple;
+
+    fn first_year(p: &PlanInput) -> YearRow {
+        project(p, &|_| 0.0).rows[0].clone()
+    }
+
+    #[test]
+    fn payroll_exempt_income_pays_no_payroll_tax_and_is_not_earnings() {
+        let mut wages = couple();
+        wages.streams[0].traditional_contribution = Money::ZERO;
+        let mut pension = wages.clone();
+        pension.streams[0].payroll_exempt = true;
+        let w = first_year(&wages);
+        let p = first_year(&pension);
+        // Same income tax, less payroll tax.
+        assert!(p.taxes < w.taxes);
+        assert_eq!(p.earned, Money::ZERO);
+        assert!(w.earned > Money::ZERO);
+    }
+
+    #[test]
+    fn employer_match_and_hsa_grow_the_right_accounts() {
+        let base = couple();
+        let mut with = base.clone();
+        with.streams[0].employer_match = Money::from_dollars(5_000);
+        with.streams[0].hsa = Money::from_dollars(4_000);
+        let a = project(&base, &|_| 0.0);
+        let b = project(&with, &|_| 0.0);
+        // The match adds to the plan's money; the HSA saves taxes and keeps the money.
+        assert!(b.rows[0].end_balance > a.rows[0].end_balance);
+        assert!(b.rows[0].income_tax <= a.rows[0].income_tax);
     }
 }

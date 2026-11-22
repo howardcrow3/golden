@@ -32,6 +32,9 @@ fn household(spending: i64, state: &str) -> PlanInput {
                 end_year: 2034,
                 traditional_contribution: Money::from_dollars(23_500),
                 self_employed: false,
+                payroll_exempt: false,
+                employer_match: Money::ZERO,
+                hsa: Money::ZERO,
             },
             IncomeStream {
                 label: "Sam consulting".into(),
@@ -41,6 +44,9 @@ fn household(spending: i64, state: &str) -> PlanInput {
                 end_year: 2036,
                 traditional_contribution: Money::ZERO,
                 self_employed: false,
+                payroll_exempt: false,
+                employer_match: Money::ZERO,
+                hsa: Money::ZERO,
             },
         ],
         social_security: vec![

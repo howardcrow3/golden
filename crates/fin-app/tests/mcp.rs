@@ -224,3 +224,36 @@ fn net_worth_history_is_offered_and_checks_its_input() {
         true
     );
 }
+
+#[test]
+fn planning_tools_answer_from_the_saved_household_and_change_nothing() {
+    let a = app();
+    let before = a.household().unwrap();
+    let plan = payload(&call(&a, "retirement_plan", json!({})));
+    assert!(plan["successRate"].as_f64().unwrap() >= 0.0);
+    assert!(plan["legacy"]["grossCents"].is_i64());
+    assert!(plan["alerts"].is_array());
+    let spend = payload(&call(&a, "safe_spend", json!({"target": 0.85})));
+    assert!(spend["spendingCents"].is_i64());
+    let when = payload(&call(&a, "retire_when", json!({"target": 0.8})));
+    assert!(!when["tries"].as_array().unwrap().is_empty());
+    assert_eq!(a.household().unwrap(), before);
+}
+
+#[test]
+fn planning_tool_errors_are_readable_results() {
+    let a = app();
+    let r = call(&a, "safe_spend", json!({}));
+    assert_eq!(r["result"]["isError"], true);
+    assert!(r["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("target"));
+    let r = call(&a, "investment_checkup", json!({"risk": "reckless"}));
+    assert_eq!(r["result"]["isError"], true);
+    let r = call(&a, "investment_checkup", json!({"risk": "moderate"}));
+    assert!(r["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("at least one"));
+}

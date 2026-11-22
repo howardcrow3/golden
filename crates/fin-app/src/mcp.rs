@@ -31,7 +31,14 @@ fn tools() -> Value {
         {"name":"net_worth_history","description":"Net worth at each of the last N month-ends (cents), oldest first.",
          "inputSchema":s(json!({"months":{"type":"integer","minimum":1,"maximum":120}}),&["months"])},
         {"name":"suggest_allocation","description":"Suggested split of a yearly savings amount (cents).",
-         "inputSchema":s(json!({"yearlySavingsCents":{"type":"integer","minimum":0}}),&["yearlySavingsCents"])}
+         "inputSchema":s(json!({"yearlySavingsCents":{"type":"integer","minimum":0}}),&["yearlySavingsCents"])},
+        {"name":"retirement_plan","description":"The saved household's retirement plan: chance it works, milestones, heads-ups, what is left for heirs (cents). Nothing is changed.","inputSchema":s(json!({}),&[])},
+        {"name":"safe_spend","description":"The most the household can spend a year (cents, today's dollars) while the plan works in the given share of simulated futures.",
+         "inputSchema":s(json!({"target":{"type":"number","minimum":0.5,"maximum":0.99}}),&["target"])},
+        {"name":"retire_when","description":"The earliest retirement age at which the plan works in the given share of simulated futures.",
+         "inputSchema":s(json!({"target":{"type":"number","minimum":0.5,"maximum":0.99}}),&["target"])},
+        {"name":"investment_checkup","description":"The saved holdings against a target mix, with fees and concentration flags.",
+         "inputSchema":s(json!({"risk":{"type":"string","enum":["conservative","moderate","aggressive"]}}),&["risk"])}
     ])
 }
 
@@ -39,6 +46,12 @@ fn text<'a>(a: &'a Value, k: &str) -> Result<&'a str, String> {
     a.get(k)
         .and_then(Value::as_str)
         .ok_or_else(|| format!("Missing text argument \"{k}\"."))
+}
+
+fn number(a: &Value, k: &str) -> Result<f64, String> {
+    a.get(k)
+        .and_then(Value::as_f64)
+        .ok_or_else(|| format!("Missing number argument \"{k}\"."))
 }
 
 fn call(app: &App, name: &str, a: &Value) -> Result<Value, String> {
@@ -83,6 +96,41 @@ fn call(app: &App, name: &str, a: &Value) -> Result<Value, String> {
                 .and_then(Value::as_i64)
                 .ok_or("Missing number argument \"yearlySavingsCents\".")?;
             ser(app.suggest_allocation(c)?)
+        }
+        "retirement_plan" => {
+            let (plan, picks) = app.plan((app.clock)())?;
+            let r = fin_plan::quickplan::run_plan(&plan, &picks, 200)?;
+            ser(serde_json::json!({
+                "successRate": r.success_rate,
+                "depletedYear": r.depleted_year,
+                "milestones": r.milestones,
+                "alerts": r.alerts,
+                "legacy": r.legacy,
+                "selfEmployedLimits": r.self_employed_limits,
+            }))
+        }
+        "safe_spend" => {
+            let (plan, picks) = app.plan((app.clock)())?;
+            ser(fin_plan::quickplan::safe_spend(
+                &plan,
+                &picks,
+                number(a, "target")?,
+            )?)
+        }
+        "retire_when" => ser(crate::retire_when::scan(
+            &app.household()?,
+            (app.clock)(),
+            number(a, "target")?,
+            200,
+        )?),
+        "investment_checkup" => {
+            let risk = serde_json::from_value(
+                a.get("risk")
+                    .cloned()
+                    .ok_or("Missing text argument \"risk\".")?,
+            )
+            .map_err(|_| "Risk must be conservative, moderate or aggressive.".to_string())?;
+            ser(app.investment_checkup(risk)?)
         }
         _ => Err(format!("Unknown tool \"{name}\".")),
     }
