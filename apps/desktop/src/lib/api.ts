@@ -212,6 +212,20 @@ export async function safeSpend(target: number, invoke?: Invoke): Promise<SafeSp
   return (await (await resolve(invoke))("safe_spend", { target })) as SafeSpend;
 }
 
+export interface RothRow {
+  label: string;
+  convertedCents: number;
+  lifetimeTaxCents: number;
+  finalBalanceCents: number;
+  legacyCents: number;
+  successRate: number;
+  depletedYear: number | null;
+}
+
+export async function rothExplore(untilAge: number, invoke?: Invoke): Promise<RothRow[]> {
+  return (await (await resolve(invoke))("roth_explore", { untilAge })) as RothRow[];
+}
+
 export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
   return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
 }

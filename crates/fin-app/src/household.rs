@@ -354,6 +354,7 @@ impl Household {
             horizon_age: 95,
             spending_rule: self.spending_rule_value()?,
             withdrawal_order: self.withdrawal_order_value()?,
+            roth_conversion: None,
         })
     }
 }

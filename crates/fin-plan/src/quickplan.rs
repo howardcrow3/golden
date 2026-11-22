@@ -111,6 +111,7 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
         horizon_age: 95,
         spending_rule: Default::default(),
         withdrawal_order: Default::default(),
+        roth_conversion: None,
     };
     run_plan(&plan, &req.picks, req.runs)
 }
@@ -145,6 +146,49 @@ pub fn safe_spend(plan: &PlanInput, picks: &Picks, target: f64) -> Result<SafeSp
         nothing_safe: r.nothing_safe,
         capped: r.capped,
     })
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RothRow {
+    pub label: String,
+    pub converted_cents: i64,
+    pub lifetime_tax_cents: i64,
+    pub final_balance_cents: i64,
+    pub legacy_cents: i64,
+    pub success_rate: f64,
+    pub depleted_year: Option<i32>,
+}
+
+/// Compare "no conversions" with filling the 12%, 22% and 24% brackets until `until_age`.
+pub fn roth_explore(
+    plan: &PlanInput,
+    picks: &Picks,
+    until_age: i32,
+) -> Result<Vec<RothRow>, String> {
+    let until_age = until_age.clamp(50, 90);
+    let options = crate::roth::standard_options(plan, until_age);
+    let out = crate::roth::explore(
+        plan,
+        &Assumptions::defaults(),
+        picks,
+        &options,
+        200,
+        20_260_101,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(out
+        .into_iter()
+        .map(|o| RothRow {
+            label: o.label,
+            converted_cents: o.converted_total.cents(),
+            lifetime_tax_cents: o.lifetime_tax.cents(),
+            final_balance_cents: o.final_balance.cents(),
+            legacy_cents: o.after_tax_legacy.cents(),
+            success_rate: o.success_rate,
+            depleted_year: o.depleted_year,
+        })
+        .collect())
 }
 
 /// Run any household plan (any number of people and income streams) with what-if picks.

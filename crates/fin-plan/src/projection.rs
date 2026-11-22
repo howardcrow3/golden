@@ -80,6 +80,26 @@ pub enum WithdrawalOrder {
     Blended,
 }
 
+/// What a yearly Roth conversion aims at.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConversionTarget {
+    /// Convert this much each year (less if the traditional balance is smaller).
+    Fixed(Money),
+    /// Convert as much as keeps taxable income inside the federal bracket whose rate is
+    /// `top_rate` (0.12 fills the 12% bracket); Social Security taxation is accounted for.
+    FillBracket { top_rate: f64 },
+}
+
+/// Move money from traditional to Roth accounts in each year from `start_year` to `end_year`.
+/// The income tax on the conversion is paid like any other tax: out of the accounts in the
+/// withdrawal order.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RothConversion {
+    pub start_year: i32,
+    pub end_year: i32,
+    pub target: ConversionTarget,
+}
+
 #[derive(Debug, Clone)]
 pub struct PlanInput {
     pub start_year: i32,
@@ -99,6 +119,7 @@ pub struct PlanInput {
     pub horizon_age: i32,
     pub spending_rule: SpendingRule,
     pub withdrawal_order: WithdrawalOrder,
+    pub roth_conversion: Option<RothConversion>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,12 +131,16 @@ pub struct YearRow {
     pub spending: Money,
     pub taxes: Money,
     pub withdrawals: Money,
+    /// Traditional money moved to Roth this year.
+    pub converted: Money,
     pub end_balance: Money,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Projection {
     pub rows: Vec<YearRow>,
+    /// The accounts at the end of the plan.
+    pub final_accounts: Accounts,
     /// First year the household could not cover spending, if ever.
     pub depleted_year: Option<i32>,
 }
@@ -165,7 +190,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
 
         // Tax on income that does not depend on withdrawals.
         let fica = fed.fica_for_wages(input.filing, wages);
-        let base_ordinary = (wages - contrib).max(Money::ZERO);
+        let earned_ordinary = (wages - contrib).max(Money::ZERO);
         let seniors = input
             .people
             .iter()
@@ -233,6 +258,88 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 .filter(|c| c.year == year)
                 .map(|c| c.amount)
                 .sum::<Money>();
+        // Roth conversion: income tax on it is paid like any other tax, out of the accounts.
+        let mut converted = Money::ZERO;
+        if let Some(rc) = input.roth_conversion {
+            if year >= rc.start_year && year <= rc.end_year && acc.traditional > Money::ZERO {
+                converted = match rc.target {
+                    ConversionTarget::Fixed(m) => m.min(acc.traditional),
+                    ConversionTarget::FillBracket { top_rate } => {
+                        let table = fed.brackets(input.filing);
+                        // Taxable income at which the next bracket above `top_rate` begins.
+                        let ceiling = table
+                            .0
+                            .iter()
+                            .find(|b| b.rate > top_rate + 1e-9)
+                            .map(|b| b.floor);
+                        match ceiling {
+                            None => acc.traditional,
+                            Some(ceiling) => {
+                                // Money drawn from traditional accounts to live on counts as income
+                                // too, so estimate it before sizing the conversion.
+                                let gap0 = spending
+                                    - (wages - contrib + ss
+                                        - fica
+                                        - base_tax(earned_ordinary, Money::ZERO));
+                                let before_trad = match input.withdrawal_order {
+                                    WithdrawalOrder::Standard => acc.cash + acc.taxable,
+                                    WithdrawalOrder::TraditionalFirst => acc.cash,
+                                    WithdrawalOrder::RothFirst => acc.total(),
+                                    WithdrawalOrder::Blended => acc.cash,
+                                };
+                                let mut live = (gap0 - before_trad).max(Money::ZERO);
+                                if input.withdrawal_order == WithdrawalOrder::Blended {
+                                    let pool = acc.taxable + acc.traditional + acc.roth;
+                                    live = if pool > Money::ZERO {
+                                        live.mul_rate(
+                                            acc.traditional.cents() as f64 / pool.cents() as f64,
+                                        )
+                                    } else {
+                                        Money::ZERO
+                                    };
+                                }
+                                let live = live.min(acc.traditional);
+                                let taxable_after = |c: Money| {
+                                    let ord = earned_ordinary + live + c;
+                                    let tss = taxable_social_security(input.filing, ss, ord);
+                                    fed.income_tax(
+                                        input.filing,
+                                        FederalInput {
+                                            ordinary_income: ord + tss,
+                                            seniors,
+                                            senior_bonus: year <= 2028,
+                                            ..Default::default()
+                                        },
+                                    )
+                                    .taxable_income
+                                };
+                                let room_cap = acc.traditional - live;
+                                if room_cap <= Money::ZERO || taxable_after(Money::ZERO) >= ceiling
+                                {
+                                    Money::ZERO
+                                } else if taxable_after(room_cap) <= ceiling {
+                                    room_cap
+                                } else {
+                                    let (mut lo, mut hi) = (0i64, room_cap.cents());
+                                    while hi - lo > 100 {
+                                        let mid = (lo + hi) / 2;
+                                        if taxable_after(Money::from_cents(mid)) <= ceiling {
+                                            lo = mid;
+                                        } else {
+                                            hi = mid;
+                                        }
+                                    }
+                                    Money::from_cents(lo)
+                                }
+                            }
+                        }
+                    }
+                };
+                acc.traditional -= converted;
+                acc.roth += converted;
+            }
+        }
+        let base_ordinary = earned_ordinary + converted;
         let income_tax_base = base_tax(base_ordinary, Money::ZERO);
         let mut cash_in = wages - contrib + ss - fica - income_tax_base;
         let mut taxes = fica + income_tax_base;
@@ -346,6 +453,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             spending,
             taxes,
             withdrawals: withdrawn,
+            converted,
             end_balance: acc.total(),
         });
         if depleted.is_some() {
@@ -360,6 +468,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     spending,
                     taxes: Money::ZERO,
                     withdrawals: Money::ZERO,
+                    converted: Money::ZERO,
                     end_balance: Money::ZERO,
                 });
             }
@@ -368,6 +477,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
     }
     Projection {
         rows,
+        final_accounts: acc,
         depleted_year: depleted,
     }
 }
@@ -424,6 +534,7 @@ pub(crate) mod fixtures {
             horizon_age: 95,
             spending_rule: SpendingRule::Fixed,
             withdrawal_order: WithdrawalOrder::Standard,
+            roth_conversion: None,
         }
     }
 }
@@ -687,5 +798,84 @@ mod tests {
         let tp = project_constant(&t, 0.03);
         assert!(p.rows[0].taxes < tp.rows[0].taxes);
         assert!(p.rows[0].withdrawals > Money::ZERO);
+    }
+
+    #[test]
+    fn a_fixed_conversion_moves_money_to_roth_and_costs_tax() {
+        let mut none = retired();
+        none.annual_spending = Money::from_dollars(20_000);
+        none.withdrawal_order = WithdrawalOrder::RothFirst;
+        let mut conv = none.clone();
+        conv.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2028,
+            target: ConversionTarget::Fixed(Money::from_dollars(30_000)),
+        });
+        let a = project_constant(&none, 0.0);
+        let b = project_constant(&conv, 0.0);
+        for r in &b.rows[..3] {
+            assert_eq!(r.converted, Money::from_dollars(30_000));
+        }
+        assert_eq!(b.rows[3].converted, Money::ZERO);
+        assert_eq!(a.rows[0].converted, Money::ZERO);
+        // $30k of income is under the standard deduction, so no tax now, and the money has
+        // moved: less left in traditional, more in Roth.
+        assert!(b.final_accounts.traditional <= Money::from_dollars(410_000));
+        assert!(a.final_accounts.traditional < Money::from_dollars(500_000));
+        assert_eq!(b.rows[0].taxes, Money::ZERO);
+        assert!(b.final_balance() >= a.final_balance());
+    }
+
+    #[test]
+    fn filling_a_bracket_stops_at_the_top_of_that_bracket() {
+        use crate::tax::{FederalInput, FederalTaxYear};
+        let mut i = retired();
+        i.withdrawal_order = WithdrawalOrder::RothFirst;
+        i.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2026,
+            target: ConversionTarget::FillBracket { top_rate: 0.12 },
+        });
+        let p = project_constant(&i, 0.0);
+        let converted = p.rows[0].converted;
+        assert!(converted > Money::from_dollars(100_000), "{converted:?}");
+        // One more dollar would be taxed above 12%, and the converted amount itself reaches 12%.
+        let fed = FederalTaxYear::y2026();
+        let at = |c: Money| {
+            fed.income_tax(
+                i.filing,
+                FederalInput {
+                    ordinary_income: c,
+                    seniors: 1,
+                    senior_bonus: true,
+                    ..Default::default()
+                },
+            )
+        };
+        assert_eq!(at(converted).marginal_rate, 0.12);
+        assert!(at(converted + Money::from_dollars(1_000)).marginal_rate > 0.12);
+        // Filling the 22% bracket converts more.
+        let mut j = i.clone();
+        j.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2026,
+            target: ConversionTarget::FillBracket { top_rate: 0.22 },
+        });
+        assert!(project_constant(&j, 0.0).rows[0].converted > converted);
+    }
+
+    #[test]
+    fn conversions_stop_when_the_traditional_account_is_empty() {
+        let mut i = retired();
+        i.withdrawal_order = WithdrawalOrder::RothFirst;
+        i.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2060,
+            target: ConversionTarget::Fixed(Money::from_dollars(300_000)),
+        });
+        let p = project_constant(&i, 0.0);
+        let total: Money = p.rows.iter().map(|r| r.converted).sum();
+        assert!(total <= Money::from_dollars(500_000) + Money::from_dollars(1));
+        assert_eq!(p.final_accounts.traditional, Money::ZERO);
     }
 }

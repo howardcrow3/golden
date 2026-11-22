@@ -7,6 +7,7 @@
   import Assumptions from "./Assumptions.svelte";
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
+  import RothExplorer from "./RothExplorer.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
@@ -139,6 +140,7 @@
     <svg viewBox="0 0 640 180" role="img" aria-label="Projected balance by year"><polyline fill="none" stroke="var(--gold)" stroke-width="2" {points} /></svg>
     <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <SafeSpend {invoke} refresh={result} />
+    <RothExplorer {invoke} refresh={result} />
     <p class="assumptions">Assumes {formatPercent(result.realReturn)} real return, {formatPercent(result.volatility)} volatility, Social Security at {result.ssClaimAge}. These are estimates, not advice.</p>
   </section>
 {/if}

@@ -58,6 +58,7 @@ fn household(spending: i64, state: &str) -> PlanInput {
         horizon_age: 95,
         spending_rule: Default::default(),
         withdrawal_order: Default::default(),
+        roth_conversion: None,
     }
 }
 
