@@ -1,0 +1,91 @@
+//! Required minimum distributions from pre-tax retirement accounts.
+//!
+//! Source: IRS Publication 590-B, Uniform Lifetime Table (effective 2022) and the SECURE 2.0
+//! starting ages (73 for people born 1951 to 1959, 75 for 1960 and later). Born before 1951 the
+//! start age was 72 or earlier, which is already past for any plan starting now.
+
+use fin_core::Money;
+
+/// First age at which distributions are required, by birth year.
+pub fn start_age(birth_year: i32) -> i32 {
+    if birth_year >= 1960 {
+        75
+    } else if birth_year >= 1951 {
+        73
+    } else {
+        72
+    }
+}
+
+/// Uniform Lifetime Table distribution period for the age reached this year.
+pub fn divisor(age: i32) -> Option<f64> {
+    const FROM_72: [f64; 29] = [
+        27.4, 26.5, 25.5, 24.6, 23.7, 22.9, 22.0, 21.1, 20.2, 19.4, 18.5, 17.7, 16.8, 16.0, 15.2,
+        14.4, 13.7, 12.9, 12.2, 11.5, 10.8, 10.1, 9.5, 8.9, 8.4, 7.8, 7.3, 6.8, 6.4,
+    ];
+    if age < 72 {
+        None
+    } else if age <= 100 {
+        Some(FROM_72[(age - 72) as usize])
+    } else {
+        // The table keeps falling about 0.4 a year, to 2.0 at 120 and over.
+        Some((6.4 - 0.4 * (age - 100) as f64).max(2.0))
+    }
+}
+
+/// The distribution due for a year: the balance at the end of the year before, divided by the
+/// divisor. Zero before the starting age.
+pub fn required(birth_year: i32, age: i32, prior_year_end_balance: Money) -> Money {
+    if age < start_age(birth_year) {
+        return Money::ZERO;
+    }
+    match divisor(age) {
+        Some(d) if d > 0.0 => prior_year_end_balance.max(Money::ZERO).mul_rate(1.0 / d),
+        _ => Money::ZERO,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn start_ages_follow_birth_year() {
+        assert_eq!(start_age(1948), 72);
+        assert_eq!(start_age(1955), 73);
+        assert_eq!(start_age(1959), 73);
+        assert_eq!(start_age(1960), 75);
+        assert_eq!(start_age(1985), 75);
+    }
+
+    #[test]
+    fn the_table_matches_published_values() {
+        assert_eq!(divisor(73), Some(26.5));
+        assert_eq!(divisor(75), Some(24.6));
+        assert_eq!(divisor(80), Some(20.2));
+        assert_eq!(divisor(90), Some(12.2));
+        assert_eq!(divisor(95), Some(8.9));
+        assert_eq!(divisor(100), Some(6.4));
+        assert_eq!(divisor(60), None);
+        // Past 100 it keeps falling and never gets below 2.0.
+        assert!(divisor(105).unwrap() < divisor(100).unwrap());
+        assert_eq!(divisor(125), Some(2.0));
+    }
+
+    #[test]
+    fn nothing_is_due_before_the_start_age() {
+        assert_eq!(
+            required(1960, 74, Money::from_dollars(1_000_000)),
+            Money::ZERO
+        );
+        // $1,000,000 at 75 is $40,650.40 (1,000,000 / 24.6).
+        let r = required(1960, 75, Money::from_dollars(1_000_000));
+        assert!((r.cents() - 4_065_041).abs() <= 1, "{r:?}");
+        assert_eq!(required(1950, 75, Money::ZERO), Money::ZERO);
+    }
+
+    #[test]
+    fn a_negative_balance_owes_nothing() {
+        assert_eq!(required(1950, 80, Money::from_dollars(-5)), Money::ZERO);
+    }
+}

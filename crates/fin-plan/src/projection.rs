@@ -136,6 +136,8 @@ pub struct YearRow {
     pub withdrawals: Money,
     /// Traditional money moved to Roth this year.
     pub converted: Money,
+    /// Required minimum distribution taken this year.
+    pub rmd: Money,
     /// Medicare premiums included in spending this year.
     pub medicare: Money,
     pub end_balance: Money,
@@ -180,6 +182,12 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
     for i in 0..years {
         let year = input.start_year + i as i32;
         let r = real_return(i);
+        // Required minimum distributions come out of the pre-tax accounts first and count as
+        // ordinary income; what is not needed for spending is saved in the taxable account.
+        let age_now = primary.age_on(chrono_start(year));
+        let rmd =
+            crate::rmd::required(year - age_now, age_now, acc.traditional).min(acc.traditional);
+        acc.traditional -= rmd;
 
         let mut wages = Money::ZERO;
         let mut contrib = Money::ZERO;
@@ -202,7 +210,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
 
         // Tax on income that does not depend on withdrawals.
         let fica = fed.fica_for_wages(input.filing, wages);
-        let earned_ordinary = (wages - contrib).max(Money::ZERO);
+        let earned_ordinary = (wages - contrib + rmd).max(Money::ZERO);
         let seniors = input
             .people
             .iter()
@@ -376,7 +384,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         }
         let base_ordinary = earned_ordinary + converted;
         let income_tax_base = base_tax(base_ordinary, Money::ZERO);
-        let mut cash_in = wages - contrib + ss - fica - income_tax_base;
+        let mut cash_in = wages - contrib + rmd + ss - fica - income_tax_base;
         let mut taxes = fica + income_tax_base;
         let mut withdrawn = Money::ZERO;
         let mut final_ord = base_ordinary;
@@ -508,6 +516,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             taxes,
             withdrawals: withdrawn,
             converted,
+            rmd,
             medicare,
             end_balance: acc.total(),
         });
@@ -524,6 +533,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     taxes: Money::ZERO,
                     withdrawals: Money::ZERO,
                     converted: Money::ZERO,
+                    rmd: Money::ZERO,
                     medicare: Money::ZERO,
                     end_balance: Money::ZERO,
                 });
@@ -999,5 +1009,41 @@ mod tests {
         // By 60 the penalty is gone: a later young-household row matches the old household.
         let later = y.rows.iter().find(|r| r.age >= 60).unwrap();
         assert!(later.taxes < later.withdrawals.mul_rate(0.10) + Money::from_dollars(20_000));
+    }
+
+    #[test]
+    fn required_distributions_start_at_75_for_someone_born_in_1961() {
+        let p = project_constant(&retired(), 0.03);
+        for r in &p.rows {
+            if r.age < 75 {
+                assert_eq!(r.rmd, Money::ZERO, "age {}", r.age);
+            }
+        }
+        let first = p.rows.iter().find(|r| r.age == 75).unwrap();
+        assert!(first.rmd > Money::ZERO);
+        // It is taxed: the year's tax is at least the tax on the distribution alone would be.
+        assert!(first.taxes > Money::ZERO);
+    }
+
+    #[test]
+    fn roth_only_households_have_no_required_distributions() {
+        let mut i = retired();
+        i.accounts.roth = Money::from_dollars(1_000_000);
+        i.accounts.traditional = Money::ZERO;
+        let p = project_constant(&i, 0.03);
+        assert!(p.rows.iter().all(|r| r.rmd == Money::ZERO));
+    }
+
+    #[test]
+    fn converting_to_roth_early_shrinks_later_distributions() {
+        let base = retired();
+        let mut conv = base.clone();
+        conv.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2030,
+            target: ConversionTarget::Fixed(Money::from_dollars(100_000)),
+        });
+        let total = |p: &Projection| p.rows.iter().map(|r| r.rmd).sum::<Money>();
+        assert!(total(&project_constant(&conv, 0.03)) < total(&project_constant(&base, 0.03)));
     }
 }
