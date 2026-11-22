@@ -5,7 +5,8 @@ same encrypted database as the app. Nothing is sent anywhere by Golden: the assi
 it to runs on your machine and reads the answers it asks for.
 
 Tools: `accounts`, `balance_sheet`, `cash_flow`, `categories`, `budget_status`, `forecast`,
-`suggest_allocation`. There is deliberately no tool that imports, edits, deletes, restores or
+`suggest_allocation`, plus planning tools that answer from the saved household: `retirement_plan`,
+`safe_spend`, `retire_when` and `investment_checkup`. There is deliberately no tool that imports, edits, deletes, restores or
 activates anything, and a test fails if one is ever added with such a name.
 
 Example client config (macOS):
