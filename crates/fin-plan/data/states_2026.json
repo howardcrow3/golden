@@ -1139,7 +1139,7 @@
    "std_joint": 1605000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "The tax-benefit recapture for incomes above $107,650 is not modelled; NYC and Yonkers taxes are not included.",
+   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. NYC and Yonkers taxes are not included.",
    "joint_brackets": [
     [
      0,
@@ -1177,7 +1177,23 @@
      2500000000,
      0.109
     ]
-   ]
+   ],
+   "recapture": {
+    "agi_over": 10765000,
+    "agi_full": 2500000000,
+    "phase_width": 5000000,
+    "tops_single": [
+     21540000,
+     107755000,
+     500000000
+    ],
+    "tops_joint": [
+     16155000,
+     32320000,
+     215535000,
+     500000000
+    ]
+   }
   },
   "OH": {
    "name": "Ohio",
@@ -1448,7 +1464,7 @@
    "std_joint": 2590000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Brackets use 2025 inflation-adjusted widths (2026 widths unpublished at source time).",
+   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled).",
    "joint_brackets": [
     [
      0,
@@ -1466,7 +1482,11 @@
      30400000,
      0.0875
     ]
-   ]
+   ],
+   "agi_floor_tax": {
+    "agi_over": 15000000,
+    "rate": 0.03
+   }
   },
   "WA": {
    "name": "Washington",
