@@ -9,6 +9,7 @@ pub mod family;
 pub mod harvest;
 pub mod healthcare;
 pub mod housing;
+pub mod investments;
 pub mod local;
 pub mod medicare;
 pub mod milestones;

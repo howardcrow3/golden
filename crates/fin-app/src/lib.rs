@@ -20,6 +20,7 @@ pub mod goals;
 pub mod history;
 pub mod household;
 pub mod insights;
+pub mod investments;
 pub mod keystore;
 pub mod library;
 pub mod licensing;

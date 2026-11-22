@@ -307,6 +307,24 @@ fn harvest_plan(
     fin_plan::harvest::plan_cents(filing, income_cents, gains_cents, household_size)
 }
 
+#[tauri::command]
+fn holdings(state: Shared) -> Result<Vec<fin_plan::investments::Holding>, String> {
+    lock(&state)?.holdings()
+}
+
+#[tauri::command]
+fn save_holdings(state: Shared, holdings: Vec<fin_plan::investments::Holding>) -> Result<(), String> {
+    lock(&state)?.save_holdings(&holdings)
+}
+
+#[tauri::command]
+fn investment_checkup(
+    state: Shared,
+    risk: fin_plan::investments::Risk,
+) -> Result<fin_plan::investments::Checkup, String> {
+    lock(&state)?.investment_checkup(risk)
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -881,6 +899,9 @@ pub fn run() {
             retire_when,
             roth_explore,
             sepp,
+            holdings,
+            save_holdings,
+            investment_checkup,
             harvest_plan,
             rent_vs_buy,
             daf_bunching,

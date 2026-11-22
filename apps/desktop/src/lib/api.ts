@@ -1062,3 +1062,31 @@ export interface HarvestPlan {
 export async function harvestPlan(filing: string, incomeCents: number, gainsCents: number, householdSize: number, invoke?: Invoke): Promise<HarvestPlan> {
   return (await (await resolve(invoke))("harvest_plan", { filing, incomeCents, gainsCents, householdSize })) as HarvestPlan;
 }
+
+export type AssetClass = "stock" | "bond" | "cash" | "other";
+export type RiskProfile = "conservative" | "moderate" | "aggressive";
+export interface Holding {
+  name: string;
+  valueCents: number;
+  class: AssetClass;
+  expenseBp: number;
+  singleStock: boolean;
+}
+export interface Checkup {
+  totalCents: number;
+  mix: { class: AssetClass; share: number; target: number }[];
+  stockGap: number;
+  weightedFee: number;
+  yearlyFeeCents: number;
+  feeCost20yCents: number;
+  flags: { name: string; share: number; reason: string }[];
+}
+export async function getHoldings(invoke?: Invoke): Promise<Holding[]> {
+  return (await (await resolve(invoke))("holdings")) as Holding[];
+}
+export async function saveHoldings(holdings: Holding[], invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("save_holdings", { holdings });
+}
+export async function investmentCheckup(risk: RiskProfile, invoke?: Invoke): Promise<Checkup> {
+  return (await (await resolve(invoke))("investment_checkup", { risk })) as Checkup;
+}

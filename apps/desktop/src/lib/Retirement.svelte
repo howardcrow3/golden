@@ -23,6 +23,7 @@
   import Daf from "./Daf.svelte";
   import RentBuy from "./RentBuy.svelte";
   import Harvest from "./Harvest.svelte";
+  import Investments from "./Investments.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
@@ -258,6 +259,7 @@
     <Sepp {invoke} />
     <Daf {invoke} />
     <Harvest {invoke} />
+    <Investments {invoke} />
     <RentBuy {invoke} />
     <CashFlowSankey {result} />
     <Alerts {result} />
