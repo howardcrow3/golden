@@ -1097,3 +1097,25 @@ export async function exportPlanFile(invoke?: Invoke): Promise<string> {
 export async function importPlanFile(text: string, invoke?: Invoke): Promise<{ people: number; holdings: number }> {
   return (await (await resolve(invoke))("import_plan_file", { text })) as { people: number; holdings: number };
 }
+
+export interface VaultDoc {
+  id: number;
+  name: string;
+  kind: string;
+  year: number | null;
+  added: string;
+  size: number;
+  fields: { label: string; cents: number }[];
+}
+export async function vaultAdd(name: string, bytes: Uint8Array, invoke?: Invoke): Promise<VaultDoc> {
+  return (await (await resolve(invoke))("vault_add", { name, bytes: Array.from(bytes) })) as VaultDoc;
+}
+export async function vaultList(query: string, invoke?: Invoke): Promise<VaultDoc[]> {
+  return (await (await resolve(invoke))("vault_list", { query })) as VaultDoc[];
+}
+export async function vaultDelete(id: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("vault_delete", { id });
+}
+export async function vaultExport(id: number, invoke?: Invoke): Promise<string> {
+  return (await (await resolve(invoke))("vault_export", { id })) as string;
+}

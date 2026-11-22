@@ -38,6 +38,7 @@ pub mod setup;
 pub mod suggest;
 pub mod transactions;
 pub mod transfers;
+pub mod vault;
 pub mod watch;
 pub mod withholding;
 

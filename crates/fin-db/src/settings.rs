@@ -23,8 +23,9 @@ impl Db {
     /// (the trial start and licence, so erasing data can't reset the trial). Categories are kept:
     /// they are names, not personal data.
     pub fn erase_personal_data(&self, keep: &[&str]) -> Result<()> {
-        self.conn
-            .execute_batch("DELETE FROM txn; DELETE FROM account; DELETE FROM person;")?;
+        self.conn.execute_batch(
+            "DELETE FROM txn; DELETE FROM account; DELETE FROM person; DELETE FROM document;",
+        )?;
         let mut stmt = self.conn.prepare("SELECT key FROM setting")?;
         let keys: Vec<String> = stmt
             .query_map([], |r| r.get(0))?

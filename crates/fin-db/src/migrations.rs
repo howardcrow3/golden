@@ -59,6 +59,20 @@ const MIGRATIONS: &[&str] = &[
     "#,
     // Opening balance: what the account held before the first imported statement.
     "ALTER TABLE account ADD COLUMN opening_cents INTEGER NOT NULL DEFAULT 0;",
+    // Document vault: files kept inside the encrypted database, with the text found in them.
+    r#"
+    CREATE TABLE document (
+        id       INTEGER PRIMARY KEY,
+        name     TEXT NOT NULL,
+        kind     TEXT NOT NULL,
+        year     INTEGER,
+        added    TEXT NOT NULL,
+        size     INTEGER NOT NULL,
+        fields   TEXT NOT NULL DEFAULT '[]',
+        body     TEXT NOT NULL DEFAULT '',
+        content  BLOB NOT NULL
+    );
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

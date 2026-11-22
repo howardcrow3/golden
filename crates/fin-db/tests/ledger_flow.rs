@@ -172,3 +172,26 @@ fn file_database_persists_across_opens() {
         fin_db::migrations::latest_version()
     );
 }
+
+#[test]
+fn documents_round_trip_and_erasing_personal_data_removes_them() {
+    use fin_db::documents::NewDoc;
+    let db = fin_db::Db::open_in_memory().unwrap();
+    let d = db
+        .add_document(&NewDoc {
+            name: "a.txt",
+            kind: "Document",
+            year: None,
+            added: "2026-11-22",
+            fields: "[]",
+            body: "hello",
+            content: b"hello",
+        })
+        .unwrap();
+    assert_eq!(d.size, 5);
+    assert_eq!(db.get_document(d.id).unwrap().unwrap().1, b"hello");
+    assert_eq!(db.list_documents("ell").unwrap().len(), 1);
+    db.erase_personal_data(&[]).unwrap();
+    assert!(db.list_documents("").unwrap().is_empty());
+    assert!(!db.delete_document(d.id).unwrap());
+}
