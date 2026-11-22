@@ -181,3 +181,200 @@ mod tests {
         assert!(big > low);
     }
 }
+
+/// Self-employment tax on one year of net business income.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SelfEmploymentTax {
+    pub tax: Money,
+    /// The half of the tax that is deducted from income on the return.
+    pub deduction: Money,
+}
+
+impl FederalTaxYear {
+    /// Self-employment tax: 15.3% of 92.35% of net earnings, with the Social Security part
+    /// stopping at the wage base (shared with any wages) and the 0.9% additional Medicare tax
+    /// over the filing-status threshold. Source: IRC section 1401 and 3101(b)(2).
+    pub fn self_employment_tax(
+        &self,
+        fs: FilingStatus,
+        net_earnings: Money,
+        other_wages: Money,
+    ) -> SelfEmploymentTax {
+        let f = &self.fica;
+        let base = net_earnings.max(Money::ZERO).mul_rate(0.9235);
+        if base <= Money::ZERO {
+            return SelfEmploymentTax {
+                tax: Money::ZERO,
+                deduction: Money::ZERO,
+            };
+        }
+        let room = (f.ss_wage_base - other_wages.max(Money::ZERO)).max(Money::ZERO);
+        let ss = base.min(room).mul_rate(f.ss_rate * 2.0);
+        let medicare = base.mul_rate(f.medicare_rate * 2.0);
+        let over = (base + other_wages.max(Money::ZERO) - f.addl_medicare_threshold[&fs])
+            .max(Money::ZERO)
+            .min(base);
+        let addl = over.mul_rate(f.addl_medicare_rate);
+        let regular = ss + medicare;
+        SelfEmploymentTax {
+            tax: regular + addl,
+            deduction: regular.mul_rate(0.5),
+        }
+    }
+}
+
+/// Qualified business income deduction, simplified: 20% of business income after the
+/// self-employment tax deduction, at most 20% of taxable income before it, and only while
+/// taxable income is under the 2026 threshold ($201,750 single, $403,500 joint) where the
+/// wage and specified-service limits do not apply. Above it we allow nothing, which is
+/// cautious. Source: IRC section 199A.
+pub fn qbi_deduction(
+    fs: FilingStatus,
+    qualified_income: Money,
+    taxable_before_qbi: Money,
+) -> Money {
+    let threshold = match fs {
+        FilingStatus::MarriedJoint => 403_500,
+        _ => 201_750,
+    };
+    if taxable_before_qbi > Money::from_dollars(threshold) {
+        return Money::ZERO;
+    }
+    qualified_income
+        .max(Money::ZERO)
+        .mul_rate(0.20)
+        .min(taxable_before_qbi.max(Money::ZERO).mul_rate(0.20))
+}
+
+/// What one person can put into a Solo 401(k) in 2026: the employee deferral ($24,500, plus
+/// $8,000 from age 50) and an employer share of 20% of net earnings after half the self-employment
+/// tax, all capped at $72,000 (plus catch-up). Source: IRC section 415(c) and 402(g).
+pub fn solo_401k_limit(age: i32, net_earnings: Money, se_deduction: Money) -> Money {
+    let catch_up = if age >= 50 { 8_000 } else { 0 };
+    let employee = Money::from_dollars(24_500 + catch_up);
+    let earnings = (net_earnings - se_deduction).max(Money::ZERO);
+    let employer = earnings.mul_rate(0.20);
+    (employee + employer)
+        .min(Money::from_dollars(72_000 + catch_up))
+        .min(earnings)
+}
+
+/// SEP IRA: 20% of net earnings after half the self-employment tax, capped at $72,000.
+pub fn sep_ira_limit(net_earnings: Money, se_deduction: Money) -> Money {
+    (net_earnings - se_deduction)
+        .max(Money::ZERO)
+        .mul_rate(0.20)
+        .min(Money::from_dollars(72_000))
+}
+
+#[cfg(test)]
+mod selfemp_tests {
+    use super::*;
+    use crate::tax::federal::FederalTaxYear;
+
+    fn fed() -> FederalTaxYear {
+        FederalTaxYear::y2026()
+    }
+
+    #[test]
+    fn se_tax_on_100k_is_about_14k() {
+        let t = fed().self_employment_tax(
+            FilingStatus::Single,
+            Money::from_dollars(100_000),
+            Money::ZERO,
+        );
+        // 100,000 x 0.9235 x 15.3% = 14,130
+        let d = t.tax.cents() - 1_413_000;
+        assert!(d.abs() < 10_000, "{:?}", t);
+        assert!((t.deduction.cents() - t.tax.cents() / 2).abs() <= 1);
+    }
+
+    #[test]
+    fn wages_use_up_the_social_security_base() {
+        let alone = fed().self_employment_tax(
+            FilingStatus::Single,
+            Money::from_dollars(50_000),
+            Money::ZERO,
+        );
+        let with_wages = fed().self_employment_tax(
+            FilingStatus::Single,
+            Money::from_dollars(50_000),
+            Money::from_dollars(300_000),
+        );
+        assert!(with_wages.tax < alone.tax);
+        // Only Medicare (2.9%) and the additional 0.9% remain.
+        let expect = Money::from_dollars(50_000).mul_rate(0.9235 * (0.029 + 0.009));
+        assert!((with_wages.tax.cents() - expect.cents()).abs() < 100);
+    }
+
+    #[test]
+    fn no_income_no_tax_and_losses_do_not_refund() {
+        let t = fed().self_employment_tax(
+            FilingStatus::Single,
+            Money::from_dollars(-5_000),
+            Money::ZERO,
+        );
+        assert_eq!(t.tax, Money::ZERO);
+    }
+
+    #[test]
+    fn qbi_is_twenty_percent_with_a_taxable_income_cap() {
+        let q = qbi_deduction(
+            FilingStatus::Single,
+            Money::from_dollars(90_000),
+            Money::from_dollars(120_000),
+        );
+        assert_eq!(q, Money::from_dollars(18_000));
+        let capped = qbi_deduction(
+            FilingStatus::Single,
+            Money::from_dollars(90_000),
+            Money::from_dollars(50_000),
+        );
+        assert_eq!(capped, Money::from_dollars(10_000));
+    }
+
+    #[test]
+    fn qbi_is_withheld_above_the_threshold() {
+        assert_eq!(
+            qbi_deduction(
+                FilingStatus::Single,
+                Money::from_dollars(90_000),
+                Money::from_dollars(250_000)
+            ),
+            Money::ZERO
+        );
+        assert!(
+            qbi_deduction(
+                FilingStatus::MarriedJoint,
+                Money::from_dollars(90_000),
+                Money::from_dollars(250_000)
+            ) > Money::ZERO
+        );
+    }
+
+    #[test]
+    fn solo_401k_and_sep_limits() {
+        let net = Money::from_dollars(100_000);
+        let half = Money::from_dollars(7_065);
+        let solo = solo_401k_limit(40, net, half);
+        assert_eq!(
+            solo,
+            Money::from_dollars(24_500) + Money::from_dollars(92_935).mul_rate(0.20)
+        );
+        assert!(solo_401k_limit(55, net, half) > solo);
+        assert_eq!(
+            sep_ira_limit(net, half),
+            Money::from_dollars(92_935).mul_rate(0.20)
+        );
+        // Tiny earnings: never more than was earned.
+        assert_eq!(
+            solo_401k_limit(40, Money::from_dollars(10_000), Money::ZERO),
+            Money::from_dollars(10_000)
+        );
+        // Huge earnings hit the cap.
+        assert_eq!(
+            solo_401k_limit(40, Money::from_dollars(900_000), Money::ZERO),
+            Money::from_dollars(72_000)
+        );
+    }
+}

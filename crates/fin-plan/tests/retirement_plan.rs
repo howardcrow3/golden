@@ -31,6 +31,7 @@ fn household(spending: i64, state: &str) -> PlanInput {
                 start_year: 2026,
                 end_year: 2034,
                 traditional_contribution: Money::from_dollars(23_500),
+                self_employed: false,
             },
             IncomeStream {
                 label: "Sam consulting".into(),
@@ -39,6 +40,7 @@ fn household(spending: i64, state: &str) -> PlanInput {
                 start_year: 2026,
                 end_year: 2036,
                 traditional_contribution: Money::ZERO,
+                self_employed: false,
             },
         ],
         social_security: vec![

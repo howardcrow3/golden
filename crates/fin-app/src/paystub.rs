@@ -95,6 +95,7 @@ impl App {
             label: label.clone(),
             person,
             annual_cents: p.annual_gross_cents,
+            self_employed: false,
             start_year: None,
             end_year: None,
             contribution_cents: p.annual_retirement_cents,

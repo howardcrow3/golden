@@ -73,6 +73,7 @@ fn a_job_without_a_paystub_is_named_not_guessed() {
     let a = single_person_app(0, "TX");
     let mut h = a.household().unwrap();
     h.streams.push(fin_app::household::StreamRow {
+        self_employed: false,
         label: "Side gig".into(),
         person: 0,
         annual_cents: 2_000_000,
@@ -90,6 +91,7 @@ fn one_time_amounts_are_left_out() {
     let a = single_person_app(0, "TX");
     let mut h = a.household().unwrap();
     h.streams.push(fin_app::household::StreamRow {
+        self_employed: false,
         label: "Bonus".into(),
         person: 0,
         annual_cents: 5_000_000,

@@ -144,6 +144,7 @@ fn a_raise_scales_regular_income_but_not_one_time_amounts() {
     let mut h = a.household().unwrap();
     let before = h.streams.clone();
     h.streams.push(fin_app::household::StreamRow {
+        self_employed: false,
         label: "Bonus".into(),
         person: 0,
         annual_cents: 1_000_000,
