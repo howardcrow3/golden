@@ -345,6 +345,45 @@ pub fn backtest(
     })
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BootstrapResult {
+    pub success_rate: f64,
+    pub p10_cents: i64,
+    pub p50_cents: i64,
+    pub p90_cents: i64,
+    pub runs: usize,
+    pub block_years: usize,
+    pub stock_share: f64,
+}
+
+/// Monte Carlo that redraws blocks of real history instead of assuming a bell curve.
+pub fn bootstrap(
+    plan: &PlanInput,
+    picks: &Picks,
+    stock_share: f64,
+    block_years: usize,
+    runs: usize,
+) -> Result<BootstrapResult, String> {
+    let (plan, _) =
+        scenario::resolve(plan, &Assumptions::defaults(), picks).map_err(|e| e.to_string())?;
+    let history: Vec<f64> = crate::backtest::history()
+        .iter()
+        .map(|y| crate::backtest::real_return(y, stock_share))
+        .collect();
+    let runs = runs.clamp(10, 5_000);
+    let r = crate::montecarlo::run_bootstrap(&plan, &history, block_years, runs, SEED);
+    Ok(BootstrapResult {
+        success_rate: r.success_rate,
+        p10_cents: r.p10.cents(),
+        p50_cents: r.p50.cents(),
+        p90_cents: r.p90.cents(),
+        runs,
+        block_years: block_years.clamp(1, history.len()),
+        stock_share,
+    })
+}
+
 const SEED: u64 = 20_260_101;
 
 /// Run any household plan (any number of people and income streams) with what-if picks.
@@ -414,6 +453,15 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
 mod backtest_tests {
     use super::*;
     use crate::projection::fixtures::couple;
+
+    #[test]
+    fn bootstrap_reports_a_success_rate_and_clamps_runs() {
+        let r = bootstrap(&couple(), &Picks::new(), 0.6, 5, 1).unwrap();
+        assert_eq!(r.runs, 10);
+        assert!((0.0..=1.0).contains(&r.success_rate));
+        let again = bootstrap(&couple(), &Picks::new(), 0.6, 5, 1).unwrap();
+        assert_eq!(r, again);
+    }
 
     #[test]
     fn backtest_reports_windows_and_the_worst_starts() {

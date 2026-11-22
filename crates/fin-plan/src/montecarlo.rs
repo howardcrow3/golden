@@ -2,7 +2,7 @@
 //! result on every platform.
 use crate::projection::{project, PlanInput};
 use fin_core::Money;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, Normal};
 
@@ -46,9 +46,45 @@ pub struct HistogramBin {
 }
 
 pub fn run(input: &PlanInput, model: ReturnModel, runs: usize, seed: u64) -> MonteCarloResult {
+    let normal = Normal::new(model.mean, model.stdev.max(0.0)).expect("valid normal");
+    run_with(input, runs, seed, |rng, years| {
+        (0..years).map(|_| normal.sample(rng).max(-0.95)).collect()
+    })
+}
+
+/// Monte Carlo by block bootstrap: each run stitches together blocks of `block` consecutive
+/// years drawn at random (wrapping around the end) from real historical returns, which keeps
+/// the way bad years bunch together. `history` is real annual returns, oldest first.
+pub fn run_bootstrap(
+    input: &PlanInput,
+    history: &[f64],
+    block: usize,
+    runs: usize,
+    seed: u64,
+) -> MonteCarloResult {
+    assert!(!history.is_empty());
+    let block = block.clamp(1, history.len());
+    run_with(input, runs, seed, |rng, years| {
+        let mut path = Vec::with_capacity(years + block);
+        while path.len() < years {
+            let start = rng.gen_range(0..history.len());
+            for k in 0..block {
+                path.push(history[(start + k) % history.len()].max(-0.95));
+            }
+        }
+        path.truncate(years);
+        path
+    })
+}
+
+fn run_with(
+    input: &PlanInput,
+    runs: usize,
+    seed: u64,
+    mut draw: impl FnMut(&mut ChaCha8Rng, usize) -> Vec<f64>,
+) -> MonteCarloResult {
     assert!(runs > 0);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let normal = Normal::new(model.mean, model.stdev.max(0.0)).expect("valid normal");
     let years = (input.horizon_age
         - input.people[0]
             .age_on(fin_core::NaiveDate::from_ymd_opt(input.start_year, 12, 31).unwrap()))
@@ -61,9 +97,7 @@ pub fn run(input: &PlanInput, model: ReturnModel, runs: usize, seed: u64) -> Mon
     let mut depletion_years = vec![];
     let mut ok = 0usize;
     for _ in 0..runs {
-        let path: Vec<f64> = (0..years)
-            .map(|_| normal.sample(&mut rng).max(-0.95))
-            .collect();
+        let path = draw(&mut rng, years);
         let p = project(input, &|i| path[i.min(years - 1)]);
         if p.succeeded() {
             ok += 1;
@@ -165,6 +199,37 @@ mod tests {
         assert_eq!(r.success_rate, if det.succeeded() { 1.0 } else { 0.0 });
         assert_eq!(r.p50, det.final_balance());
         assert_eq!(r.p10, r.p90);
+    }
+
+    fn hist() -> Vec<f64> {
+        crate::backtest::history()
+            .iter()
+            .map(|y| crate::backtest::real_return(y, 0.6))
+            .collect()
+    }
+
+    #[test]
+    fn bootstrap_is_repeatable_and_ordered() {
+        let a = run_bootstrap(&couple(), &hist(), 5, 200, 11);
+        let b = run_bootstrap(&couple(), &hist(), 5, 200, 11);
+        assert_eq!(a, b);
+        assert!(a.p10 <= a.p50 && a.p50 <= a.p90);
+        assert!((0.0..=1.0).contains(&a.success_rate));
+    }
+
+    #[test]
+    fn bootstrap_of_a_constant_history_matches_the_projection() {
+        let r = run_bootstrap(&couple(), &[0.04; 10], 3, 5, 1);
+        let det = crate::projection::project_constant(&couple(), 0.04);
+        assert_eq!(r.p50, det.final_balance());
+    }
+
+    #[test]
+    fn bootstrap_block_length_is_clamped() {
+        let r = run_bootstrap(&couple(), &hist(), 10_000, 20, 2);
+        assert_eq!(r.runs, 20);
+        let one = run_bootstrap(&couple(), &hist(), 0, 20, 2);
+        assert_eq!(one.runs, 20);
     }
 
     #[test]

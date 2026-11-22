@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { backtest, type BacktestResult, type Invoke } from "./api";
+  import { backtest, bootstrap, type BacktestResult, type BootstrapResult, type Invoke } from "./api";
   import { formatCents, formatPercent } from "./money";
 
   let { invoke, refresh = null }: { invoke?: Invoke; refresh?: unknown } = $props();
@@ -7,10 +7,12 @@
   let error = $state("");
   let busy = $state(false);
   let share = $state(0.6);
+  let boot = $state<BootstrapResult | null>(null);
 
   $effect(() => {
     refresh;
     data = null;
+    boot = null;
   });
 
   async function run() {
@@ -18,6 +20,7 @@
     error = "";
     try {
       data = await backtest(share, invoke);
+      boot = await bootstrap(share, 5, 1000, invoke);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -54,6 +57,12 @@
       {/each}
     </div>
     <p class="hint">{data.windows[0].startYear} to {data.windows[data.windows.length - 1].startYear}, by starting year.</p>
+    {#if boot}
+      <p data-testid="bt-boot">
+        Reshuffling that history in {boot.blockYears}-year blocks, {boot.runs.toLocaleString()} times: it worked {formatPercent(boot.successRate, 0)} of the time
+        (middle outcome {formatCents(boot.p50Cents, { whole: true })} left, range {formatCents(boot.p10Cents, { whole: true })} to {formatCents(boot.p90Cents, { whole: true })}).
+      </p>
+    {/if}
     <ul data-testid="bt-worst">
       {#each worstRows as w}
         <li>

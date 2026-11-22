@@ -300,6 +300,20 @@ export async function backtest(stockShare: number, invoke?: Invoke): Promise<Bac
   return (await (await resolve(invoke))("backtest", { stockShare })) as BacktestResult;
 }
 
+export interface BootstrapResult {
+  successRate: number;
+  p10Cents: number;
+  p50Cents: number;
+  p90Cents: number;
+  runs: number;
+  blockYears: number;
+  stockShare: number;
+}
+
+export async function bootstrap(stockShare: number, blockYears: number, runs: number, invoke?: Invoke): Promise<BootstrapResult> {
+  return (await (await resolve(invoke))("bootstrap", { stockShare, blockYears, runs })) as BootstrapResult;
+}
+
 export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
   return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
 }

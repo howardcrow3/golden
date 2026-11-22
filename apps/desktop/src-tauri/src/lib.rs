@@ -260,6 +260,22 @@ async fn backtest(state: Shared<'_>, stock_share: f64) -> Result<quickplan::Back
         .map_err(|e| e.to_string())?
 }
 
+/// Monte Carlo that redraws blocks of historical returns, for the saved household.
+#[tauri::command]
+async fn bootstrap(
+    state: Shared<'_>,
+    stock_share: f64,
+    block_years: usize,
+    runs: usize,
+) -> Result<quickplan::BootstrapResult, String> {
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        quickplan::bootstrap(&plan, &picks, stock_share, block_years, runs)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Interpret a what-if sentence and run the plan with and without it. Nothing is saved.
 #[tauri::command]
 async fn whatif(
@@ -785,6 +801,7 @@ pub fn run() {
             roth_explore,
             ss_explore,
             backtest,
+            bootstrap,
             whatif,
             keep_whatif,
             pricing,
