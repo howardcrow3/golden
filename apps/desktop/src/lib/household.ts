@@ -18,6 +18,7 @@ export interface Form {
   spendingRule: string;
   withdrawalOrder: string;
   medicare: boolean;
+  health: boolean;
 }
 
 const dollars = (c: number) => formatCents(c, { whole: true }).replace("$", "");
@@ -46,6 +47,7 @@ export function toForm(h: Household): Form {
     spendingRule: h.spendingRule ?? "fixed",
     withdrawalOrder: h.withdrawalOrder ?? "standard",
     medicare: h.medicare ?? true,
+    health: h.health ?? false,
   };
 }
 
@@ -97,6 +99,7 @@ export function fromForm(f: Form): Household {
     spendingRule: f.spendingRule,
     withdrawalOrder: f.withdrawalOrder,
     medicare: f.medicare,
+    ...(f.health ? { health: true } : {}),
   };
 }
 
