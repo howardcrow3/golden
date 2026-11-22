@@ -15,6 +15,7 @@
   import TaxInsights from "./TaxInsights.svelte";
   import Milestones from "./Milestones.svelte";
   import Legacy from "./Legacy.svelte";
+  import Alerts from "./Alerts.svelte";
   import Backtest from "./Backtest.svelte";
   import Sepp from "./Sepp.svelte";
   import Daf from "./Daf.svelte";
@@ -230,6 +231,7 @@
     <Sepp {invoke} />
     <Daf {invoke} />
     <CashFlowSankey {result} />
+    <Alerts {result} />
     <Milestones {result} />
     <Legacy {result} />
     <TaxInsights {result} household={scoreHousehold} />

@@ -1,4 +1,5 @@
 //! Pure planning math: tax tables and calculators (no I/O).
+pub mod alerts;
 pub mod backtest;
 pub mod daf;
 pub mod debt;

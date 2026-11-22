@@ -96,6 +96,13 @@ export interface QuickPlanResult {
   ssClaimAge: number;
   milestones?: Milestone[];
   legacy?: Legacy;
+  alerts?: Alert[];
+}
+
+export interface Alert {
+  key: string;
+  severity: "good" | "info" | "warn" | "danger";
+  message: string;
 }
 
 export interface Legacy {

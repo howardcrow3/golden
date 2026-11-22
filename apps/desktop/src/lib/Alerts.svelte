@@ -1,0 +1,30 @@
+<script lang="ts">
+  import type { QuickPlanResult } from "./api";
+
+  let { result }: { result: QuickPlanResult } = $props();
+  let items = $derived(result.alerts ?? []);
+  const icon = { good: "✓", info: "•", warn: "!", danger: "!!" } as const;
+</script>
+
+{#if items.length > 0}
+  <section class="alerts" aria-label="Heads-ups">
+    <ul>
+      {#each items as a (a.key)}
+        <li class={a.severity} data-testid={`alert-${a.key}`}>
+          <span class="icon" aria-hidden="true">{icon[a.severity]}</span>
+          <span>{a.message}</span>
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
+
+<style>
+  .alerts { margin-top: 12px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  li { display: flex; gap: 8px; font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--surface, #f4f4f4); }
+  .icon { font-weight: 700; width: 1.6em; }
+  .good { color: var(--ok, #1b6e3a); }
+  .warn { color: var(--warn, #8a5a00); }
+  .danger { color: var(--danger, #b3261e); }
+</style>

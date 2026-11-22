@@ -89,6 +89,8 @@ pub struct QuickPlanResult {
     pub milestones: Vec<crate::milestones::Milestone>,
     /// What heirs would receive from the accounts left at the end of the plan.
     pub legacy: crate::estate::LegacyView,
+    /// Heads-ups, worst first.
+    pub alerts: Vec<crate::alerts::Alert>,
 }
 
 pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
@@ -398,6 +400,21 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         SEED,
     )
     .map_err(|e| e.to_string())?;
+    let milestones = crate::milestones::find(plan, &r.projection, r.inputs.real_return);
+    let legacy: crate::estate::LegacyView = (&crate::estate::settle(
+        plan.filing,
+        &r.projection.final_accounts,
+        fin_core::Money::ZERO,
+        crate::estate::DEFAULT_HEIR_RATE,
+    ))
+        .into();
+    let alerts = crate::alerts::find(&crate::alerts::Facts {
+        success_rate: r.monte_carlo.success_rate,
+        depleted_year: r.projection.depleted_year,
+        this_year: plan.start_year,
+        milestones: &milestones,
+        estate_tax_cents: legacy.estate_tax_cents,
+    });
     Ok(QuickPlanResult {
         success_rate: r.monte_carlo.success_rate,
         depleted_year: r.projection.depleted_year,
@@ -447,14 +464,9 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         volatility: r.inputs.volatility,
         horizon_age: r.inputs.horizon_age,
         ss_claim_age: r.inputs.ss_claim_age,
-        milestones: crate::milestones::find(plan, &r.projection, r.inputs.real_return),
-        legacy: (&crate::estate::settle(
-            plan.filing,
-            &r.projection.final_accounts,
-            fin_core::Money::ZERO,
-            crate::estate::DEFAULT_HEIR_RATE,
-        ))
-            .into(),
+        milestones,
+        legacy,
+        alerts,
     })
 }
 
