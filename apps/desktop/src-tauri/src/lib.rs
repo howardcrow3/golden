@@ -325,6 +325,18 @@ fn investment_checkup(
     lock(&state)?.investment_checkup(risk)
 }
 
+/// The saved plan as the text of a plan file, for the screen to save or send.
+#[tauri::command]
+fn export_plan_file(state: Shared) -> Result<String, String> {
+    lock(&state)?.export_plan_file()
+}
+
+/// Replace the saved plan with the contents of a plan file.
+#[tauri::command]
+fn import_plan_file(state: Shared, text: String) -> Result<fin_app::planfile::Imported, String> {
+    lock(&state)?.import_plan_file(&text)
+}
+
 /// Early IRA withdrawals without the 10% penalty (72(t)), by two methods.
 #[tauri::command]
 fn sepp(balance_cents: i64, age: i32, rate_bp: i64) -> Result<Vec<fin_plan::sepp::Sepp>, String> {
@@ -899,6 +911,8 @@ pub fn run() {
             retire_when,
             roth_explore,
             sepp,
+            export_plan_file,
+            import_plan_file,
             holdings,
             save_holdings,
             investment_checkup,

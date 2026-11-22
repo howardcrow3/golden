@@ -24,6 +24,7 @@
   import RentBuy from "./RentBuy.svelte";
   import Harvest from "./Harvest.svelte";
   import Investments from "./Investments.svelte";
+  import PlanFile from "./PlanFile.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
 
@@ -40,6 +41,16 @@
       .then((h: Household) => (f = toForm(h)))
       .catch((e) => (error = e instanceof Error ? e.message : String(e)));
   });
+
+  /** After a plan file replaces the saved household, show the new one and clear the old result. */
+  async function reloadHousehold() {
+    try {
+      f = toForm(await getHousehold(invoke));
+      result = null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
 
   async function run() {
     if (!f) return;
@@ -260,6 +271,7 @@
     <Daf {invoke} />
     <Harvest {invoke} />
     <Investments {invoke} />
+    <PlanFile {invoke} onimported={reloadHousehold} />
     <RentBuy {invoke} />
     <CashFlowSankey {result} />
     <Alerts {result} />

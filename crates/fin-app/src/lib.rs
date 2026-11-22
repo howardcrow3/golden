@@ -28,6 +28,7 @@ pub mod localmodel;
 pub mod mcp;
 pub mod model;
 pub mod paystub;
+pub mod planfile;
 pub mod progress;
 pub mod recurring;
 pub mod report;

@@ -1090,3 +1090,10 @@ export async function saveHoldings(holdings: Holding[], invoke?: Invoke): Promis
 export async function investmentCheckup(risk: RiskProfile, invoke?: Invoke): Promise<Checkup> {
   return (await (await resolve(invoke))("investment_checkup", { risk })) as Checkup;
 }
+
+export async function exportPlanFile(invoke?: Invoke): Promise<string> {
+  return (await (await resolve(invoke))("export_plan_file")) as string;
+}
+export async function importPlanFile(text: string, invoke?: Invoke): Promise<{ people: number; holdings: number }> {
+  return (await (await resolve(invoke))("import_plan_file", { text })) as { people: number; holdings: number };
+}
