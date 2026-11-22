@@ -46,6 +46,10 @@ pub struct YearPoint {
     pub p10_cents: i64,
     pub p50_cents: i64,
     pub p90_cents: i64,
+    /// Income on the return, income tax on it and the federal rate on the next dollar.
+    pub agi_cents: i64,
+    pub income_tax_cents: i64,
+    pub marginal_rate: f64,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -310,6 +314,9 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
                     p10_cents: band.map_or(y.end_balance.cents(), |b| b.p10.cents()),
                     p50_cents: band.map_or(y.end_balance.cents(), |b| b.p50.cents()),
                     p90_cents: band.map_or(y.end_balance.cents(), |b| b.p90.cents()),
+                    agi_cents: y.agi.cents(),
+                    income_tax_cents: y.income_tax.cents(),
+                    marginal_rate: y.marginal_rate,
                 }
             })
             .collect(),

@@ -12,6 +12,7 @@
   import PlanReport from "./PlanReport.svelte";
   import PlannerScore from "./PlannerScore.svelte";
   import FanChart from "./FanChart.svelte";
+  import TaxInsights from "./TaxInsights.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
@@ -170,6 +171,7 @@
     <SafeSpend {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />
     <RothExplorer {invoke} refresh={result} />
+    <TaxInsights {result} household={scoreHousehold} />
     <PlanReport {invoke} {result} />
     <p class="assumptions">Assumes {formatPercent(result.realReturn)} real return, {formatPercent(result.volatility)} volatility, Social Security at {result.ssClaimAge}. These are estimates, not advice.</p>
   </section>
