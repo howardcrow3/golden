@@ -106,6 +106,8 @@ mod tests {
         // Retire sooner with a big traditional balance, so there are years to convert in.
         p.streams[0].end_year = 2030;
         p.accounts.traditional = Money::from_dollars(1_800_000);
+        // Enough taxable money to live on until 59 and a half, so the early-withdrawal penalty stays out of the way.
+        p.accounts.taxable = Money::from_dollars(900_000);
         p
     }
 

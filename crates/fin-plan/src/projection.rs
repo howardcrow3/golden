@@ -453,7 +453,13 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 }
                 final_ord = ord;
                 final_gains = gains;
-                let new_tax = base_tax(ord, gains);
+                // Pre-tax money taken before 59 and a half carries a 10% penalty.
+                let early = crate::tax::early_withdrawal_penalty(
+                    primary.age_on(chrono_start(year)) as f64 - 0.5,
+                    ord - base_ordinary,
+                    false,
+                );
+                let new_tax = base_tax(ord, gains) + early;
                 let extra_tax = new_tax - income_tax_base;
                 let target = gap + extra_tax;
                 if (target - need).abs() <= Money::from_cents(100) {
@@ -968,5 +974,30 @@ mod tests {
         let (a, c) = (project_constant(&base, 0.03), project_constant(&conv, 0.03));
         assert_eq!(a.rows[1].medicare, c.rows[1].medicare);
         assert!(c.rows[2].medicare > a.rows[2].medicare);
+    }
+
+    #[test]
+    fn pre_tax_money_taken_before_59_and_a_half_pays_the_penalty() {
+        let mut young = retired();
+        young.people[0].birth_date = fin_core::NaiveDate::from_ymd_opt(1976, 3, 1).unwrap();
+        young.accounts.roth = Money::ZERO;
+        let old = {
+            let mut o = young.clone();
+            o.people[0].birth_date = fin_core::NaiveDate::from_ymd_opt(1960, 3, 1).unwrap();
+            o
+        };
+        let (y, o) = (project_constant(&young, 0.03), project_constant(&old, 0.03));
+        let (ry, ro) = (&y.rows[0], &o.rows[0]);
+        assert!(ry.age < 60 && ro.age >= 60);
+        // Same spending and accounts, so the younger household pays about 10% of what it draws.
+        let extra = ry.taxes - ro.taxes;
+        let ten = ry.withdrawals.mul_rate(0.10);
+        assert!(
+            extra >= ten - Money::from_dollars(500),
+            "extra {extra:?} vs {ten:?}"
+        );
+        // By 60 the penalty is gone: a later young-household row matches the old household.
+        let later = y.rows.iter().find(|r| r.age >= 60).unwrap();
+        assert!(later.taxes < later.withdrawals.mul_rate(0.10) + Money::from_dollars(20_000));
     }
 }

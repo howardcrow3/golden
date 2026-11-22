@@ -6,7 +6,8 @@ pub mod federal;
 
 pub use brackets::{Bracket, BracketTable};
 pub use federal::{
-    taxable_social_security, FederalInput, FederalResult, FederalTaxYear, FilingStatus,
+    early_withdrawal_penalty, salt_deduction, taxable_social_security, FederalInput, FederalResult,
+    FederalTaxYear, FilingStatus,
 };
 pub mod state;
 pub use state::{StateRules, StateTaxYear};
