@@ -129,7 +129,7 @@ pub fn run_blocking(
 /// every change before it reaches the plan.
 pub const WHATIF: TaskSpec = TaskSpec {
     id: "whatif",
-    version: 1,
+    version: 2,
     prompt: "{{input}}",
     schema: include_str!("../prompts/whatif.schema.json"),
     max_tokens: 400,

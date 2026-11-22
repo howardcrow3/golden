@@ -134,3 +134,39 @@ fn end_to_end_through_the_app() {
     assert!(prep.base.is_some() && prep.alt.is_some());
     assert_eq!(seen.lock().unwrap().len(), 1);
 }
+
+#[test]
+fn raises_and_planned_costs_from_the_model_are_accepted_and_checked() {
+    let h = household();
+    let ok = r#"{"changes":[{"kind":"raise","person":0,"bp":300},{"kind":"plannedCost","label":"New roof","cents":2500000,"year":2028},{"kind":"plannedCost","label":"Inheritance","cents":-5000000,"year":2030}]}"#;
+    assert_eq!(
+        parse_reply(ok, &h, today()).unwrap(),
+        vec![
+            Change::Raise { person: 0, bp: 300 },
+            Change::PlannedCost {
+                label: "New roof".into(),
+                cents: 2_500_000,
+                year: 2028
+            },
+            Change::PlannedCost {
+                label: "Inheritance".into(),
+                cents: -5_000_000,
+                year: 2030
+            },
+        ]
+    );
+    for bad in [
+        r#"{"changes":[{"kind":"raise","person":0,"bp":0}]}"#,
+        r#"{"changes":[{"kind":"raise","person":7,"bp":300}]}"#,
+        r#"{"changes":[{"kind":"plannedCost","label":"x","cents":100,"year":1999}]}"#,
+        r#"{"changes":[{"kind":"plannedCost","label":" ","cents":100,"year":2028}]}"#,
+    ] {
+        assert!(parse_reply(bad, &h, today()).is_none(), "{bad}");
+    }
+}
+
+#[test]
+fn the_prompt_offers_raises_and_planned_costs() {
+    let p = ModelInterpreter::prompt("what if I get a 3% raise", &household(), today());
+    assert!(p.contains("\"kind\":\"raise\"") && p.contains("\"kind\":\"plannedCost\""));
+}
