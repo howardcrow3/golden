@@ -306,6 +306,16 @@ export async function exportTransactions(from: string, to: string, invoke?: Invo
   return (await (await resolve(invoke))("export_transactions", { from, to })) as string;
 }
 
+/** Save a report, table or data file into the Exports folder; returns where it went. */
+export async function saveReport(
+  stem: string,
+  kind: "html" | "csv" | "json",
+  content: string,
+  invoke?: Invoke,
+): Promise<string> {
+  return (await (await resolve(invoke))("save_report", { stem, kind, content })) as string;
+}
+
 export interface BudgetRow {
   category: string;
   budgetCents: number;
