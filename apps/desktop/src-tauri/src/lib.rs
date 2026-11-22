@@ -120,6 +120,14 @@ fn export_backup(app: tauri::AppHandle, state: Shared) -> Result<String, String>
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Save a report, table or data file the screen built into the Exports folder.
+#[tauri::command]
+fn save_report(app: tauri::AppHandle, stem: String, kind: String, content: String) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("Exports");
+    let path = fin_app::report::save_report(&dir, &stem, &kind, &content)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Merge a Golden backup file (as bytes) into this database.
 #[tauri::command]
 fn restore_backup(state: Shared, bytes: Vec<u8>) -> Result<fin_app::backup::RestoreReport, String> {
@@ -714,6 +722,7 @@ pub fn run() {
             import_file,
             export_transactions,
             export_backup,
+            save_report,
             restore_backup,
             transactions,
             category_choices,
