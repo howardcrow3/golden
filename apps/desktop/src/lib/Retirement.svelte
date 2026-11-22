@@ -10,6 +10,7 @@
   import RothExplorer from "./RothExplorer.svelte";
   import SsExplorer from "./SsExplorer.svelte";
   import PlanReport from "./PlanReport.svelte";
+  import PlannerScore from "./PlannerScore.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
@@ -48,6 +49,14 @@
     }
   }
 
+  let scoreHousehold = $derived.by(() => {
+    if (!f) return null;
+    try {
+      return fromForm(f);
+    } catch {
+      return null;
+    }
+  });
   let v = $derived(result ? verdict(result.successRate) : null);
   let points = $derived(result ? linePoints(result.years.map((y) => y.balanceCents), 640, 180) : "");
 </script>
@@ -56,6 +65,7 @@
 <p class="sub">Your household, saved on this computer. Change a number, then run the plan.</p>
 
 {#if f}
+  {#if scoreHousehold}<PlannerScore household={scoreHousehold} />{/if}
 <form onsubmit={(e) => { e.preventDefault(); run(); }}>
   <section class="card" aria-label="People">
     <h2>People</h2>
