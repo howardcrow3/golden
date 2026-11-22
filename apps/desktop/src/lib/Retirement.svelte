@@ -105,6 +105,22 @@
     <label>Taxable investments <input bind:value={f.taxable} aria-label="Taxable investments" inputmode="numeric" /></label>
     <label>Traditional 401(k)/IRA <input bind:value={f.traditional} aria-label="Traditional 401(k)/IRA" inputmode="numeric" /></label>
     <label>Roth <input bind:value={f.roth} aria-label="Roth" inputmode="numeric" /></label>
+    <label>Spending in retirement
+      <select bind:value={f.spendingRule} aria-label="Spending rule">
+        <option value="fixed">The same amount every year</option>
+        <option value="guardrails">Guardrails: trim after bad years, raise after good ones</option>
+        <option value="percent">4% of the portfolio each year</option>
+        <option value="vpw">Variable: spend down evenly to age 95</option>
+      </select>
+    </label>
+    <label>Draw accounts in this order
+      <select bind:value={f.withdrawalOrder} aria-label="Withdrawal order">
+        <option value="standard">Cash, taxable, traditional, then Roth</option>
+        <option value="traditional_first">Cash, traditional, taxable, then Roth</option>
+        <option value="roth_first">Cash, Roth, taxable, then traditional</option>
+        <option value="blended">Cash, then all three in proportion</option>
+      </select>
+    </label>
     <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>
   </section>
 </form>
