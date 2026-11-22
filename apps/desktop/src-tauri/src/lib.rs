@@ -629,6 +629,22 @@ fn remove_goal(state: Shared, name: String) -> Result<(), String> {
     lock(&state)?.remove_goal(&name)
 }
 
+/// Start (or restart) tracking real net worth against the plan's projection.
+#[tauri::command]
+fn start_progress(state: Shared) -> Result<(), String> {
+    lock(&state)?.start_progress_tracking()
+}
+
+#[tauri::command]
+fn stop_progress(state: Shared) -> Result<(), String> {
+    lock(&state)?.stop_progress_tracking()
+}
+
+#[tauri::command]
+fn progress(state: Shared) -> Result<Option<fin_app::progress::ProgressReport>, String> {
+    lock(&state)?.progress()
+}
+
 #[tauri::command]
 fn net_worth_history(
     state: Shared,
@@ -774,6 +790,9 @@ pub fn run() {
             balance_sheet,
             withholding_check,
             net_worth_history,
+            start_progress,
+            stop_progress,
+            progress,
             goals,
             set_goal,
             remove_goal,

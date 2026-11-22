@@ -612,6 +612,27 @@ export interface NetWorthPoint {
   month: string;
   netWorthCents: number;
 }
+export interface ProgressPoint {
+  month: string;
+  actualChangeCents: number;
+  projectedChangeCents: number;
+}
+export interface ProgressReport {
+  started: string;
+  points: ProgressPoint[];
+  aheadCents: number;
+}
+export async function getProgress(invoke?: Invoke): Promise<ProgressReport | null> {
+  const r = (await (await resolve(invoke))("progress")) as ProgressReport | null;
+  return r && Array.isArray(r.points) ? r : null;
+}
+export async function startProgress(invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("start_progress");
+}
+export async function stopProgress(invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("stop_progress");
+}
+
 export async function getNetWorthHistory(months: number, invoke?: Invoke): Promise<NetWorthPoint[]> {
   return (await (await resolve(invoke))("net_worth_history", { months })) as NetWorthPoint[];
 }
