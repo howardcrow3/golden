@@ -144,6 +144,9 @@ fn a_second_person_and_their_income_help_the_plan() {
     h.people.push(second_person());
     h.streams.push(StreamRow {
         self_employed: false,
+        kind: None,
+        employer_match_cents: 0,
+        hsa_cents: 0,
         label: "Sam salary".into(),
         person: 1,
         annual_cents: 9_000_000,
@@ -177,6 +180,9 @@ fn lumpy_income_is_a_one_time_stream_in_its_own_year() {
     };
     h.streams.push(StreamRow {
         self_employed: false,
+        kind: None,
+        employer_match_cents: 0,
+        hsa_cents: 0,
         label: "Stock vest".into(),
         person: 0,
         annual_cents: 40_000_000,

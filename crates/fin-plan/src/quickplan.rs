@@ -176,6 +176,9 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
                     req.contribution_cents.min(req.salary_cents),
                 ),
                 self_employed: false,
+                payroll_exempt: false,
+                employer_match: Money::ZERO,
+                hsa: Money::ZERO,
             }]
         } else {
             vec![]

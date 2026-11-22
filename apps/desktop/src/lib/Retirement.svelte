@@ -162,7 +162,18 @@
         <label>First year <input bind:value={s.start} aria-label={`First year ${i + 1}`} size="5" placeholder="now" /></label>
         <label>Last year <input bind:value={s.end} aria-label={`Last year ${i + 1}`} size="5" placeholder="retirement" /></label>
         <label>401(k) saving <input bind:value={s.contribution} aria-label={`401(k) saving ${i + 1}`} inputmode="numeric" /></label>
-        <label class="check"><input type="checkbox" bind:checked={s.selfEmployed} aria-label={`Self-employed ${i + 1}`} /> Self-employed</label>
+        <label>Type
+          <select bind:value={s.kind} aria-label={`Income type ${i + 1}`}>
+            <option value="">Job</option>
+            <option value="pension">Pension or annuity</option>
+            <option value="other">Rent or other taxable</option>
+          </select>
+        </label>
+        {#if !s.kind}
+          <label>Employer match <input bind:value={s.match} aria-label={`Employer match ${i + 1}`} inputmode="numeric" /></label>
+          <label>HSA saving <input bind:value={s.hsa} aria-label={`HSA saving ${i + 1}`} inputmode="numeric" /></label>
+          <label class="check"><input type="checkbox" bind:checked={s.selfEmployed} aria-label={`Self-employed ${i + 1}`} /> Self-employed</label>
+        {/if}
         <button type="button" onclick={() => f!.streams.splice(i, 1)} aria-label={`Remove income ${i + 1}`}>Remove</button>
       </div>
     {/each}

@@ -397,7 +397,7 @@ describe("household form helpers", () => {
   it("removing a person drops their income and re-points later ones", () => {
     const f = toForm(h);
     f.people.push({ name: "Sam", birthDate: "1983-02-10", retireAge: 60, ss: "0" }, { name: "Lee", birthDate: "1990-01-01", retireAge: 65, ss: "0" });
-    f.streams.push({ label: "Sam pay", person: 1, amount: "1", start: "", end: "", contribution: "0", selfEmployed: false }, { label: "Lee pay", person: 2, amount: "1", start: "", end: "", contribution: "0", selfEmployed: false });
+    f.streams.push({ label: "Sam pay", person: 1, amount: "1", start: "", end: "", contribution: "0", selfEmployed: false, kind: "", match: "0", hsa: "0" }, { label: "Lee pay", person: 2, amount: "1", start: "", end: "", contribution: "0", selfEmployed: false, kind: "", match: "0", hsa: "0" });
     const g = removePerson(f, 1);
     expect(g.people.map((p) => p.name)).toEqual(["You", "Lee"]);
     expect(g.streams.map((s) => [s.label, s.person])).toEqual([["Salary", 0], ["Lee pay", 1]]);

@@ -41,6 +41,17 @@ pub struct StreamRow {
     pub end_year: Option<i32>,
     #[serde(default)]
     pub contribution_cents: i64,
+    /// What kind of income this is: empty or "wages" for a job, "pension" for a pension or
+    /// annuity (starts when the person retires, lasts for life, no payroll tax) or "other" for
+    /// rent and similar taxable income (starts now, no payroll tax).
+    #[serde(default)]
+    pub kind: Option<String>,
+    /// Employer match per year, added to the pre-tax account while working.
+    #[serde(default)]
+    pub employer_match_cents: i64,
+    /// Pre-tax HSA saving per year.
+    #[serde(default)]
+    pub hsa_cents: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -223,6 +234,9 @@ impl From<LegacyHousehold> for Household {
                     person: 0,
                     annual_cents: l.salary_cents,
                     self_employed: false,
+                    kind: None,
+                    employer_match_cents: 0,
+                    hsa_cents: 0,
                     start_year: None,
                     end_year: None,
                     contribution_cents: l.contribution_cents,
@@ -409,8 +423,22 @@ impl Household {
         }
         let mut streams = vec![];
         for s in &self.streams {
-            let start = s.start_year.unwrap_or(year);
-            let end = s.end_year.unwrap_or(retire_year[s.person]);
+            let kind = s.kind.as_deref().unwrap_or("").trim().to_ascii_lowercase();
+            let exempt = match kind.as_str() {
+                "" | "wages" => false,
+                "pension" | "other" => true,
+                other => return Err(format!("Unknown income type \"{other}\".")),
+            };
+            if s.employer_match_cents < 0 || s.hsa_cents < 0 || s.contribution_cents < 0 {
+                return Err("Savings and match amounts cannot be negative.".into());
+            }
+            let (default_start, default_end) = match kind.as_str() {
+                "pension" => (retire_year[s.person], year + 100),
+                "other" => (year, year + 100),
+                _ => (year, retire_year[s.person]),
+            };
+            let start = s.start_year.unwrap_or(default_start);
+            let end = s.end_year.unwrap_or(default_end);
             if end < start || s.annual_cents == 0 {
                 continue; // already retired, or nothing earned
             }
@@ -420,10 +448,23 @@ impl Household {
                 annual_gross: Money::from_cents(s.annual_cents),
                 start_year: start,
                 end_year: end,
-                traditional_contribution: Money::from_cents(
-                    s.contribution_cents.min(s.annual_cents),
-                ),
-                self_employed: s.self_employed,
+                traditional_contribution: if exempt {
+                    Money::ZERO
+                } else {
+                    Money::from_cents(s.contribution_cents.min(s.annual_cents))
+                },
+                self_employed: s.self_employed && !exempt,
+                payroll_exempt: exempt,
+                employer_match: if exempt {
+                    Money::ZERO
+                } else {
+                    Money::from_cents(s.employer_match_cents)
+                },
+                hsa: if exempt {
+                    Money::ZERO
+                } else {
+                    Money::from_cents(s.hsa_cents.min(s.annual_cents))
+                },
             });
         }
         let home_costs = match &self.home {

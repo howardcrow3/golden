@@ -4,7 +4,7 @@ import { formatCents, parseDollars } from "./money";
 /** Editable text version of a household: money and years are strings while being typed. */
 export interface Form {
   people: { name: string; birthDate: string; retireAge: number; ss: string }[];
-  streams: { label: string; person: number; amount: string; start: string; end: string; contribution: string; selfEmployed: boolean }[];
+  streams: { label: string; person: number; amount: string; start: string; end: string; contribution: string; selfEmployed: boolean; kind: string; match: string; hsa: string }[];
   filing: Household["filing"];
   state: string;
   spending: string;
@@ -94,6 +94,9 @@ export function toForm(h: Household): Form {
       end: s.endYear?.toString() ?? "",
       contribution: dollars(s.contributionCents),
       selfEmployed: s.selfEmployed ?? false,
+      kind: s.kind ?? "",
+      match: dollars(s.employerMatchCents ?? 0),
+      hsa: dollars(s.hsaCents ?? 0),
     })),
     filing: h.filing,
     state: h.state,
@@ -174,6 +177,9 @@ export function fromForm(f: Form): Household {
       endYear: year(s.end, `${label} last year`),
       contributionCents: money(s.contribution, `${label} 401(k) saving`),
       ...(s.selfEmployed ? { selfEmployed: true } : {}),
+      ...(s.kind ? { kind: s.kind } : {}),
+      ...(money(s.match || "0", `${label} employer match`) > 0 ? { employerMatchCents: money(s.match, `${label} employer match`) } : {}),
+      ...(money(s.hsa || "0", `${label} HSA saving`) > 0 ? { hsaCents: money(s.hsa, `${label} HSA saving`) } : {}),
     };
   });
   return {
@@ -246,8 +252,8 @@ export function newPerson(): Form["people"][number] {
 
 export function newStream(oneTime: boolean, thisYear: number): Form["streams"][number] {
   return oneTime
-    ? { label: "Bonus", person: 0, amount: "0", start: String(thisYear + 1), end: String(thisYear + 1), contribution: "0", selfEmployed: false }
-    : { label: "Income", person: 0, amount: "0", start: "", end: "", contribution: "0", selfEmployed: false };
+    ? { label: "Bonus", person: 0, amount: "0", start: String(thisYear + 1), end: String(thisYear + 1), contribution: "0", selfEmployed: false, kind: "", match: "0", hsa: "0" }
+    : { label: "Income", person: 0, amount: "0", start: "", end: "", contribution: "0", selfEmployed: false, kind: "", match: "0", hsa: "0" };
 }
 
 /** Removing a person drops their income and re-points everyone after them. */
