@@ -87,6 +87,8 @@ pub struct QuickPlanResult {
     pub ss_claim_age: i32,
     /// Dates worth knowing along the way, in order.
     pub milestones: Vec<crate::milestones::Milestone>,
+    /// What heirs would receive from the accounts left at the end of the plan.
+    pub legacy: crate::estate::LegacyView,
 }
 
 pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
@@ -446,6 +448,13 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         horizon_age: r.inputs.horizon_age,
         ss_claim_age: r.inputs.ss_claim_age,
         milestones: crate::milestones::find(plan, &r.projection, r.inputs.real_return),
+        legacy: (&crate::estate::settle(
+            plan.filing,
+            &r.projection.final_accounts,
+            fin_core::Money::ZERO,
+            crate::estate::DEFAULT_HEIR_RATE,
+        ))
+            .into(),
     })
 }
 
@@ -623,5 +632,24 @@ mod tests {
         let mut q = req();
         q.picks.insert("real_return".into(), "Moonshot".into());
         assert!(run(&q).unwrap_err().contains("Moonshot"));
+    }
+}
+
+#[cfg(test)]
+mod legacy_tests {
+    use super::*;
+    use crate::projection::fixtures::couple;
+
+    #[test]
+    fn the_result_carries_what_is_left_for_heirs() {
+        let r = run_plan(&couple(), &Picks::new(), 10).unwrap();
+        let l = &r.legacy;
+        assert!(l.gross_cents >= 0);
+        assert!(l.net_to_heirs_cents <= l.gross_cents);
+        assert_eq!(
+            l.net_to_heirs_cents,
+            l.gross_cents - l.estate_tax_cents - l.heir_income_tax_cents
+        );
+        assert!(l.exemption_cents >= 15_000_000_00);
     }
 }

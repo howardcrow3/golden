@@ -1,6 +1,7 @@
 //! Pure planning math: tax tables and calculators (no I/O).
 pub mod backtest;
 pub mod debt;
+pub mod estate;
 pub mod estimate;
 pub mod healthcare;
 pub mod housing;

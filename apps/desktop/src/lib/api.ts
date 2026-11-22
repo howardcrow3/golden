@@ -95,6 +95,16 @@ export interface QuickPlanResult {
   horizonAge: number;
   ssClaimAge: number;
   milestones?: Milestone[];
+  legacy?: Legacy;
+}
+
+export interface Legacy {
+  grossCents: number;
+  exemptionCents: number;
+  estateTaxCents: number;
+  inheritedIraPerYearCents: number;
+  heirIncomeTaxCents: number;
+  netToHeirsCents: number;
 }
 
 export async function quickPlan(req: QuickPlanRequest, invoke?: Invoke): Promise<QuickPlanResult> {

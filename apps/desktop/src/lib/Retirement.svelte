@@ -14,6 +14,7 @@
   import FanChart from "./FanChart.svelte";
   import TaxInsights from "./TaxInsights.svelte";
   import Milestones from "./Milestones.svelte";
+  import Legacy from "./Legacy.svelte";
   import Backtest from "./Backtest.svelte";
   import Progress from "./Progress.svelte";
   import CashFlowSankey from "./CashFlowSankey.svelte";
@@ -211,6 +212,7 @@
     <RothExplorer {invoke} refresh={result} />
     <CashFlowSankey {result} />
     <Milestones {result} />
+    <Legacy {result} />
     <TaxInsights {result} household={scoreHousehold} />
     <PlanReport {invoke} {result} />
     <p class="assumptions">Assumes {formatPercent(result.realReturn)} real return, {formatPercent(result.volatility)} volatility, Social Security at {result.ssClaimAge}. These are estimates, not advice.</p>
