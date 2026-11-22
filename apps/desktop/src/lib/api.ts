@@ -169,6 +169,7 @@ export interface Household {
   events?: EventRow[];
   spendingRule?: string;
   withdrawalOrder?: string;
+  medicare?: boolean;
 }
 export interface EventRow {
   label: string;

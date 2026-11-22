@@ -123,6 +123,10 @@
         <option value="blended">Cash, then all three in proportion</option>
       </select>
     </label>
+    <label class="check">
+      <input type="checkbox" bind:checked={f.medicare} aria-label="Include Medicare premiums" />
+      Include Medicare premiums from 65, with the income surcharge (IRMAA)
+    </label>
     <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>
   </section>
 </form>

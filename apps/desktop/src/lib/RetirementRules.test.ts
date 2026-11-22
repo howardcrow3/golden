@@ -10,7 +10,7 @@ const household: Household = {
   filing: "married_joint", state: "TX", spendingCents: 9_000_000, cashCents: 3_000_000,
   taxableCents: 15_000_000, traditionalCents: 60_000_000, rothCents: 12_000_000, picks: {},
   events: [{ label: "New roof", year: 2028, cents: 2_500_000 }],
-  spendingRule: "fixed", withdrawalOrder: "standard",
+  spendingRule: "fixed", withdrawalOrder: "standard", medicare: true,
 };
 const planResult = {
   successRate: 0.87, depletedYear: null, p10Cents: 1, p50Cents: 2, p90Cents: 3,
@@ -27,10 +27,11 @@ describe("retirement spending rule and withdrawal order", () => {
     expect(back.spendingRule).toBe("fixed");
     expect(back.withdrawalOrder).toBe("standard");
     // A household saved before these existed gets the defaults.
-    const old = { ...household, events: undefined, spendingRule: undefined, withdrawalOrder: undefined };
+    const old = { ...household, events: undefined, spendingRule: undefined, withdrawalOrder: undefined, medicare: undefined };
     const f = fromForm(toForm(old as unknown as Household));
     expect(f.events).toEqual([]);
     expect(f.spendingRule).toBe("fixed");
+    expect(f.medicare).toBe(true);
   });
 
   it("saves the chosen rule and order, and does not drop planned events", async () => {

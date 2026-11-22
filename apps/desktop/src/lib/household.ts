@@ -17,6 +17,7 @@ export interface Form {
   events: EventRow[];
   spendingRule: string;
   withdrawalOrder: string;
+  medicare: boolean;
 }
 
 const dollars = (c: number) => formatCents(c, { whole: true }).replace("$", "");
@@ -43,6 +44,7 @@ export function toForm(h: Household): Form {
     events: h.events ?? [],
     spendingRule: h.spendingRule ?? "fixed",
     withdrawalOrder: h.withdrawalOrder ?? "standard",
+    medicare: h.medicare ?? true,
   };
 }
 
@@ -92,6 +94,7 @@ export function fromForm(f: Form): Household {
     events: f.events,
     spendingRule: f.spendingRule,
     withdrawalOrder: f.withdrawalOrder,
+    medicare: f.medicare,
   };
 }
 
