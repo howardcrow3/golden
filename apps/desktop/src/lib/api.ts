@@ -191,6 +191,18 @@ export async function setPick(key: string, label: string, invoke?: Invoke): Prom
 export async function getAssumptions(invoke?: Invoke): Promise<AssumptionRow[]> {
   return (await (await resolve(invoke))("assumptions")) as AssumptionRow[];
 }
+export interface SafeSpend {
+  target: number;
+  spendingCents: number;
+  currentCents: number;
+  nothingSafe: boolean;
+  capped: boolean;
+}
+
+export async function safeSpend(target: number, invoke?: Invoke): Promise<SafeSpend> {
+  return (await (await resolve(invoke))("safe_spend", { target })) as SafeSpend;
+}
+
 export async function runPlan(runs: number, invoke?: Invoke): Promise<QuickPlanResult> {
   return (await (await resolve(invoke))("run_plan", { runs })) as QuickPlanResult;
 }
