@@ -2,6 +2,7 @@
 pub mod debt;
 pub mod estimate;
 pub mod medicare;
+pub mod milestones;
 pub mod montecarlo;
 pub mod params;
 pub mod projection;
