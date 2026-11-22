@@ -195,6 +195,8 @@ export interface Household {
   spendingRule?: string;
   withdrawalOrder?: string;
   medicare?: boolean;
+  /** Add estimated healthcare and long-term care costs. */
+  health?: boolean;
 }
 export interface EventRow {
   label: string;

@@ -70,6 +70,10 @@ pub struct Household {
     /// Charge Medicare premiums (with IRMAA) from age 65.
     #[serde(default = "default_true")]
     pub medicare: bool,
+    /// Add estimated healthcare costs: premiums before 65, out-of-pocket costs after, and an
+    /// expected long-term care spell.
+    #[serde(default)]
+    pub health: bool,
 }
 
 fn default_true() -> bool {
@@ -167,6 +171,7 @@ impl From<LegacyHousehold> for Household {
             spending_rule: default_spending_rule(),
             withdrawal_order: default_withdrawal_order(),
             medicare: true,
+            health: false,
         }
     }
 }
@@ -341,6 +346,16 @@ impl Household {
                 self_employed: s.self_employed,
             });
         }
+        let health_costs = if self.health {
+            fin_plan::healthcare::yearly_costs(
+                &fin_plan::healthcare::HealthCosts::defaults(),
+                &people,
+                year,
+                95,
+            )
+        } else {
+            vec![]
+        };
         Ok(PlanInput {
             start_year: year,
             people,
@@ -356,14 +371,18 @@ impl Household {
             streams,
             social_security: ss,
             annual_spending: Money::from_cents(self.spending_cents),
-            one_time_costs: self
-                .events
-                .iter()
-                .map(|e| fin_plan::projection::OneTimeCost {
-                    year: e.year,
-                    amount: Money::from_cents(e.cents),
-                })
-                .collect(),
+            one_time_costs: {
+                let mut costs: Vec<fin_plan::projection::OneTimeCost> = self
+                    .events
+                    .iter()
+                    .map(|e| fin_plan::projection::OneTimeCost {
+                        year: e.year,
+                        amount: Money::from_cents(e.cents),
+                    })
+                    .collect();
+                costs.extend(health_costs);
+                costs
+            },
             horizon_age: 95,
             spending_rule: self.spending_rule_value()?,
             withdrawal_order: self.withdrawal_order_value()?,
