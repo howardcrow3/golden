@@ -4,7 +4,9 @@ use crate::App;
 use chrono::{Datelike, NaiveDate};
 use fin_core::{Money, Person};
 use fin_plan::params::Assumptions;
-use fin_plan::projection::{Accounts, IncomeStream, PlanInput, SocialSecurity};
+use fin_plan::projection::{
+    Accounts, IncomeStream, PlanInput, SocialSecurity, SpendingRule, WithdrawalOrder,
+};
 use fin_plan::tax::FilingStatus;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -56,6 +58,48 @@ pub struct Household {
     /// Chosen option label per assumption key; missing means "the likeliest".
     #[serde(default)]
     pub picks: BTreeMap<String, String>,
+    /// How spending responds to the portfolio in retirement: fixed, percent, vpw or guardrails.
+    #[serde(default = "default_spending_rule")]
+    pub spending_rule: String,
+    /// Which accounts to draw first: standard, traditional_first, roth_first or blended.
+    #[serde(default = "default_withdrawal_order")]
+    pub withdrawal_order: String,
+}
+
+fn default_spending_rule() -> String {
+    "fixed".into()
+}
+fn default_withdrawal_order() -> String {
+    "standard".into()
+}
+
+impl Household {
+    fn spending_rule_value(&self) -> Result<SpendingRule, String> {
+        Ok(match self.spending_rule.as_str() {
+            "fixed" => SpendingRule::Fixed,
+            // 4% of the portfolio each year, never below a quarter of planned spending.
+            "percent" => SpendingRule::PercentOfPortfolio {
+                rate: 0.04,
+                floor: Money::from_cents(self.spending_cents / 4),
+            },
+            "vpw" => SpendingRule::Vpw { rate: 0.03 },
+            "guardrails" => SpendingRule::Guardrails {
+                band: 0.2,
+                step: 0.1,
+            },
+            _ => return Err("Choose a spending rule from the list.".into()),
+        })
+    }
+
+    fn withdrawal_order_value(&self) -> Result<WithdrawalOrder, String> {
+        Ok(match self.withdrawal_order.as_str() {
+            "standard" => WithdrawalOrder::Standard,
+            "traditional_first" => WithdrawalOrder::TraditionalFirst,
+            "roth_first" => WithdrawalOrder::RothFirst,
+            "blended" => WithdrawalOrder::Blended,
+            _ => return Err("Choose a withdrawal order from the list.".into()),
+        })
+    }
 }
 
 /// The first version of the saved profile (one person, one salary); still read so earlier
@@ -109,6 +153,8 @@ impl From<LegacyHousehold> for Household {
             traditional_cents: l.traditional_cents,
             roth_cents: l.roth_cents,
             picks: l.picks,
+            spending_rule: default_spending_rule(),
+            withdrawal_order: default_withdrawal_order(),
         }
     }
 }
@@ -306,6 +352,8 @@ impl Household {
                 })
                 .collect(),
             horizon_age: 95,
+            spending_rule: self.spending_rule_value()?,
+            withdrawal_order: self.withdrawal_order_value()?,
         })
     }
 }

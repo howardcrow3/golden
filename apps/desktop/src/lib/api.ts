@@ -165,6 +165,15 @@ export interface Household {
   traditionalCents: number;
   rothCents: number;
   picks: Record<string, string>;
+  /** Planned one-off costs (positive) or untaxed inflows (negative); set by the what-if chat. */
+  events?: EventRow[];
+  spendingRule?: string;
+  withdrawalOrder?: string;
+}
+export interface EventRow {
+  label: string;
+  year: number;
+  cents: number;
 }
 export interface OptionRow {
   label: string;

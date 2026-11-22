@@ -49,6 +49,37 @@ pub struct OneTimeCost {
     pub amount: Money,
 }
 
+/// How yearly spending responds to the portfolio once nobody is earning a wage.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum SpendingRule {
+    /// Spend `annual_spending` every year (today's dollars).
+    #[default]
+    Fixed,
+    /// Spend `rate` of the portfolio at the start of each retired year, but at least `floor`.
+    PercentOfPortfolio { rate: f64, floor: Money },
+    /// Variable percentage withdrawal: spend what an annuity over the years left would pay at an
+    /// assumed real `rate`, so spending tracks the portfolio and the horizon.
+    Vpw { rate: f64 },
+    /// Guyton-Klinger style guardrails: start at `annual_spending`; if the withdrawal rate drifts
+    /// more than `band` (e.g. 0.2 = 20%) above the starting rate, cut spending by `step`; if it
+    /// drifts that far below, raise spending by `step`.
+    Guardrails { band: f64, step: f64 },
+}
+
+/// The order accounts are drawn on when income does not cover spending.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum WithdrawalOrder {
+    /// Cash, taxable, traditional, then Roth.
+    #[default]
+    Standard,
+    /// Cash, traditional, taxable, then Roth (fills low brackets early).
+    TraditionalFirst,
+    /// Cash, Roth, taxable, then traditional.
+    RothFirst,
+    /// Cash, then taxable, traditional and Roth in proportion to their balances.
+    Blended,
+}
+
 #[derive(Debug, Clone)]
 pub struct PlanInput {
     pub start_year: i32,
@@ -66,6 +97,8 @@ pub struct PlanInput {
     pub one_time_costs: Vec<OneTimeCost>,
     /// Plan until the primary person reaches this age.
     pub horizon_age: i32,
+    pub spending_rule: SpendingRule,
+    pub withdrawal_order: WithdrawalOrder,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,6 +140,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
     let mut acc = input.accounts;
     let mut rows = Vec::with_capacity(years);
     let mut depleted = None;
+    let mut spend_now = input.annual_spending;
+    let mut start_rate: Option<f64> = None;
 
     for i in 0..years {
         let year = input.start_year + i as i32;
@@ -158,7 +193,40 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         };
 
         // Money needed after tax; withdrawals are grossed up by iterating (tax depends on withdrawals).
-        let spending = input.annual_spending
+        let retired = wages == Money::ZERO;
+        let portfolio = acc.total();
+        if retired {
+            match input.spending_rule {
+                SpendingRule::Fixed => {}
+                SpendingRule::PercentOfPortfolio { rate, floor } => {
+                    spend_now = portfolio.mul_rate(rate).max(floor);
+                }
+                SpendingRule::Vpw { rate } => {
+                    // One extra year so the last year never plans to spend the whole portfolio, which
+                    // leaves nothing to cover its own tax.
+                    let left = (years - i) as f64 + 1.0;
+                    let factor = if rate.abs() < 1e-9 {
+                        1.0 / left
+                    } else {
+                        rate / (1.0 - (1.0 + rate).powf(-left))
+                    };
+                    spend_now = portfolio.mul_rate(factor);
+                }
+                SpendingRule::Guardrails { band, step } => {
+                    if portfolio > Money::ZERO {
+                        let start = *start_rate
+                            .get_or_insert(spend_now.cents() as f64 / portfolio.cents() as f64);
+                        let now = spend_now.cents() as f64 / portfolio.cents() as f64;
+                        if now > start * (1.0 + band) {
+                            spend_now = spend_now.mul_rate(1.0 - step);
+                        } else if now < start * (1.0 - band) {
+                            spend_now = spend_now.mul_rate(1.0 + step);
+                        }
+                    }
+                }
+            }
+        }
+        let spending = spend_now
             + input
                 .one_time_costs
                 .iter()
@@ -189,11 +257,56 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     t
                 };
                 take(&mut a.cash, &mut left, &mut withdrawn);
-                let t = take(&mut a.taxable, &mut left, &mut withdrawn);
-                gains += t.mul_rate(acc.taxable_gain_share);
-                let t = take(&mut a.traditional, &mut left, &mut withdrawn);
-                ord += t;
-                take(&mut a.roth, &mut left, &mut withdrawn);
+                if input.withdrawal_order == WithdrawalOrder::Blended {
+                    let (t0, r0, o0) = (a.taxable, a.traditional, a.roth);
+                    let pool = t0 + r0 + o0;
+                    if pool > Money::ZERO && left > Money::ZERO {
+                        let want = left.min(pool);
+                        let t = take(
+                            &mut a.taxable,
+                            &mut Money::from_cents(want.cents() * t0.cents() / pool.cents()),
+                            &mut withdrawn,
+                        );
+                        gains += t.mul_rate(acc.taxable_gain_share);
+                        let r = take(
+                            &mut a.traditional,
+                            &mut Money::from_cents(want.cents() * r0.cents() / pool.cents()),
+                            &mut withdrawn,
+                        );
+                        ord += r;
+                        let o = take(
+                            &mut a.roth,
+                            &mut Money::from_cents(want.cents() * o0.cents() / pool.cents()),
+                            &mut withdrawn,
+                        );
+                        left -= t + r + o;
+                        // Rounding dust (and nothing else) comes off the largest pot.
+                        if left > Money::ZERO && left <= Money::from_dollars(1) {
+                            take(&mut a.taxable, &mut left, &mut withdrawn);
+                        }
+                    }
+                } else {
+                    let seq = match input.withdrawal_order {
+                        WithdrawalOrder::TraditionalFirst => ['r', 't', 'o'],
+                        WithdrawalOrder::RothFirst => ['o', 't', 'r'],
+                        _ => ['t', 'r', 'o'],
+                    };
+                    for k in seq {
+                        match k {
+                            't' => {
+                                let t = take(&mut a.taxable, &mut left, &mut withdrawn);
+                                gains += t.mul_rate(acc.taxable_gain_share);
+                            }
+                            'r' => {
+                                let t = take(&mut a.traditional, &mut left, &mut withdrawn);
+                                ord += t;
+                            }
+                            _ => {
+                                take(&mut a.roth, &mut left, &mut withdrawn);
+                            }
+                        }
+                    }
+                }
                 let new_tax = base_tax(ord, gains);
                 let extra_tax = new_tax - income_tax_base;
                 let target = gap + extra_tax;
@@ -309,6 +422,8 @@ pub(crate) mod fixtures {
             annual_spending: Money::from_dollars(110_000),
             one_time_costs: vec![],
             horizon_age: 95,
+            spending_rule: SpendingRule::Fixed,
+            withdrawal_order: WithdrawalOrder::Standard,
         }
     }
 }
@@ -435,5 +550,142 @@ mod tests {
         i.state = "CA".into();
         let ca = project_constant(&i, 0.04).rows[0].taxes;
         assert!(ca > tx);
+    }
+
+    /// A retired household: no wages, so the spending rules apply from the first year.
+    fn retired() -> PlanInput {
+        let mut i = couple();
+        i.streams.clear();
+        i.social_security.clear();
+        i.people[0] = {
+            let mut p = i.people[0].clone();
+            p.birth_date = fin_core::NaiveDate::from_ymd_opt(1961, 3, 1).unwrap();
+            p
+        };
+        i.accounts = Accounts {
+            cash: Money::ZERO,
+            taxable: Money::ZERO,
+            taxable_gain_share: 0.0,
+            traditional: Money::from_dollars(500_000),
+            roth: Money::from_dollars(500_000),
+        };
+        i.annual_spending = Money::from_dollars(40_000);
+        i
+    }
+
+    #[test]
+    fn fixed_spending_is_the_default_and_never_changes() {
+        let p = project_constant(&retired(), 0.03);
+        assert!(p
+            .rows
+            .iter()
+            .all(|r| r.spending == Money::from_dollars(40_000)));
+    }
+
+    #[test]
+    fn percent_of_portfolio_tracks_the_balance_and_never_runs_out() {
+        let mut i = retired();
+        i.spending_rule = SpendingRule::PercentOfPortfolio {
+            rate: 0.04,
+            floor: Money::ZERO,
+        };
+        let p = project_constant(&i, 0.0);
+        assert!(p.succeeded());
+        assert!(p.final_balance() > Money::ZERO);
+        assert!(p.rows[0].spending == Money::from_dollars(40_000));
+        assert!(p.rows[10].spending < p.rows[0].spending);
+    }
+
+    #[test]
+    fn a_floor_keeps_spending_up_even_as_the_portfolio_shrinks() {
+        let mut i = retired();
+        i.spending_rule = SpendingRule::PercentOfPortfolio {
+            rate: 0.04,
+            floor: Money::from_dollars(35_000),
+        };
+        let p = project_constant(&i, 0.0);
+        assert!(p
+            .rows
+            .iter()
+            .take_while(|r| r.end_balance > Money::ZERO)
+            .all(|r| r.spending >= Money::from_dollars(35_000)));
+    }
+
+    #[test]
+    fn vpw_spends_the_portfolio_down_by_the_horizon() {
+        let mut i = retired();
+        i.spending_rule = SpendingRule::Vpw { rate: 0.03 };
+        let p = project_constant(&i, 0.03);
+        assert!(p.succeeded());
+        assert!(
+            p.final_balance() < Money::from_dollars(50_000),
+            "left {:?}",
+            p.final_balance()
+        );
+        // Spending follows returns: better than assumed means more to spend later on.
+        let good = project(&i, &|_| 0.08);
+        assert!(good.rows.last().unwrap().spending > good.rows[0].spending);
+    }
+
+    #[test]
+    fn guardrails_cut_after_poor_returns_and_raise_after_good_ones() {
+        let mut i = retired();
+        i.spending_rule = SpendingRule::Guardrails {
+            band: 0.2,
+            step: 0.1,
+        };
+        let bad = project(&i, &|y| if y < 3 { -0.25 } else { 0.0 });
+        assert!(bad.rows.last().unwrap().spending < Money::from_dollars(40_000));
+        let good = project(&i, &|_| 0.08);
+        assert!(good.rows.last().unwrap().spending > Money::from_dollars(40_000));
+        // Steps are 10% at a time, never a collapse in one year.
+        for w in bad.rows.windows(2) {
+            if w[1].spending > Money::ZERO && w[1].end_balance > Money::ZERO {
+                assert!(w[1].spending.cents() >= w[0].spending.cents() * 85 / 100);
+            }
+        }
+    }
+
+    #[test]
+    fn guardrails_help_a_plan_that_fixed_spending_cannot_carry() {
+        let mut fixed = retired();
+        fixed.annual_spending = Money::from_dollars(55_000);
+        let mut guard = fixed.clone();
+        guard.spending_rule = SpendingRule::Guardrails {
+            band: 0.2,
+            step: 0.1,
+        };
+        let f = project_constant(&fixed, 0.0);
+        let g = project_constant(&guard, 0.0);
+        assert!(!f.succeeded());
+        assert!(g.depleted_year.is_none() || g.depleted_year > f.depleted_year);
+    }
+
+    #[test]
+    fn withdrawal_order_changes_who_pays_tax_first() {
+        let mut roth_first = retired();
+        roth_first.withdrawal_order = WithdrawalOrder::RothFirst;
+        let mut trad_first = retired();
+        trad_first.withdrawal_order = WithdrawalOrder::TraditionalFirst;
+        let r = project_constant(&roth_first, 0.0);
+        let t = project_constant(&trad_first, 0.0);
+        // Spending $40k out of a Roth costs no income tax; out of a traditional account it does.
+        assert_eq!(r.rows[0].taxes, Money::ZERO);
+        assert!(t.rows[0].taxes > Money::ZERO);
+    }
+
+    #[test]
+    fn blended_draws_from_both_kinds_at_once() {
+        let mut b = retired();
+        b.annual_spending = Money::from_dollars(60_000);
+        b.withdrawal_order = WithdrawalOrder::Blended;
+        let p = project_constant(&b, 0.03);
+        // Half comes from the Roth, so the tax is lower than all-traditional but above zero.
+        let mut t = retired();
+        t.annual_spending = Money::from_dollars(60_000);
+        t.withdrawal_order = WithdrawalOrder::TraditionalFirst;
+        let tp = project_constant(&t, 0.03);
+        assert!(p.rows[0].taxes < tp.rows[0].taxes);
+        assert!(p.rows[0].withdrawals > Money::ZERO);
     }
 }

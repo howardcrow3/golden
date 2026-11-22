@@ -365,7 +365,7 @@ describe("Assumptions", () => {
 describe("household form helpers", () => {
   const h = household as unknown as Household;
   it("round-trips a household through the form", () => {
-    expect(fromForm(toForm(h))).toEqual(h);
+    expect(fromForm(toForm(h))).toEqual({ ...h, events: [], spendingRule: "fixed", withdrawalOrder: "standard" });
   });
   it("reports which money field is wrong", () => {
     const f = toForm(h);

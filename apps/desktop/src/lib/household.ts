@@ -1,4 +1,4 @@
-import type { Household, PersonRow, StreamRow } from "./api";
+import type { EventRow, Household, PersonRow, StreamRow } from "./api";
 import { formatCents, parseDollars } from "./money";
 
 /** Editable text version of a household: money and years are strings while being typed. */
@@ -13,6 +13,10 @@ export interface Form {
   traditional: string;
   roth: string;
   picks: Record<string, string>;
+  /** Not edited here, but kept so saving the form does not drop what the what-if chat added. */
+  events: EventRow[];
+  spendingRule: string;
+  withdrawalOrder: string;
 }
 
 const dollars = (c: number) => formatCents(c, { whole: true }).replace("$", "");
@@ -36,6 +40,9 @@ export function toForm(h: Household): Form {
     traditional: dollars(h.traditionalCents),
     roth: dollars(h.rothCents),
     picks: h.picks,
+    events: h.events ?? [],
+    spendingRule: h.spendingRule ?? "fixed",
+    withdrawalOrder: h.withdrawalOrder ?? "standard",
   };
 }
 
@@ -82,6 +89,9 @@ export function fromForm(f: Form): Household {
     traditionalCents: money(f.traditional, "Traditional 401(k)/IRA"),
     rothCents: money(f.roth, "Roth"),
     picks: f.picks,
+    events: f.events,
+    spendingRule: f.spendingRule,
+    withdrawalOrder: f.withdrawalOrder,
   };
 }
 
