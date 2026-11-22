@@ -306,6 +306,8 @@ impl Household {
                 })
                 .collect(),
             horizon_age: 95,
+            spending_rule: Default::default(),
+            withdrawal_order: Default::default(),
         })
     }
 }

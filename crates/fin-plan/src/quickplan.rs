@@ -109,6 +109,8 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
         annual_spending: Money::from_cents(req.spending_cents),
         one_time_costs: vec![],
         horizon_age: 95,
+        spending_rule: Default::default(),
+        withdrawal_order: Default::default(),
     };
     run_plan(&plan, &req.picks, req.runs)
 }
