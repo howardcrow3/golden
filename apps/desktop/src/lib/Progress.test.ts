@@ -55,4 +55,33 @@ describe("pairPoints", () => {
   it("handles nothing", () => {
     expect(pairPoints([], [], 10, 10)).toEqual(["", ""]);
   });
+
+  it("adds and removes your own check-ins", async () => {
+    const calls: [string, unknown][] = [];
+    let journal: unknown[] = [];
+    const invoke = async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push([cmd, args]);
+      if (cmd === "add_journal_entry")
+        journal = [{ date: args!.date, note: args!.note, savingsCents: args!.savingsCents, projectedCents: 400_000, aheadCents: (args!.savingsCents as number) - 400_000 }];
+      if (cmd === "remove_journal_entry") journal = [];
+      return cmd === "progress" ? { ...report, journal } : undefined;
+    };
+    render(Progress, { invoke });
+    await waitFor(() => screen.getByLabelText("Savings total"));
+    await fireEvent.input(screen.getByLabelText("Savings total"), { target: { value: "5,000" } });
+    await fireEvent.input(screen.getByLabelText("Check-in note"), { target: { value: "Brokerage" } });
+    await fireEvent.click(screen.getByText("Add check-in"));
+    await waitFor(() => screen.getByTestId("journal-row"));
+    expect(screen.getByTestId("journal-row").textContent).toContain("ahead by $1,000");
+    expect(calls.find(([c]) => c === "add_journal_entry")![1]).toMatchObject({ savingsCents: 500_000, note: "Brokerage" });
+    await fireEvent.click(screen.getByText("Remove"));
+    await waitFor(() => expect(screen.queryByTestId("journal-row")).toBeNull());
+  });
+
+  it("asks for a dollar amount before adding a check-in", async () => {
+    render(Progress, { invoke: async (cmd: string) => (cmd === "progress" ? { ...report, journal: [] } : undefined) });
+    await waitFor(() => screen.getByLabelText("Savings total"));
+    await fireEvent.click(screen.getByText("Add check-in"));
+    expect((await screen.findByRole("alert")).textContent).toContain("dollar amount");
+  });
 });

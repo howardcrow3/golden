@@ -673,6 +673,16 @@ fn stop_progress(state: Shared) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn add_journal_entry(state: Shared, date: String, savings_cents: i64, note: String) -> Result<(), String> {
+    lock(&state)?.add_journal_entry(&date, savings_cents, &note)
+}
+
+#[tauri::command]
+fn remove_journal_entry(state: Shared, date: String) -> Result<(), String> {
+    lock(&state)?.remove_journal_entry(&date)
+}
+
+#[tauri::command]
 fn progress(state: Shared) -> Result<Option<fin_app::progress::ProgressReport>, String> {
     lock(&state)?.progress()
 }
@@ -824,6 +834,8 @@ pub fn run() {
             net_worth_history,
             start_progress,
             stop_progress,
+            add_journal_entry,
+            remove_journal_entry,
             progress,
             goals,
             set_goal,

@@ -52,3 +52,36 @@ fn stopping_clears_it_and_starting_again_replaces_it() {
     a.start_progress_tracking().unwrap();
     assert!(a.progress().unwrap().is_some());
 }
+
+#[test]
+fn journal_entries_are_compared_with_the_projection() {
+    let a = app();
+    a.start_progress_tracking().unwrap();
+    a.add_journal_entry("2026-10-31", 9_999_999_900, "Year-end check")
+        .unwrap();
+    a.add_journal_entry("2026-10-31", 1_00, "Replaced").unwrap();
+    a.add_journal_entry("2026-09-30", 5_000_000, "").unwrap();
+    let r = a.progress().unwrap().unwrap();
+    assert_eq!(r.journal.len(), 2);
+    // Oldest first, and the same date was replaced.
+    assert_eq!(r.journal[0].date, "2026-09-30");
+    assert_eq!(r.journal[1].note, "Replaced");
+    for j in &r.journal {
+        assert_eq!(j.ahead_cents, j.savings_cents - j.projected_cents);
+    }
+    a.remove_journal_entry("2026-09-30").unwrap();
+    assert_eq!(a.progress().unwrap().unwrap().journal.len(), 1);
+}
+
+#[test]
+fn bad_journal_entries_are_readable_errors() {
+    let a = app();
+    assert!(a
+        .add_journal_entry("last week", 1, "")
+        .unwrap_err()
+        .contains("year-month-day"));
+    assert!(a
+        .add_journal_entry("2026-10-01", -5, "")
+        .unwrap_err()
+        .contains("negative"));
+}

@@ -682,6 +682,20 @@ export interface ProgressReport {
   started: string;
   points: ProgressPoint[];
   aheadCents: number;
+  journal?: JournalPoint[];
+}
+export interface JournalPoint {
+  date: string;
+  note: string;
+  savingsCents: number;
+  projectedCents: number;
+  aheadCents: number;
+}
+export async function addJournalEntry(date: string, savingsCents: number, note: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("add_journal_entry", { date, savingsCents, note });
+}
+export async function removeJournalEntry(date: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("remove_journal_entry", { date });
 }
 export async function getProgress(invoke?: Invoke): Promise<ProgressReport | null> {
   const r = (await (await resolve(invoke))("progress")) as ProgressReport | null;
