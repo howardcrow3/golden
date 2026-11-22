@@ -91,6 +91,54 @@ pub struct QuickPlanResult {
     pub legacy: crate::estate::LegacyView,
     /// Heads-ups, worst first.
     pub alerts: Vec<crate::alerts::Alert>,
+    /// What each self-employed income could put into a Solo 401(k) or SEP IRA this year.
+    pub self_employed_limits: Vec<SelfEmployedLimit>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SelfEmployedLimit {
+    pub label: String,
+    pub net_earnings_cents: i64,
+    pub solo_401k_cents: i64,
+    pub sep_ira_cents: i64,
+    /// What the plan already counts as saved from this income.
+    pub saving_cents: i64,
+}
+
+/// Contribution room for each self-employed income in the plan's first year.
+pub fn self_employed_limits(plan: &PlanInput) -> Vec<SelfEmployedLimit> {
+    let fed = crate::tax::FederalTaxYear::y2026();
+    plan.streams
+        .iter()
+        .filter(|s| {
+            s.self_employed && s.start_year <= plan.start_year && plan.start_year <= s.end_year
+        })
+        .map(|s| {
+            let age = plan.people.get(s.person).map_or(40, |p| {
+                plan.start_year
+                    - p.birth_date
+                        .format("%Y")
+                        .to_string()
+                        .parse::<i32>()
+                        .unwrap_or(0)
+            });
+            let se = fed.self_employment_tax(plan.filing, s.annual_gross, fin_core::Money::ZERO);
+            SelfEmployedLimit {
+                label: s.label.clone(),
+                net_earnings_cents: s.annual_gross.cents(),
+                solo_401k_cents: crate::tax::federal::solo_401k_limit(
+                    age,
+                    s.annual_gross,
+                    se.deduction,
+                )
+                .cents(),
+                sep_ira_cents: crate::tax::federal::sep_ira_limit(s.annual_gross, se.deduction)
+                    .cents(),
+                saving_cents: s.traditional_contribution.cents(),
+            }
+        })
+        .collect()
 }
 
 pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
@@ -467,6 +515,7 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         milestones,
         legacy,
         alerts,
+        self_employed_limits: self_employed_limits(plan),
     })
 }
 
@@ -663,5 +712,25 @@ mod legacy_tests {
             l.gross_cents - l.estate_tax_cents - l.heir_income_tax_cents
         );
         assert!(l.exemption_cents >= 1_500_000_000);
+    }
+}
+
+#[cfg(test)]
+mod limit_tests {
+    use super::*;
+    use crate::projection::fixtures::couple;
+
+    #[test]
+    fn self_employed_income_shows_contribution_room() {
+        let mut plan = couple();
+        assert!(self_employed_limits(&plan).is_empty());
+        plan.streams[0].self_employed = true;
+        plan.streams[0].annual_gross = Money::from_dollars(100_000);
+        let l = self_employed_limits(&plan);
+        assert_eq!(l.len(), 1);
+        // Employee deferral plus a fifth of earnings after half the SE tax.
+        assert!(l[0].solo_401k_cents > l[0].sep_ira_cents);
+        assert!(l[0].sep_ira_cents > 0 && l[0].sep_ira_cents < 2_000_000);
+        assert_eq!(l[0].net_earnings_cents, 10_000_000);
     }
 }

@@ -87,6 +87,25 @@ pub struct Household {
     /// City or county income tax key (see `fin_plan::local`), if one applies.
     #[serde(default)]
     pub locality: Option<String>,
+    /// Your own healthcare figures instead of the built-in estimates (used when `health` is on).
+    #[serde(default)]
+    pub health_detail: Option<HealthRow>,
+}
+
+/// Healthcare estimates you can change. Money in cents; percentages in basis points.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthRow {
+    pub pre_65_cents: i64,
+    pub post_65_cents: i64,
+    /// Growth above inflation: 150 is 1.5%.
+    pub excess_inflation_bp: i32,
+    /// Age care starts; zero for no long-term care.
+    pub ltc_start_age: i32,
+    pub ltc_years: i32,
+    pub ltc_annual_cents: i64,
+    /// Chance care is needed: 5000 is 50%.
+    pub ltc_chance_bp: i32,
 }
 
 /// A child, with what you expect to pay on top of everyday spending.
@@ -228,6 +247,7 @@ impl From<LegacyHousehold> for Household {
             home: None,
             children: vec![],
             locality: None,
+            health_detail: None,
         }
     }
 }
@@ -504,12 +524,41 @@ impl Household {
             }
         };
         let health_costs = if self.health {
-            fin_plan::healthcare::yearly_costs(
-                &fin_plan::healthcare::HealthCosts::defaults(),
-                &people,
-                year,
-                95,
-            )
+            let costs = match &self.health_detail {
+                None => fin_plan::healthcare::HealthCosts::defaults(),
+                Some(r) => {
+                    if r.pre_65_cents < 0
+                        || r.post_65_cents < 0
+                        || r.ltc_annual_cents < 0
+                        || r.ltc_years < 0
+                    {
+                        return Err("Healthcare amounts cannot be negative.".into());
+                    }
+                    if !(0..=1000).contains(&r.excess_inflation_bp)
+                        || !(0..=10_000).contains(&r.ltc_chance_bp)
+                    {
+                        return Err(
+                            "Healthcare growth should be 0 to 10 percent and the chance of care 0 to 100 percent."
+                                .into(),
+                        );
+                    }
+                    fin_plan::healthcare::HealthCosts {
+                        pre_65: Money::from_cents(r.pre_65_cents),
+                        out_of_pocket_65_plus: Money::from_cents(r.post_65_cents),
+                        excess_inflation: r.excess_inflation_bp as f64 / 10_000.0,
+                        ltc: (r.ltc_start_age > 0 && r.ltc_years > 0).then(|| {
+                            fin_plan::healthcare::LongTermCare {
+                                person: 0,
+                                start_age: r.ltc_start_age,
+                                years: r.ltc_years,
+                                annual_cost: Money::from_cents(r.ltc_annual_cents),
+                                chance: r.ltc_chance_bp as f64 / 10_000.0,
+                            }
+                        }),
+                    }
+                }
+            };
+            fin_plan::healthcare::yearly_costs(&costs, &people, year, 95)
         } else {
             vec![]
         };
