@@ -89,6 +89,9 @@ pub enum ConversionTarget {
     /// Convert as much as keeps taxable income inside the federal bracket whose rate is
     /// `top_rate` (0.12 fills the 12% bracket); Social Security taxation is accounted for.
     FillBracket { top_rate: f64 },
+    /// Convert as much as keeps income on the return at or under the first Medicare surcharge
+    /// (IRMAA) threshold, so the conversion does not raise premiums two years later.
+    UnderIrmaa,
 }
 
 /// Move money from traditional to Roth accounts in each year from `start_year` to `end_year`.
@@ -307,6 +310,30 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 .filter(|c| c.year == year)
                 .map(|c| c.amount)
                 .sum::<Money>();
+        // Money drawn from traditional accounts to live on counts as income too, so conversions
+        // that aim at an income limit estimate it first.
+        let live_from_traditional = || -> Money {
+            // Money drawn from traditional accounts to live on counts as income
+            // too, so estimate it before sizing the conversion.
+            let gap0 = spending
+                - (wages - contrib + rmd + ss - fica - base_tax(earned_ordinary, Money::ZERO));
+            let before_trad = match input.withdrawal_order {
+                WithdrawalOrder::Standard => acc.cash + acc.taxable,
+                WithdrawalOrder::TraditionalFirst => acc.cash,
+                WithdrawalOrder::RothFirst => acc.total(),
+                WithdrawalOrder::Blended => acc.cash,
+            };
+            let mut live = (gap0 - before_trad).max(Money::ZERO);
+            if input.withdrawal_order == WithdrawalOrder::Blended {
+                let pool = acc.taxable + acc.traditional + acc.roth;
+                live = if pool > Money::ZERO {
+                    live.mul_rate(acc.traditional.cents() as f64 / pool.cents() as f64)
+                } else {
+                    Money::ZERO
+                };
+            }
+            live
+        };
         // Roth conversion: income tax on it is paid like any other tax, out of the accounts.
         let mut converted = Money::ZERO;
         if let Some(rc) = input.roth_conversion {
@@ -324,29 +351,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                         match ceiling {
                             None => acc.traditional,
                             Some(ceiling) => {
-                                // Money drawn from traditional accounts to live on counts as income
-                                // too, so estimate it before sizing the conversion.
-                                let gap0 = spending
-                                    - (wages - contrib + ss
-                                        - fica
-                                        - base_tax(earned_ordinary, Money::ZERO));
-                                let before_trad = match input.withdrawal_order {
-                                    WithdrawalOrder::Standard => acc.cash + acc.taxable,
-                                    WithdrawalOrder::TraditionalFirst => acc.cash,
-                                    WithdrawalOrder::RothFirst => acc.total(),
-                                    WithdrawalOrder::Blended => acc.cash,
-                                };
-                                let mut live = (gap0 - before_trad).max(Money::ZERO);
-                                if input.withdrawal_order == WithdrawalOrder::Blended {
-                                    let pool = acc.taxable + acc.traditional + acc.roth;
-                                    live = if pool > Money::ZERO {
-                                        live.mul_rate(
-                                            acc.traditional.cents() as f64 / pool.cents() as f64,
-                                        )
-                                    } else {
-                                        Money::ZERO
-                                    };
-                                }
+                                let live = live_from_traditional();
                                 let live = live.min(acc.traditional);
                                 let taxable_after = |c: Money| {
                                     let ord = earned_ordinary + live + c;
@@ -381,6 +386,32 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                                     Money::from_cents(lo)
                                 }
                             }
+                        }
+                    }
+                    ConversionTarget::UnderIrmaa => {
+                        let limit = crate::medicare::next_cliff(input.filing, Money::ZERO)
+                            .unwrap_or(acc.traditional);
+                        let live = live_from_traditional().min(acc.traditional);
+                        let agi_after = |c: Money| {
+                            let ord = earned_ordinary + live + c;
+                            ord + taxable_social_security(input.filing, ss, ord)
+                        };
+                        let room_cap = acc.traditional - live;
+                        if room_cap <= Money::ZERO || agi_after(Money::ZERO) >= limit {
+                            Money::ZERO
+                        } else if agi_after(room_cap) <= limit {
+                            room_cap
+                        } else {
+                            let (mut lo, mut hi) = (0i64, room_cap.cents());
+                            while hi - lo > 100 {
+                                let mid = (lo + hi) / 2;
+                                if agi_after(Money::from_cents(mid)) <= limit {
+                                    lo = mid;
+                                } else {
+                                    hi = mid;
+                                }
+                            }
+                            Money::from_cents(lo)
                         }
                     }
                 };
@@ -1090,5 +1121,53 @@ mod tests {
         // The couple earns more than a retiree on savings alone, so their rate is not lower.
         let retired_rate = project_constant(&retired(), 0.03).rows[0].marginal_rate;
         assert!(first.marginal_rate >= retired_rate);
+    }
+
+    #[test]
+    fn converting_under_the_irmaa_cliff_keeps_income_at_or_below_it() {
+        let mut p = retired();
+        p.medicare = true;
+        p.accounts.traditional = Money::from_dollars(2_000_000);
+        p.accounts.roth = Money::ZERO;
+        p.accounts.taxable = Money::from_dollars(1_500_000);
+        p.accounts.taxable_gain_share = 0.0;
+        p.roth_conversion = Some(RothConversion {
+            start_year: 2026,
+            end_year: 2036,
+            target: ConversionTarget::UnderIrmaa,
+        });
+        let proj = project_constant(&p, 0.03);
+        let limit = crate::medicare::next_cliff(p.filing, Money::ZERO).unwrap();
+        let mut converted_years = 0;
+        for r in proj
+            .rows
+            .iter()
+            .filter(|r| r.year <= 2036 && r.rmd == Money::ZERO)
+        {
+            assert!(
+                r.agi <= limit + Money::from_dollars(2),
+                "{} {:?}",
+                r.year,
+                r.agi
+            );
+            if r.converted > Money::ZERO {
+                converted_years += 1;
+                // It fills right up to the cliff rather than stopping short.
+                assert!(
+                    r.agi >= limit - Money::from_dollars(2_000),
+                    "{} {:?}",
+                    r.year,
+                    r.agi
+                );
+            }
+        }
+        assert!(converted_years >= 5);
+        // And the premiums stay at the base tier.
+        let tier = |r: &YearRow| crate::medicare::irmaa_tier(p.filing, r.agi);
+        assert!(proj
+            .rows
+            .iter()
+            .filter(|r| r.year <= 2036)
+            .all(|r| tier(r) == 0));
     }
 }
