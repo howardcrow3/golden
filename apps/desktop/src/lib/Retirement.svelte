@@ -11,12 +11,14 @@
   import SsExplorer from "./SsExplorer.svelte";
   import PlanReport from "./PlanReport.svelte";
   import PlannerScore from "./PlannerScore.svelte";
+  import FanChart from "./FanChart.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let f = $state<Form | null>(null);
   let result = $state<QuickPlanResult | null>(null);
   let error = $state("");
   let busy = $state(false);
+  let trials = $state(400);
   const thisYear = new Date().getFullYear();
 
   $effect(() => {
@@ -31,7 +33,7 @@
     error = "";
     try {
       await saveHousehold(fromForm(f), invoke);
-      result = await runPlan(400, invoke);
+      result = await runPlan(trials, invoke);
     } catch (e) {
       result = null;
       error = e instanceof Error ? e.message : String(e);
@@ -43,7 +45,7 @@
   async function rerun() {
     if (!result) return;
     try {
-      result = await runPlan(400, invoke);
+      result = await runPlan(trials, invoke);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -154,6 +156,16 @@
       {#if result.depletedYear}On the average path the money runs out in {result.depletedYear}.{/if}
     </p>
     <svg viewBox="0 0 640 180" role="img" aria-label="Projected balance by year"><polyline fill="none" stroke="var(--gold)" stroke-width="2" {points} /></svg>
+    <FanChart {result} />
+    <label class="trials">Simulated futures
+      <select bind:value={trials} onchange={rerun} aria-label="Simulated futures">
+        <option value={200}>200 (fast)</option>
+        <option value={400}>400</option>
+        <option value={1000}>1,000</option>
+        <option value={2500}>2,500</option>
+        <option value={5000}>5,000 (slowest)</option>
+      </select>
+    </label>
     <Explain {invoke} facts={{ successRate: result.successRate, depletedYear: result.depletedYear, retireAge: null, horizonAge: result.horizonAge, compare: null }} />
     <SafeSpend {invoke} refresh={result} />
     <SsExplorer {invoke} refresh={result} />

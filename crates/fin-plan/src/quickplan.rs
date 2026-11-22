@@ -42,6 +42,18 @@ pub struct YearPoint {
     pub balance_cents: i64,
     pub spending_cents: i64,
     pub taxes_cents: i64,
+    /// Balance percentiles across the simulated runs, for the fan chart.
+    pub p10_cents: i64,
+    pub p50_cents: i64,
+    pub p90_cents: i64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HistogramBin {
+    pub from_cents: i64,
+    pub to_cents: i64,
+    pub count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -53,6 +65,11 @@ pub struct QuickPlanResult {
     pub p50_cents: i64,
     pub p90_cents: i64,
     pub years: Vec<YearPoint>,
+    /// Runs by final balance, in ten equal steps from zero to the largest.
+    pub histogram: Vec<HistogramBin>,
+    /// How many simulated futures and the seed they came from: the same two give the same answer.
+    pub runs: usize,
+    pub seed: u64,
     pub real_return: f64,
     pub volatility: f64,
     pub horizon_age: i32,
@@ -259,6 +276,8 @@ pub fn ss_explore(plan: &PlanInput, picks: &Picks) -> Result<SsExplore, String> 
     })
 }
 
+const SEED: u64 = 20_260_101;
+
 /// Run any household plan (any number of people and income streams) with what-if picks.
 pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPlanResult, String> {
     let r = scenario::run(
@@ -266,7 +285,7 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         &Assumptions::defaults(),
         picks,
         runs.clamp(10, 5_000),
-        20_260_101,
+        SEED,
     )
     .map_err(|e| e.to_string())?;
     Ok(QuickPlanResult {
@@ -279,14 +298,33 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
             .projection
             .rows
             .iter()
-            .map(|y| YearPoint {
-                year: y.year,
-                age: y.age,
-                balance_cents: y.end_balance.cents(),
-                spending_cents: y.spending.cents(),
-                taxes_cents: y.taxes.cents(),
+            .enumerate()
+            .map(|(i, y)| {
+                let band = r.monte_carlo.bands.get(i);
+                YearPoint {
+                    year: y.year,
+                    age: y.age,
+                    balance_cents: y.end_balance.cents(),
+                    spending_cents: y.spending.cents(),
+                    taxes_cents: y.taxes.cents(),
+                    p10_cents: band.map_or(y.end_balance.cents(), |b| b.p10.cents()),
+                    p50_cents: band.map_or(y.end_balance.cents(), |b| b.p50.cents()),
+                    p90_cents: band.map_or(y.end_balance.cents(), |b| b.p90.cents()),
+                }
             })
             .collect(),
+        histogram: r
+            .monte_carlo
+            .histogram
+            .iter()
+            .map(|h| HistogramBin {
+                from_cents: h.from.cents(),
+                to_cents: h.to.cents(),
+                count: h.count,
+            })
+            .collect(),
+        runs: r.monte_carlo.runs,
+        seed: SEED,
         real_return: r.inputs.real_return,
         volatility: r.inputs.volatility,
         horizon_age: r.inputs.horizon_age,
