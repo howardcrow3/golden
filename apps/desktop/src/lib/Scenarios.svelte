@@ -2,6 +2,9 @@
   import {
     compareScenarios,
     deleteScenario,
+    duplicateScenario,
+    moveScenario,
+    renameScenario,
     listScenarios,
     makePlan,
     undoablePlan,
@@ -11,6 +14,7 @@
     type SavedScenario,
   } from "./api";
   import { formatCents, formatPercent } from "./money";
+  import { linePoints } from "./chart";
 
   let { invoke, refresh = 0, onchange }: { invoke?: Invoke; refresh?: number; onchange?: () => void } = $props();
   let list = $state<SavedScenario[]>([]);
@@ -20,6 +24,8 @@
   let note = $state("");
   let error = $state("");
   let busy = $state(false);
+  let renaming = $state<number | null>(null);
+  let draft = $state("");
 
   async function load() {
     try {
@@ -51,6 +57,26 @@
       busy = false;
     }
   }
+  async function act(f: () => Promise<unknown>) {
+    error = "";
+    note = "";
+    try {
+      await f();
+      columns = null;
+      await load();
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+  function startRename(s: SavedScenario) {
+    renaming = s.id;
+    draft = s.name;
+  }
+  async function saveRename(s: SavedScenario) {
+    await act(() => renameScenario(s.id, draft, invoke));
+    if (!error) renaming = null;
+  }
+  const colours = ["var(--ink, #222)", "var(--gold)", "#4a7", "#a47"];
   async function remove(s: SavedScenario) {
     error = "";
     try {
@@ -107,8 +133,21 @@
         <li data-testid="scenario">
           <label>
             <input type="checkbox" checked={chosen.includes(s.id)} disabled={!chosen.includes(s.id) && chosen.length >= 3} onchange={() => toggle(s.id)} aria-label={`Compare ${s.name}`} />
-            <b>{s.name}</b>
+            {#if renaming === s.id}
+              <input bind:value={draft} aria-label={`New name for ${s.name}`} />
+            {:else}
+              <b>{s.name}</b>
+            {/if}
           </label>
+          {#if renaming === s.id}
+            <button type="button" onclick={() => saveRename(s)}>Save name</button>
+            <button type="button" onclick={() => (renaming = null)}>Cancel</button>
+          {:else}
+            <button type="button" onclick={() => startRename(s)} aria-label={`Rename ${s.name}`}>Rename</button>
+            <button type="button" onclick={() => act(() => duplicateScenario(s.id, invoke))} aria-label={`Duplicate ${s.name}`}>Duplicate</button>
+            <button type="button" onclick={() => act(() => moveScenario(s.id, -1, invoke))} aria-label={`Move ${s.name} up`}>↑</button>
+            <button type="button" onclick={() => act(() => moveScenario(s.id, 1, invoke))} aria-label={`Move ${s.name} down`}>↓</button>
+          {/if}
           <span class="muted">{s.descriptions.join("; ")}</span>
           <button type="button" onclick={() => adopt(s)}>Make this my plan</button>
           <button type="button" onclick={() => remove(s)} aria-label={`Delete ${s.name}`}>Delete</button>
@@ -130,6 +169,18 @@
         <tr><th>Money runs out</th>{#each columns as c}<td>{c.result.depletedYear ?? "Not in the plan"}</td>{/each}</tr>
       </tbody>
     </table>
+    {#if columns.some((c) => c.result.years.length > 1)}
+      <figure>
+        <svg viewBox="0 0 640 180" role="img" aria-label="Median balance by year, plans overlaid" data-testid="overlay">
+          {#each columns as c, i}
+            <polyline fill="none" stroke={colours[i % colours.length]} stroke-width="2" points={linePoints(c.result.years.map((y) => y.p50Cents ?? y.balanceCents), 640, 180)} />
+          {/each}
+        </svg>
+        <figcaption>
+          {#each columns as c, i}<span class="key" style:color={colours[i % colours.length]}>━ {c.name}</span>{/each}
+        </figcaption>
+      </figure>
+    {/if}
   {/if}
 </section>
 
@@ -138,6 +189,9 @@
   ul { list-style: none; padding: 0; display: grid; gap: 8px; }
   li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .muted { color: var(--muted); }
+  .key { margin-right: 12px; font-size: 12px; }
+  figure { margin: 8px 0; }
+  svg { width: 100%; height: 180px; border: 1px solid var(--line); background: var(--ivory); }
   table { border-collapse: collapse; }
   th, td { text-align: left; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--line); }
 </style>

@@ -77,4 +77,38 @@ describe("Scenarios", () => {
     render(Scenarios, { invoke: async (c: string) => { if (c === "list_scenarios") throw new Error("locked"); return null; } });
     expect((await screen.findByRole("alert")).textContent).toMatch(/locked/);
   });
+
+  it("renames, duplicates and moves scenarios", async () => {
+    const calls: [string, Record<string, unknown> | undefined][] = [];
+    render(Scenarios, { invoke: fake(calls) });
+    await screen.findAllByTestId("scenario");
+    await fireEvent.click(screen.getByRole("button", { name: "Rename Retire at 67" }));
+    const box = screen.getByLabelText("New name for Retire at 67") as HTMLInputElement;
+    await fireEvent.input(box, { target: { value: "Later" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+    await waitFor(() => expect(calls.find(([c]) => c === "rename_scenario")?.[1]).toEqual({ id: 2, name: "Later" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Duplicate Spend less" }));
+    await waitFor(() => expect(calls.find(([c]) => c === "duplicate_scenario")?.[1]).toEqual({ id: 3 }));
+    await fireEvent.click(screen.getByRole("button", { name: "Move Spend less up" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Move Retire at 62 down" }));
+    await waitFor(() => expect(calls.filter(([c]) => c === "move_scenario").map(([, a]) => a)).toEqual([{ id: 3, by: -1 }, { id: 1, by: 1 }]));
+  });
+  it("overlays the compared plans on one chart", async () => {
+    const withYears = (rate: number) => ({ ...result(rate), years: [
+      { year: 2026, age: 45, balanceCents: 1, spendingCents: 1, taxesCents: 1, p50Cents: 100 },
+      { year: 2027, age: 46, balanceCents: 2, spendingCents: 1, taxesCents: 1, p50Cents: 300 },
+    ] });
+    const invoke = async (c: string) => {
+      if (c === "list_scenarios") return list;
+      if (c === "undoable_plan") return null;
+      if (c === "compare_scenarios") return { columns: [{ name: "Current plan", descriptions: [], result: withYears(0.8) }, { name: "Retire at 62", descriptions: [], result: withYears(0.6) }] };
+      return {};
+    };
+    render(Scenarios, { invoke });
+    await screen.findAllByTestId("scenario");
+    await fireEvent.click(screen.getByLabelText("Compare Retire at 62"));
+    await fireEvent.click(screen.getByRole("button", { name: /Compare with my current plan/ }));
+    const chart = await screen.findByTestId("overlay");
+    expect(chart.querySelectorAll("polyline")).toHaveLength(2);
+  });
 });

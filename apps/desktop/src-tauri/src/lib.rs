@@ -287,6 +287,21 @@ fn save_scenario(state: Shared, name: String, changes: Vec<Change>) -> Result<fi
 }
 
 #[tauri::command]
+fn rename_scenario(state: Shared, id: u32, name: String) -> Result<fin_app::scenarios::SavedScenario, String> {
+    lock(&state)?.rename_scenario(id, &name)
+}
+
+#[tauri::command]
+fn duplicate_scenario(state: Shared, id: u32) -> Result<fin_app::scenarios::SavedScenario, String> {
+    lock(&state)?.duplicate_scenario(id)
+}
+
+#[tauri::command]
+fn move_scenario(state: Shared, id: u32, by: i32) -> Result<Vec<fin_app::scenarios::SavedScenario>, String> {
+    lock(&state)?.move_scenario(id, by)
+}
+
+#[tauri::command]
 fn delete_scenario(state: Shared, id: u32) -> Result<(), String> {
     lock(&state)?.delete_scenario(id)
 }
@@ -708,6 +723,9 @@ pub fn run() {
             list_scenarios,
             save_scenario,
             delete_scenario,
+            rename_scenario,
+            duplicate_scenario,
+            move_scenario,
             compare_scenarios,
             make_plan,
             undoable_plan,

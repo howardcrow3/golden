@@ -756,6 +756,15 @@ export async function saveScenario(name: string, changes: Change[], invoke?: Inv
 export async function deleteScenario(id: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("delete_scenario", { id });
 }
+export async function renameScenario(id: number, name: string, invoke?: Invoke): Promise<SavedScenario> {
+  return (await (await resolve(invoke))("rename_scenario", { id, name })) as SavedScenario;
+}
+export async function duplicateScenario(id: number, invoke?: Invoke): Promise<SavedScenario> {
+  return (await (await resolve(invoke))("duplicate_scenario", { id })) as SavedScenario;
+}
+export async function moveScenario(id: number, by: number, invoke?: Invoke): Promise<SavedScenario[]> {
+  return (await (await resolve(invoke))("move_scenario", { id, by })) as SavedScenario[];
+}
 export async function compareScenarios(ids: number[], runs: number, invoke?: Invoke): Promise<{ columns: CompareColumn[] }> {
   return (await (await resolve(invoke))("compare_scenarios", { ids, runs })) as { columns: CompareColumn[] };
 }
