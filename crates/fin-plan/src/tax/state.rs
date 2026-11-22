@@ -30,9 +30,76 @@ pub struct StateRules {
     pub credit_single: Money,
     #[serde(default)]
     pub credit_joint: Money,
+    /// New York style benefit recapture for high incomes.
+    #[serde(default)]
+    pub recapture: Option<Recapture>,
+    /// A minimum tax of `rate` x AGI once AGI is over `agi_over` (Vermont).
+    #[serde(default)]
+    pub agi_floor_tax: Option<AgiFloorTax>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
+}
+
+/// The NY IT-201-I "tax computation" worksheets: above `agi_over` the lower
+/// rates are clawed back over `phase_width` of AGI, tier by tier, until the
+/// whole of taxable income is taxed at the flat rate of its tier; above
+/// `agi_full` every dollar is taxed at the top rate.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Recapture {
+    pub agi_over: Money,
+    pub agi_full: Money,
+    pub phase_width: Money,
+    /// Taxable-income ceilings of the recapture tiers (single / joint).
+    pub tops_single: Vec<Money>,
+    pub tops_joint: Vec<Money>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct AgiFloorTax {
+    pub agi_over: Money,
+    pub rate: f64,
+}
+
+fn recapture_tax(
+    table: &BracketTable,
+    rc: &Recapture,
+    tops: &[Money],
+    agi: Money,
+    ti: Money,
+) -> Money {
+    let sched = table.tax(ti);
+    if agi <= rc.agi_over || tops.is_empty() || ti <= Money::ZERO {
+        return sched;
+    }
+    if agi > rc.agi_full {
+        let top = table.0.last().map_or(0.0, |b| b.rate);
+        return ti.mul_rate(top);
+    }
+    let one = Money::from_cents(1);
+    // The flat rate of tier k: the rate just below its ceiling (the top tier
+    // uses the rate that starts at the last ceiling).
+    let flat = |k: usize| {
+        if k < tops.len() {
+            table.marginal_rate(tops[k] - one)
+        } else {
+            table.marginal_rate(tops[tops.len() - 1])
+        }
+    };
+    let ceiling = |k: usize| tops[k.min(tops.len() - 1)];
+    let benefit = |k: usize| ceiling(k).mul_rate(flat(k)) - table.tax(ceiling(k));
+    let phase = |over: Money| {
+        let f = (over.cents() as f64 / rc.phase_width.cents() as f64).clamp(0.0, 1.0);
+        (f * 10_000.0).round() / 10_000.0
+    };
+    let k = tops.iter().position(|&t| ti <= t).unwrap_or(tops.len());
+    if k == 0 {
+        let full = (ti.mul_rate(flat(0)) - sched).max(Money::ZERO);
+        return sched + full.mul_rate(phase(agi - rc.agi_over));
+    }
+    let base = benefit(k - 1);
+    let incr = benefit(k) - base;
+    sched + base + incr.mul_rate(phase(agi - tops[k - 1]))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,7 +157,23 @@ impl StateTaxYear {
         } else {
             r.credit_single
         };
-        Some((table.tax(taxable) - credit).max(Money::ZERO))
+        let mut tax = match &r.recapture {
+            Some(rc) => {
+                let tops = if joint {
+                    &rc.tops_joint
+                } else {
+                    &rc.tops_single
+                };
+                recapture_tax(&table, rc, tops, income, taxable)
+            }
+            None => table.tax(taxable),
+        };
+        if let Some(f) = r.agi_floor_tax {
+            if income > f.agi_over {
+                tax = tax.max(income.mul_rate(f.rate));
+            }
+        }
+        Some((tax - credit).max(Money::ZERO))
     }
 }
 
@@ -263,5 +346,120 @@ mod tests {
                 }
             }
         }
+    }
+
+    // Official 2025 NY IT-201-I schedules, to check the recapture against the
+    // worksheets' own constants.
+    fn ny_2025(joint: bool) -> (BracketTable, Recapture) {
+        let t = |v: &[(i64, f64)]| {
+            BracketTable::new(
+                v.iter()
+                    .map(|&(d, r)| Bracket {
+                        floor: m(d),
+                        rate: r,
+                    })
+                    .collect(),
+            )
+        };
+        let table = if joint {
+            t(&[
+                (0, 0.04),
+                (17_150, 0.045),
+                (23_600, 0.0525),
+                (27_900, 0.055),
+                (161_550, 0.06),
+                (323_200, 0.0685),
+                (2_155_350, 0.0965),
+                (5_000_000, 0.103),
+                (25_000_000, 0.109),
+            ])
+        } else {
+            t(&[
+                (0, 0.04),
+                (8_500, 0.045),
+                (11_700, 0.0525),
+                (13_900, 0.055),
+                (80_650, 0.06),
+                (215_400, 0.0685),
+                (1_077_550, 0.0965),
+                (5_000_000, 0.103),
+                (25_000_000, 0.109),
+            ])
+        };
+        let rc = Recapture {
+            agi_over: m(107_650),
+            agi_full: m(25_000_000),
+            phase_width: m(50_000),
+            tops_single: vec![m(215_400), m(1_077_550), m(5_000_000)],
+            tops_joint: vec![m(161_550), m(323_200), m(2_155_350), m(5_000_000)],
+        };
+        (table, rc)
+    }
+
+    fn near(got: Money, want_dollars: f64) {
+        let diff = (got.cents() as f64 / 100.0 - want_dollars).abs();
+        assert!(diff <= 1.0, "got {got:?}, want {want_dollars}");
+    }
+
+    #[test]
+    fn ny_recapture_matches_the_2025_worksheets() {
+        let (jt, rc) = ny_2025(true);
+        let (st, _) = ny_2025(false);
+        let j = |agi, ti| recapture_tax(&jt, &rc, &rc.tops_joint, m(agi), m(ti));
+        let s = |agi, ti| recapture_tax(&st, &rc, &rc.tops_single, m(agi), m(ti));
+        // Below the AGI threshold: the plain schedule.
+        near(j(100_000, 80_000), 4_067.5);
+        // Worksheet 1: 5.5% against the schedule, phased over $50,000 of AGI.
+        near(j(120_000, 100_000), 5_249.6);
+        near(j(157_650, 100_000), 5_500.0);
+        // Worksheet 2, partly and fully phased in.
+        near(j(180_000, 170_000), 9_690.8);
+        near(j(230_000, 200_000), 12_000.0);
+        // Worksheets 3 and 4 fully phased: the tier's flat rate on all income.
+        near(j(900_000, 500_000), 0.0685 * 500_000.0);
+        near(j(3_000_000, 2_500_000), 0.0965 * 2_500_000.0);
+        near(j(9_000_000, 6_000_000), 0.103 * 6_000_000.0);
+        // Worksheet 6: over $25,000,000 AGI, 10.9% on everything.
+        near(j(30_000_000, 8_000_000), 0.109 * 8_000_000.0);
+        // Single worksheets 7 and 8.
+        near(s(125_000, 100_000), 5_629.1);
+        near(s(400_000, 300_000), 20_550.0);
+        // Constants printed on the worksheets: base 568, incremental 1,831.
+        let at_top = s(1_000_000, 215_400);
+        near(at_top, 0.06 * 215_400.0);
+    }
+
+    #[test]
+    fn ny_2026_data_applies_the_recapture() {
+        let y = StateTaxYear::y2026();
+        let rules = y.rules("NY").unwrap();
+        assert!(rules.recapture.is_some());
+        // Single, AGI $300,000: past the phase-in, so 6.85% on the $292,000
+        // of taxable income after the $8,000 standard deduction.
+        let t = y
+            .income_tax("NY", FilingStatus::Single, m(300_000))
+            .unwrap();
+        near(t, 0.0685 * 292_000.0);
+        // Under the threshold nothing changes.
+        let low = y.income_tax("NY", FilingStatus::Single, m(60_000)).unwrap();
+        assert!(low < m(3_000));
+    }
+
+    #[test]
+    fn vermont_charges_at_least_three_percent_of_agi_over_150k() {
+        let json = r#"{"year":2026,"source":"t","states":{"XX":{"name":"X","kind":"progressive",
+            "brackets":[[0,0.01]],"std_single":0,"std_joint":0,"joint_multiplier":1.0,
+            "approximate":false,"notes":"","agi_floor_tax":{"agi_over":15000000,"rate":0.03}}}}"#;
+        let y = StateTaxYear::from_json(json).unwrap();
+        assert_eq!(
+            y.income_tax("XX", FilingStatus::Single, m(200_000)),
+            Some(m(6_000))
+        );
+        assert_eq!(
+            y.income_tax("XX", FilingStatus::Single, m(100_000)),
+            Some(m(1_000))
+        );
+        let vt = StateTaxYear::y2026();
+        assert!(vt.rules("VT").unwrap().agi_floor_tax.is_some());
     }
 }
