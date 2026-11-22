@@ -1,5 +1,15 @@
+let hidden = false;
+/** Screen-sharing mode: every dollar amount the app formats shows as dots. */
+export function setHideAmounts(on: boolean): void {
+  hidden = on;
+}
+export function amountsHidden(): boolean {
+  return hidden;
+}
+
 /** Format integer cents as US dollars: 123456 -> "$1,234.56". */
 export function formatCents(cents: number, opts: { whole?: boolean } = {}): string {
+  if (hidden) return "$•••••";
   const neg = cents < 0;
   const abs = Math.abs(Math.round(cents));
   const whole = opts.whole ? Math.round(abs / 100) : Math.floor(abs / 100);
