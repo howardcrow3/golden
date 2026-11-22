@@ -203,6 +203,8 @@ export interface Household {
   medicare?: boolean;
   /** Add estimated healthcare and long-term care costs. */
   health?: boolean;
+  /** Yearly charitable giving, part of spending. */
+  givingCents?: number;
 }
 export interface EventRow {
   label: string;

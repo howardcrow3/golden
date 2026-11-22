@@ -62,6 +62,7 @@ fn household(spending: i64, state: &str) -> PlanInput {
         withdrawal_order: Default::default(),
         roth_conversion: None,
         medicare: false,
+        charity: Money::ZERO,
     }
 }
 

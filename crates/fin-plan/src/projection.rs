@@ -129,6 +129,10 @@ pub struct PlanInput {
     pub roth_conversion: Option<RothConversion>,
     /// Charge Medicare Part B and D premiums, with IRMAA, from age 65.
     pub medicare: bool,
+    /// Yearly giving to charity, part of `annual_spending`, in today's dollars. From 70 and a
+    /// half it is given straight from the IRA (a qualified charitable distribution), which
+    /// keeps that part of the required distribution out of taxable income.
+    pub charity: Money,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -240,7 +244,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         } else {
             Money::ZERO
         };
-        let earned_ordinary = (wages - contrib + rmd - se.deduction - qbi).max(Money::ZERO);
+        let qcd = crate::rmd::qcd(age_now, input.charity, rmd);
+        let earned_ordinary = (wages - contrib + rmd - se.deduction - qbi - qcd).max(Money::ZERO);
         let seniors = input
             .people
             .iter()
@@ -681,6 +686,7 @@ pub(crate) mod fixtures {
             withdrawal_order: WithdrawalOrder::Standard,
             roth_conversion: None,
             medicare: false,
+            charity: Money::ZERO,
         }
     }
 }
@@ -1219,5 +1225,24 @@ mod tests {
         owner.streams[0].self_employed = true;
         let p = project_constant(&owner, 0.04);
         assert_eq!(p.rows[0].income_tax, Money::ZERO);
+    }
+
+    #[test]
+    fn giving_from_the_ira_lowers_tax_once_distributions_start() {
+        let mut plain = couple();
+        plain.charity = Money::from_dollars(20_000);
+        let mut none = couple();
+        none.charity = Money::ZERO;
+        // The giving is already in spending, so only the tax differs.
+        let a = project_constant(&plain, 0.04);
+        let b = project_constant(&none, 0.04);
+        let young = 0; // before 70, no difference
+        assert_eq!(a.rows[young].income_tax, b.rows[young].income_tax);
+        let found = a
+            .rows
+            .iter()
+            .zip(&b.rows)
+            .any(|(x, y)| x.age >= 75 && x.rmd > Money::ZERO && x.income_tax < y.income_tax);
+        assert!(found, "giving never lowered tax");
     }
 }

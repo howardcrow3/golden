@@ -60,3 +60,13 @@ fn old_saved_households_still_load() {
     let h: Household = serde_json::from_value(obj.into()).unwrap();
     assert!(!h.health);
 }
+
+#[test]
+fn giving_is_carried_into_the_plan_and_defaults_to_nothing() {
+    let mut h = Household::sample();
+    assert_eq!(h.plan_input(today()).unwrap().charity.cents(), 0);
+    h.giving_cents = 1_200_000;
+    assert_eq!(h.plan_input(today()).unwrap().charity.cents(), 1_200_000);
+    h.giving_cents = -5;
+    assert_eq!(h.plan_input(today()).unwrap().charity.cents(), 0);
+}

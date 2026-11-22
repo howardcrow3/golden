@@ -74,6 +74,10 @@ pub struct Household {
     /// expected long-term care spell.
     #[serde(default)]
     pub health: bool,
+    /// Yearly giving to charity (part of spending). From 70 and a half it can go straight from
+    /// the IRA, which lowers taxable income.
+    #[serde(default)]
+    pub giving_cents: i64,
 }
 
 fn default_true() -> bool {
@@ -172,6 +176,7 @@ impl From<LegacyHousehold> for Household {
             withdrawal_order: default_withdrawal_order(),
             medicare: true,
             health: false,
+            giving_cents: 0,
         }
     }
 }
@@ -388,6 +393,7 @@ impl Household {
             withdrawal_order: self.withdrawal_order_value()?,
             roth_conversion: None,
             medicare: self.medicare,
+            charity: Money::from_cents(self.giving_cents.max(0)),
         })
     }
 }

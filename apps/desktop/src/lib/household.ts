@@ -19,6 +19,7 @@ export interface Form {
   withdrawalOrder: string;
   medicare: boolean;
   health: boolean;
+  giving: string;
 }
 
 const dollars = (c: number) => formatCents(c, { whole: true }).replace("$", "");
@@ -48,6 +49,7 @@ export function toForm(h: Household): Form {
     withdrawalOrder: h.withdrawalOrder ?? "standard",
     medicare: h.medicare ?? true,
     health: h.health ?? false,
+    giving: dollars(h.givingCents ?? 0),
   };
 }
 
@@ -100,6 +102,7 @@ export function fromForm(f: Form): Household {
     withdrawalOrder: f.withdrawalOrder,
     medicare: f.medicare,
     ...(f.health ? { health: true } : {}),
+    ...(money(f.giving || "0", "Charitable giving") > 0 ? { givingCents: money(f.giving, "Charitable giving") } : {}),
   };
 }
 
