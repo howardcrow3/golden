@@ -78,6 +78,8 @@ pub struct QuickPlanResult {
     pub volatility: f64,
     pub horizon_age: i32,
     pub ss_claim_age: i32,
+    /// Dates worth knowing along the way, in order.
+    pub milestones: Vec<crate::milestones::Milestone>,
 }
 
 pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
@@ -336,6 +338,7 @@ pub fn run_plan(plan: &PlanInput, picks: &Picks, runs: usize) -> Result<QuickPla
         volatility: r.inputs.volatility,
         horizon_age: r.inputs.horizon_age,
         ss_claim_age: r.inputs.ss_claim_age,
+        milestones: crate::milestones::find(plan, &r.projection, r.inputs.real_return),
     })
 }
 

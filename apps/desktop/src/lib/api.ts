@@ -68,6 +68,12 @@ export interface HistogramBin {
   toCents: number;
   count: number;
 }
+export interface Milestone {
+  key: string;
+  label: string;
+  year: number;
+  age: number;
+}
 export interface QuickPlanResult {
   successRate: number;
   depletedYear: number | null;
@@ -82,6 +88,7 @@ export interface QuickPlanResult {
   volatility: number;
   horizonAge: number;
   ssClaimAge: number;
+  milestones?: Milestone[];
 }
 
 export async function quickPlan(req: QuickPlanRequest, invoke?: Invoke): Promise<QuickPlanResult> {
