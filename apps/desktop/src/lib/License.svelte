@@ -2,7 +2,7 @@
   import { activateLicense, DEFAULT_PRICING, getPricing, licenseStatus, openCheckout, type Invoke, type LicenseStatus, type Pricing } from "./api";
   import { formatCents } from "./money";
 
-  let { invoke }: { invoke?: Invoke } = $props();
+  let { invoke, notice = "" }: { invoke?: Invoke; notice?: string } = $props();
   let status = $state<LicenseStatus | null>(null);
   let token = $state("");
   let error = $state("");
@@ -32,7 +32,7 @@
     error = "";
     try {
       await openCheckout(plan, invoke);
-      note = "Checkout opened in your browser. Your licence key will be emailed to you; paste it below.";
+      note = "Checkout opened in your browser. After you pay, open the link in your licence email and Golden activates itself. Or paste the key below.";
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -54,6 +54,8 @@
 <h1>Licence</h1>
 <p class="sub" data-testid="prices">{priceLine(pricing)}</p>
 {#if pricing.warning}<p class="err" role="alert">{pricing.warning}</p>{/if}
+
+{#if notice}<p class="note" role="status" data-testid="link-notice">{notice}</p>{/if}
 
 <section class="card buy" data-testid="buy">
   <button type="button" disabled={!pricing.coreCheckoutUrl} onclick={() => buy("core")}>Buy Golden, {formatCents(pricing.coreCents)}</button>

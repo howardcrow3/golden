@@ -9,6 +9,8 @@ use fin_app::keystore::{open_private, KeyStore};
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
+mod deep_link;
+
 /// The database key lives in the macOS Keychain / Windows Credential Manager.
 struct OsKeyStore;
 
@@ -841,6 +843,15 @@ pub fn run() {
         return;
     }
     tauri::Builder::default()
+        // Single instance comes first so a second launch (a golden:// link) is handed to the running copy.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -853,6 +864,7 @@ pub fn run() {
             app.manage(Mutex::new(core));
             app.manage(std::sync::Arc::new(fin_ai::manager::DownloadState::default()));
             attach_model(app.handle());
+            deep_link::setup(app);
             // Look in the watched folder (if any) for new statements every few minutes.
             let handle = app.handle().clone();
             std::thread::spawn(move || loop {

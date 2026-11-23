@@ -11,7 +11,7 @@
   import Privacy from "./lib/Privacy.svelte";
   import Ask from "./lib/Ask.svelte";
   import PrivacyBadge from "./lib/PrivacyBadge.svelte";
-  import { licenseStatus, type LicenseStatus } from "./lib/api";
+  import { licenseStatus, onLicenseLink, type LicenseStatus } from "./lib/api";
   import { setHideAmounts } from "./lib/money";
 
   const pages = ["Overview", "Transactions", "Import", "Documents", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
@@ -19,6 +19,20 @@
   let lic = $state<LicenseStatus | null>(null);
   $effect(() => {
     licenseStatus().then((s) => (lic = s)).catch(() => (lic = null));
+  });
+  let linkNotice = $state("");
+  $effect(() => {
+    let stop = () => {};
+    let gone = false;
+    onLicenseLink((r) => {
+      linkNotice = r.message;
+      page = "Licence";
+      licenseStatus().then((s) => (lic = s)).catch(() => {});
+    }).then((u) => (gone ? u() : (stop = u)));
+    return () => {
+      gone = true;
+      stop();
+    };
   });
   const KEY = "golden.hideAmounts";
   let remembered = false;
@@ -56,7 +70,7 @@
   </nav>
   <main>
     {#key hide}
-    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License notice={linkNotice} />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
 </div>
