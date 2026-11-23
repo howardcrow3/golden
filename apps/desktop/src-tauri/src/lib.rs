@@ -868,12 +868,20 @@ pub fn run() {
             deep_link::setup(app);
             // Look in the watched folder (if any) for new statements every few minutes.
             let handle = app.handle().clone();
-            std::thread::spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(300));
-                let state = handle.state::<Mutex<Core>>();
-                if let Ok(mut core) = state.lock() {
-                    core.scan_watched();
-                };
+            std::thread::spawn(move || {
+                let mut last_bank_sync = std::time::Instant::now();
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(300));
+                    let state = handle.state::<Mutex<Core>>();
+                    if let Ok(mut core) = state.lock() {
+                        core.scan_watched();
+                        // Linked banks refresh about once a day while Golden is open.
+                        if last_bank_sync.elapsed() >= std::time::Duration::from_secs(24 * 3600) {
+                            last_bank_sync = std::time::Instant::now();
+                            bank::sync_quietly(&mut core);
+                        }
+                    };
+                }
             });
             Ok(())
         })

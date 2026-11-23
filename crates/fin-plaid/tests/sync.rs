@@ -277,3 +277,14 @@ mod link_tests {
         assert!(parse_return(&[]).is_none());
     }
 }
+
+#[test]
+fn a_posted_line_names_the_pending_one_it_replaces() {
+    let t: PlaidTxn = serde_json::from_value(serde_json::json!({
+        "transaction_id": "post", "account_id": "a", "date": "2026-11-03", "amount": 5.0,
+        "name": "X", "pending": false, "pending_transaction_id": "pend"
+    }))
+    .unwrap();
+    assert_eq!(map_txn(&t).replaces.as_deref(), Some("pend"));
+    assert_eq!(map_txn(&txn("plain", 1.0)).replaces, None);
+}

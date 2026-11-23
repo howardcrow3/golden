@@ -70,6 +70,14 @@ fn lock<'a>(s: &'a tauri::State<'_, Mutex<Core>>) -> Result<std::sync::MutexGuar
     s.lock().map_err(|_| "the data store is busy; try again".to_string())
 }
 
+/// The daily background sync: every active bank, quietly. Errors (no network, licence lapsed,
+/// a bank needing sign-in) are left for the Banks page, which shows them when the person syncs.
+pub fn sync_quietly(core: &mut Core) {
+    if core.bank_items().map(|i| i.iter().any(|b| b.status == "active")).unwrap_or(false) {
+        let _ = core.bank_sync_all(&Https, &Keychain);
+    }
+}
+
 #[tauri::command]
 pub fn bank_items(state: tauri::State<'_, Mutex<Core>>) -> Result<Vec<LinkedItem>, String> {
     lock(&state)?.bank_items()
