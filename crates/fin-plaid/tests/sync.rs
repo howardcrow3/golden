@@ -234,3 +234,46 @@ fn accounts_deserialize_from_plaid_json() {
     assert_eq!(p.accounts[0].kind, "depository");
     assert_eq!(p.accounts[0].mask.as_deref(), Some("0000"));
 }
+
+mod link_tests {
+    use fin_plaid::link::*;
+
+    #[test]
+    fn encode_and_decode_round_trip() {
+        let s = "link-sandbox-abc_123 é&=/?";
+        assert_eq!(decode(&encode(s)), s);
+        assert_eq!(encode("a b&c"), "a%20b%26c");
+        assert_eq!(decode("a+b%20c%zz%4"), "a b c%zz%4");
+    }
+
+    #[test]
+    fn page_url_has_one_slash_and_an_encoded_token() {
+        assert_eq!(
+            page_url("https://x.lambda-url.us-east-1.on.aws/", "link-1 a"),
+            "https://x.lambda-url.us-east-1.on.aws/link?token=link-1%20a"
+        );
+    }
+
+    #[test]
+    fn a_finished_sign_in_is_read_from_the_link() {
+        let urls = vec![
+            "golden://activate?key=abc".to_string(),
+            "golden://plaid?public_token=public-sandbox-1&institution=First%20Platypus%20Bank"
+                .to_string(),
+        ];
+        let r = parse_return(&urls).unwrap();
+        assert_eq!(r.public_token, "public-sandbox-1");
+        assert_eq!(r.institution, "First Platypus Bank");
+    }
+
+    #[test]
+    fn missing_institution_gets_a_default_and_missing_token_is_ignored() {
+        let r = parse_return(&["golden://plaid?public_token=p".into()]).unwrap();
+        assert_eq!(r.institution, "Bank");
+        assert!(parse_return(&["golden://plaid?institution=x".into()]).is_none());
+        assert!(parse_return(&["golden://plaid?public_token=".into()]).is_none());
+        assert!(parse_return(&["golden://plaid".into()]).is_none());
+        assert!(parse_return(&["https://evil.example/plaid?public_token=p".into()]).is_none());
+        assert!(parse_return(&[]).is_none());
+    }
+}

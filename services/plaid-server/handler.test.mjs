@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
-import { checkLicence, createHandler, plaidBody } from "./handler.mjs";
+import { checkLicence, createHandler, plaidBody, LINK_PAGE } from "./handler.mjs";
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 const rawPub = publicKey.export({ format: "der", type: "spki" }).subarray(12).toString("base64url");
@@ -105,4 +105,27 @@ test("Plaid's own error is passed through with its status", async () => {
 test("the secret never appears in a response", async () => {
   const r = await call("/link/token", { licence: licence() }, { fetchImpl: okFetch() });
   assert.ok(!r.body.includes("sec"));
+});
+
+test("GET /link serves the sign-in page with no secrets and no caching", async () => {
+  const h = createHandler({ env, now });
+  const r = await h({ rawPath: "/link", requestContext: { http: { method: "GET" } } });
+  assert.equal(r.statusCode, 200);
+  assert.match(r.headers["content-type"], /text\/html/);
+  assert.equal(r.headers["cache-control"], "no-store");
+  assert.ok(r.body.includes("cdn.plaid.com/link/v2/stable/link-initialize.js"));
+  assert.ok(r.body.includes("golden://plaid?public_token="));
+  assert.ok(!r.body.includes("client_id") && !r.body.includes("PLAID_SECRET"));
+  assert.equal(r.body, LINK_PAGE);
+});
+
+test("other GETs are still refused", async () => {
+  const h = createHandler({ env, now });
+  assert.equal((await h({ rawPath: "/transactions/sync", requestContext: { http: { method: "GET" } } })).statusCode, 405);
+});
+
+test("the OAuth return address is added to the link token when configured", () => {
+  const t = plaidBody("/link/token", {}, { clientId: "c", secret: "s", redirectUri: "https://x/link" });
+  assert.equal(t.redirect_uri, "https://x/link");
+  assert.equal("redirect_uri" in plaidBody("/link/token", {}, { clientId: "c", secret: "s" }), false);
 });

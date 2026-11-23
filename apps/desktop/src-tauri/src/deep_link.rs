@@ -47,6 +47,11 @@ fn activate(app: &AppHandle, token: &str) -> LinkResult {
 
 fn dispatch(app: &AppHandle, urls: Vec<String>) {
     show_main_window(app);
+    // Coming back from a bank's sign-in page: hand the token to the screen, which finishes linking.
+    if let Some(done) = fin_plaid::link::parse_return(&urls) {
+        let _ = app.emit(crate::bank::LINK_EVENT, done);
+        return;
+    }
     // A link that is not an activation link only brings the window forward.
     if let Some(token) = fin_license::link::token_from_links(&urls) {
         let result = activate(app, &token);
