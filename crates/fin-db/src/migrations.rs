@@ -73,6 +73,17 @@ const MIGRATIONS: &[&str] = &[
         content  BLOB NOT NULL
     );
     "#,
+    // Bank connections: lines synced from a bank carry the bank's own id and may be pending.
+    r#"
+    ALTER TABLE txn ADD COLUMN external_id TEXT;
+    ALTER TABLE txn ADD COLUMN pending INTEGER NOT NULL DEFAULT 0;
+    CREATE UNIQUE INDEX txn_external ON txn(external_id) WHERE external_id IS NOT NULL;
+    CREATE TABLE bank_account (
+        bank_account_id TEXT PRIMARY KEY,
+        item_id         TEXT NOT NULL,
+        account_id      INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE
+    );
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

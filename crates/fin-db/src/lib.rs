@@ -1,5 +1,6 @@
 //! SQLite storage: migrations, accounts, and the transaction ledger with
 //! instant week/month/quarter/year totals.
+pub mod bank;
 pub mod documents;
 pub mod ledger;
 pub mod migrations;
