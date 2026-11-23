@@ -1,0 +1,8 @@
+{
+  "name": "golden-plaid-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Adds Plaid's secret to Golden's bank requests so it never ships in the app",
+  "scripts": { "test": "node --test" }
+}
