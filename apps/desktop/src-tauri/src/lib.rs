@@ -183,6 +183,16 @@ fn activate_license(state: Shared, token: String) -> Result<LicenseStatus, Strin
     lock(&state)?.activate_license(&token, today())
 }
 
+/// Write why Golden could not start to `Golden-startup-error.txt` in the home folder.
+fn write_startup_note(message: &str) {
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
+    if let Some(home) = home {
+        let path = std::path::Path::new(&home).join("Golden-startup-error.txt");
+        let _ = std::fs::write(path, format!("{message}\n"));
+    }
+    eprintln!("{message}");
+}
+
 fn today() -> chrono::NaiveDate {
     chrono::Local::now().date_naive()
 }
@@ -843,6 +853,12 @@ pub fn run() {
         }
         return;
     }
+    // A crash at start-up (a panic) is written down too.
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        write_startup_note(&format!("Golden crashed: {info}"));
+        default_hook(info);
+    }));
     tauri::Builder::default()
         // Single instance comes first so a second launch (a golden:// link) is handed to the running copy.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -854,6 +870,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
+            let result = (|| -> Result<(), Box<dyn std::error::Error>> {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
@@ -884,6 +901,12 @@ pub fn run() {
                 }
             });
             Ok(())
+            })();
+            // If Golden can't start, leave a note the person can send instead of closing silently.
+            if let Err(e) = &result {
+                write_startup_note(&format!("Golden could not start: {e}"));
+            }
+            result
         })
         .invoke_handler(tauri::generate_handler![
             bank::bank_items,
