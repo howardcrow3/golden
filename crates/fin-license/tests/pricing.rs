@@ -5,8 +5,9 @@ fn standard_prices_match_the_data_file() {
     let p = Pricing::standard();
     assert_eq!(p.currency, "USD");
     assert_eq!(p.core_cents, 3999); // $39.99 once per major version
-    assert_eq!(p.plaid_cents, 500); // $5 a month
+    assert_eq!(p.plaid_cents, 997); // $9.97 a month
     assert_eq!(p.plaid_interval, "month");
+    assert_eq!(p.plaid_yearly_cents, 10_000); // or $100 a year
 }
 
 #[test]
