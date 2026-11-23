@@ -25,6 +25,9 @@ pub struct PlaidTxn {
     pub merchant_name: Option<String>,
     #[serde(default)]
     pub pending: bool,
+    /// Set when this line is a pending one that has now posted; names the pending line it replaces.
+    #[serde(default)]
+    pub pending_transaction_id: Option<String>,
     #[serde(default)]
     pub personal_finance_category: Option<PlaidCategory>,
 }
@@ -137,6 +140,8 @@ pub struct Mapped {
     pub memo: String,
     /// Not yet settled; replaced when the statement arrives.
     pub pending: bool,
+    /// The pending line this one replaces, so the category you chose carries over.
+    pub replaces: Option<String>,
     /// Plaid's own broad category, kept as a hint for categorizing.
     pub category_hint: Option<String>,
 }
@@ -167,6 +172,7 @@ pub fn map_txn(t: &PlaidTxn) -> Mapped {
         payee,
         memo,
         pending: t.pending,
+        replaces: t.pending_transaction_id.clone(),
         category_hint: t
             .personal_finance_category
             .as_ref()

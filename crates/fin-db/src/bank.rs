@@ -20,6 +20,9 @@ pub struct BankTxn {
     pub payee: String,
     pub memo: String,
     pub pending: bool,
+    /// The bank's id for a pending line this one replaces (it posted). That line is deleted and the
+    /// category you chose for it carries over.
+    pub replaces: Option<String>,
     pub category: Option<String>,
 }
 
@@ -107,7 +110,24 @@ impl Db {
                 sum.updated += 1;
                 continue;
             }
+            // A pending line that has posted: take over its category, then drop it.
+            let inherited: Option<i64> = match &t.replaces {
+                Some(old) => {
+                    let c = tx
+                        .query_row(
+                            "SELECT category_id FROM txn WHERE external_id=?1",
+                            [old],
+                            |r| r.get::<_, Option<i64>>(0),
+                        )
+                        .optional()?
+                        .flatten();
+                    tx.execute("DELETE FROM txn WHERE external_id=?1", [old])?;
+                    c
+                }
+                None => None,
+            };
             let cat: Option<i64> = match &t.category {
+                _ if inherited.is_some() => inherited,
                 Some(c) => {
                     let found: Option<i64> = tx
                         .query_row("SELECT id FROM category WHERE name=?1", [c], |r| r.get(0))

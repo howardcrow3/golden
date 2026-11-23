@@ -232,6 +232,7 @@ impl App {
                         payee: m.payee.clone(),
                         memo: m.memo.clone(),
                         pending: m.pending,
+                        replaces: m.replaces.clone(),
                         category: None,
                     });
                 }

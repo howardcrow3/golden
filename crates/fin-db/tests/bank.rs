@@ -23,6 +23,7 @@ fn bank(
         payee: "Shell".into(),
         memo: String::new(),
         pending,
+        replaces: None,
         category: None,
     }
 }
@@ -182,4 +183,23 @@ fn erasing_personal_data_clears_bank_links() {
     db.erase_personal_data(&[]).unwrap();
     assert_eq!(db.txn_count().unwrap(), 0);
     assert_eq!(db.bank_account("b").unwrap(), None);
+}
+
+#[test]
+fn a_posted_line_replaces_its_pending_one_and_keeps_the_chosen_category() {
+    let (mut db, a) = setup();
+    db.apply_bank_changes(&[bank("pend-1", a, "2026-11-02", -1250, true)], &[])
+        .unwrap();
+    let id = db.txns_between(d("2026-11-01"), d("2026-11-30")).unwrap()[0].id;
+    db.set_txn_category(id, Some("Gas")).unwrap();
+    let mut posted = bank("post-1", a, "2026-11-03", -1250, false);
+    posted.replaces = Some("pend-1".into());
+    let s = db
+        .apply_bank_changes(&[posted], &["pend-1".into()])
+        .unwrap();
+    assert_eq!(s.added, 1);
+    let rows = db.txns_between(d("2026-11-01"), d("2026-11-30")).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].category.as_deref(), Some("Gas"));
+    assert_eq!(rows[0].day, d("2026-11-03"));
 }
