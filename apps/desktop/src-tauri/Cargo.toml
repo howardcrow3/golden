@@ -19,7 +19,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 fin-plan = { path = "../../../crates/fin-plan" }
 fin-plaid = { path = "../../../crates/fin-plaid" }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking", "json"] }
 fin-app = { path = "../../../crates/fin-app", default-features = false, features = ["sqlcipher"] }
 fin-db = { path = "../../../crates/fin-db", default-features = false, features = ["sqlcipher"] }
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
