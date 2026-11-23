@@ -134,3 +134,28 @@ describe("hosted checkout page", () => {
     expect(calls).toEqual([]);
   });
 });
+
+import { onLicenseLink } from "./api";
+describe("onLicenseLink", () => {
+  it("passes the app's result to the handler and can be stopped", async () => {
+    let fire: (e: { payload: { ok: boolean; message: string } }) => void = () => {};
+    let stopped = false;
+    const listen = async (event: string, h: typeof fire) => {
+      expect(event).toBe("license-link");
+      fire = h;
+      return () => {
+        stopped = true;
+      };
+    };
+    const seen: string[] = [];
+    const stop = await onLicenseLink((r) => seen.push(r.message), listen);
+    fire({ payload: { ok: true, message: "Your licence is active. Thank you!" } });
+    expect(seen).toEqual(["Your licence is active. Thank you!"]);
+    stop();
+    expect(stopped).toBe(true);
+  });
+  it("does nothing outside the desktop app", async () => {
+    const stop = await onLicenseLink(() => {});
+    expect(typeof stop).toBe("function");
+  });
+});

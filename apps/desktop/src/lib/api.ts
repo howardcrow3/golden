@@ -191,6 +191,21 @@ export interface LicenseStatus {
 export async function licenseStatus(invoke?: Invoke): Promise<LicenseStatus> {
   return (await (await resolve(invoke))("license_status")) as LicenseStatus;
 }
+/** What happened when a golden://activate link (from the purchase email) was opened. */
+export interface LicenseLinkResult {
+  ok: boolean;
+  message: string;
+}
+type Listen = (event: string, handler: (e: { payload: LicenseLinkResult }) => void) => Promise<() => void>;
+/** Call `handler` whenever the app activated (or failed to activate) a licence from an emailed link. Returns a stop function. */
+export async function onLicenseLink(handler: (r: LicenseLinkResult) => void, listen?: Listen): Promise<() => void> {
+  let on = listen;
+  if (!on) {
+    if (!inTauri()) return () => {};
+    on = (await import("@tauri-apps/api/event")).listen as unknown as Listen;
+  }
+  return on("license-link", (e) => handler(e.payload));
+}
 export async function activateLicense(token: string, invoke?: Invoke): Promise<LicenseStatus> {
   return (await (await resolve(invoke))("activate_license", { token })) as LicenseStatus;
 }

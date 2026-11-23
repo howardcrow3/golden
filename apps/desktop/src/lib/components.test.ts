@@ -153,6 +153,7 @@ describe("CashFlow", () => {
 });
 
 import License from "./License.svelte";
+import { DEFAULT_PRICING } from "./api";
 
 describe("License prices", () => {
   it("shows $39.99 once and $5 a month by default", () => {
@@ -745,5 +746,15 @@ describe("WhatIf stacking", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Ask" }));
     await screen.findByText(/couldn't turn that/);
     expect(calls.find(([c]) => c === "whatif")![1]).toMatchObject({ on: 7 });
+  });
+});
+
+describe("License link notice", () => {
+  it("shows what happened when an emailed activation link was opened", async () => {
+    render(License, {
+      invoke: async (cmd: string) => (cmd === "pricing" ? DEFAULT_PRICING : { state: "licensed", daysLeft: null, canEdit: true, plaidActive: false }),
+      notice: "Your licence is active. Thank you!",
+    });
+    expect((await screen.findByTestId("link-notice")).textContent).toBe("Your licence is active. Thank you!");
   });
 });

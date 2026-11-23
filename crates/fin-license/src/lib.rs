@@ -7,6 +7,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier};
 use fin_core::NaiveDate;
 use serde::{Deserialize, Serialize};
 
+pub mod link;
 pub mod paddle;
 pub mod pricing;
 
