@@ -1,0 +1,55 @@
+name: Plaid service (deploy)
+
+# Deploys services/plaid-server to AWS Lambda behind a Function URL. Run it by hand; safe to re-run.
+# Secrets: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (the same setup keys the highturtle repo uses),
+# PLAID_CLIENT_ID and PLAID_SECRET (from the Plaid dashboard; the secret must match the environment).
+# Without the Plaid keys the service is still created (it answers 503 until they are added).
+
+on:
+  workflow_dispatch:
+    inputs:
+      plaid_env:
+        description: Plaid environment
+        type: choice
+        options: [sandbox, production]
+        default: sandbox
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      PLAID_CLIENT_ID: ${{ secrets.PLAID_CLIENT_ID }}
+      PLAID_SECRET: ${{ secrets.PLAID_SECRET }}
+      PLAID_ENV: ${{ inputs.plaid_env }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check what is configured
+        run: |
+          missing=""
+          [ -n "$AWS_KEY" ] || missing="$missing AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing secrets::Add these repository secrets, then run again:$missing"
+            exit 1
+          fi
+          [ -n "$PLAID_CLIENT_ID" ] && [ -n "$PLAID_SECRET" ] || echo "::warning title=Plaid keys not set::The service will be created but answers 503 until PLAID_CLIENT_ID and PLAID_SECRET are added."
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      - name: Deploy
+        id: deploy
+        env:
+          GOLDEN_LICENCE_PUBLIC_KEY_FILE: apps/desktop/src-tauri/license_public_key.txt
+        run: |
+          export GOLDEN_LICENCE_PUBLIC_KEY="$(cat "$GOLDEN_LICENCE_PUBLIC_KEY_FILE")"
+          bash services/plaid-server/deploy.sh
+      - name: Show the address
+        run: echo "::notice title=GOLDEN_PLAID_SERVICE_URL::${{ steps.deploy.outputs.url }}"

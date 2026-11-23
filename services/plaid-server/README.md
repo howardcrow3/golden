@@ -20,3 +20,12 @@ nothing and never logs bodies.
 4. Throttle the function (reserved concurrency) and set an AWS budget alarm.
 
 Test: `npm test` (Node 20+, no dependencies).
+
+## One-click deploy
+
+Run the **Plaid service (deploy)** workflow from the Actions tab (choose `sandbox` first). It runs
+`deploy.sh`: creates the role, the `golden-plaid` function and its Function URL, sets the
+settings, caps concurrency, and smoke-tests it. Repository secrets needed: `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY` (same as the highturtle repo), and `PLAID_CLIENT_ID`, `PLAID_SECRET`
+(Plaid's sandbox secret for sandbox, the production secret for production). The address it prints
+goes into the app build as `GOLDEN_PLAID_SERVICE_URL`.
