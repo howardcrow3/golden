@@ -57,10 +57,17 @@ impl App {
             .public_key
             .as_ref()
             .ok_or("Licence activation is not available in this build yet.")?;
-        verify(key, token, APP_MAJOR).map_err(|e| e.to_string())?;
-        self.db
-            .set_setting(LICENSE, token.trim())
-            .map_err(|e| e.to_string())?;
+        let new = verify(key, token, APP_MAJOR).map_err(|e| e.to_string())?;
+        // Never downgrade: re-opening an older email (the core key, or last month's
+        // renewal) must not drop Plaid time the person already paid for.
+        let keeps_current = self
+            .stored_license()
+            .is_some_and(|cur| cur.plaid_until > new.plaid_until);
+        if !keeps_current {
+            self.db
+                .set_setting(LICENSE, token.trim())
+                .map_err(|e| e.to_string())?;
+        }
         self.license_status(today)
     }
 

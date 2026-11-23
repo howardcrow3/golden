@@ -110,3 +110,47 @@ fn activation_is_disabled_without_a_bundled_key() {
         .unwrap_err();
     assert!(err.contains("not available"));
 }
+
+#[test]
+fn an_older_email_never_downgrades_the_plaid_date() {
+    let sk = SigningKey::generate(&mut OsRng);
+    let app = App::in_memory()
+        .unwrap()
+        .with_public_key(Some(sk.verifying_key()))
+        .with_clock(|| d(2026, 12, 20));
+    let core_only = token(&sk, APP_MAJOR, None);
+    let monthly = token(&sk, APP_MAJOR, Some(d(2026, 12, 25)));
+    let annual = token(&sk, APP_MAJOR, Some(d(2027, 12, 20)));
+
+    app.activate_license(&core_only, d(2026, 12, 20)).unwrap();
+    assert!(!app.license_status(d(2026, 12, 21)).unwrap().plaid_active);
+    app.activate_license(&monthly, d(2026, 12, 20)).unwrap();
+    assert!(app.license_status(d(2026, 12, 21)).unwrap().plaid_active);
+    // Upgrade to the annual plan, then click the old links again.
+    app.activate_license(&annual, d(2026, 12, 20)).unwrap();
+    app.activate_license(&monthly, d(2026, 12, 20)).unwrap();
+    app.activate_license(&core_only, d(2026, 12, 20)).unwrap();
+    let s = app.license_status(d(2027, 6, 1)).unwrap();
+    assert_eq!((s.state.as_str(), s.plaid_active), ("licensed", true));
+    // A later renewal still replaces it.
+    let later = token(&sk, APP_MAJOR, Some(d(2028, 12, 20)));
+    app.activate_license(&later, d(2026, 12, 20)).unwrap();
+    assert!(app.license_status(d(2028, 6, 1)).unwrap().plaid_active);
+}
+
+#[test]
+fn the_trial_ends_exactly_after_fourteen_days() {
+    let app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 1));
+    app.license_status(d(2026, 11, 1)).unwrap();
+    let day = |n| {
+        app.license_status(d(2026, 11, 1) + chrono::Duration::days(n))
+            .unwrap()
+    };
+    assert_eq!(
+        (day(13).state.as_str(), day(13).days_left),
+        ("trial", Some(1))
+    );
+    assert_eq!(day(14).state, "expired");
+    // A clock set back before the first run never extends or breaks the trial.
+    assert_eq!(day(-30).days_left, Some(14));
+}
