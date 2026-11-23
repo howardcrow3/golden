@@ -6,6 +6,8 @@
 //   PLAID_CLIENT_ID, PLAID_SECRET     from the Plaid dashboard
 //   PLAID_ENV                         "sandbox" (default) or "production"
 //   GOLDEN_LICENCE_PUBLIC_KEY         the same base64url public key the app is built with
+//   PLAID_REDIRECT_URI                optional: this service's own /link address, registered in the
+//                                     Plaid dashboard, needed by banks that sign in through an app
 //   GOLDEN_APP_MAJOR                  optional, default 1
 import { createPublicKey, verify } from "node:crypto";
 
@@ -14,7 +16,7 @@ const HOSTS = {
   production: "https://production.plaid.com",
 };
 
-// Only these app paths are served, and each maps to exactly one Plaid endpoint.
+// Only these app paths are served (plus GET /link, the sign-in page), and each maps to exactly one Plaid endpoint.
 const ROUTES = {
   "/link/token": "/link/token/create",
   "/link/exchange": "/item/public_token/exchange",
@@ -51,6 +53,41 @@ export function checkLicence(token, publicKeyB64, major, today) {
   return { ok: true, payload };
 }
 
+/** The page that opens Plaid's sign-in window. It holds no secrets: the link token arrives in the
+ * address, and on success the person is sent back to the app with `golden://plaid?...`. */
+export const LINK_PAGE = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Connect your bank to Golden</title>
+<style>body{font:16px system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f7f5ef;color:#222}
+main{max-width:30rem;padding:2rem;text-align:center}</style></head>
+<body><main><h1>Connect your bank</h1><p id="msg">Opening your bank's sign-in…</p></main>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<script>
+(function () {
+  var msg = document.getElementById("msg");
+  var params = new URLSearchParams(location.search);
+  var token = params.get("token");
+  var oauth = params.has("oauth_state_id");
+  try {
+    if (token) sessionStorage.setItem("golden_link_token", token);
+    else if (oauth) token = sessionStorage.getItem("golden_link_token");
+  } catch (e) {}
+  if (!token) { msg.textContent = "This link has expired. Go back to Golden and press Connect again."; return; }
+  var cfg = {
+    token: token,
+    onSuccess: function (publicToken, meta) {
+      var name = (meta && meta.institution && meta.institution.name) || "";
+      msg.textContent = "Connected. Returning to Golden…";
+      location.href = "golden://plaid?public_token=" + encodeURIComponent(publicToken) +
+        "&institution=" + encodeURIComponent(name);
+    },
+    onExit: function () { msg.textContent = "Not connected. You can close this tab and go back to Golden."; }
+  };
+  if (oauth) cfg.receivedRedirectUri = location.href;
+  Plaid.create(cfg).open();
+})();
+</script></body></html>`;
+
 const reply = (status, body) => ({
   statusCode: status,
   headers: { "content-type": "application/json" },
@@ -59,11 +96,13 @@ const reply = (status, body) => ({
 
 /** What we send Plaid for each route. Anything the app sends beyond these fields is dropped. */
 export function plaidBody(path, input, creds) {
+  // creds.redirectUri is the registered OAuth return address (this service's /link page).
   const base = { client_id: creds.clientId, secret: creds.secret };
   switch (path) {
     case "/link/token":
       return {
         ...base,
+        ...(creds.redirectUri ? { redirect_uri: creds.redirectUri } : {}),
         client_name: "Golden",
         language: "en",
         country_codes: ["US"],
@@ -88,6 +127,17 @@ export function createHandler({ fetchImpl = fetch, env = process.env, now = () =
   return async function handler(event) {
     const method = event?.requestContext?.http?.method ?? event?.httpMethod ?? "POST";
     const path = event?.rawPath ?? event?.path ?? "";
+    if (method === "GET" && path === "/link") {
+      return {
+        statusCode: 200,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "referrer-policy": "no-referrer",
+        },
+        body: LINK_PAGE,
+      };
+    }
     if (method !== "POST") return reply(405, { error: "POST only" });
     if (!(path in ROUTES)) return reply(404, { error: "unknown path" });
 
@@ -114,7 +164,7 @@ export function createHandler({ fetchImpl = fetch, env = process.env, now = () =
     const host = HOSTS[env.PLAID_ENV ?? "sandbox"];
     if (!host) return reply(503, { error: "unknown PLAID_ENV" });
 
-    const body = plaidBody(path, input, { clientId: env.PLAID_CLIENT_ID, secret: env.PLAID_SECRET });
+    const body = plaidBody(path, input, { clientId: env.PLAID_CLIENT_ID, secret: env.PLAID_SECRET, redirectUri: env.PLAID_REDIRECT_URI });
     let res;
     try {
       res = await fetchImpl(host + ROUTES[path], {
