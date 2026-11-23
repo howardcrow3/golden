@@ -6,6 +6,7 @@
   import Documents from "./lib/Documents.svelte";
   import Transactions from "./lib/Transactions.svelte";
   import WhatIf from "./lib/WhatIf.svelte";
+  import Banks from "./lib/Banks.svelte";
   import License from "./lib/License.svelte";
   import About from "./lib/About.svelte";
   import Privacy from "./lib/Privacy.svelte";
@@ -14,7 +15,7 @@
   import { licenseStatus, onLicenseLink, type LicenseStatus } from "./lib/api";
   import { setHideAmounts } from "./lib/money";
 
-  const pages = ["Overview", "Transactions", "Import", "Documents", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
+  const pages = ["Overview", "Transactions", "Import", "Banks", "Documents", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
   let page = $state<(typeof pages)[number]>("Overview");
   let lic = $state<LicenseStatus | null>(null);
   $effect(() => {
@@ -70,7 +71,7 @@
   </nav>
   <main>
     {#key hide}
-    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License notice={linkNotice} />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License notice={linkNotice} />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
 </div>

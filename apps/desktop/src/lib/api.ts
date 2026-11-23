@@ -1140,3 +1140,56 @@ export async function vaultDelete(id: number, invoke?: Invoke): Promise<void> {
 export async function vaultExport(id: number, invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("vault_export", { id })) as string;
 }
+
+export interface BankItem {
+  itemId: string;
+  institution: string;
+  cursor: string;
+  /** "active", "paused" or "login_required" */
+  status: string;
+}
+export interface BankSyncReport {
+  added: number;
+  updated: number;
+  removed: number;
+  skipped: number;
+  reconciled: number;
+}
+export interface BankOutcome {
+  bank: string;
+  report: BankSyncReport | null;
+  error: string | null;
+}
+export interface BankLinkReturn {
+  publicToken: string;
+  institution: string;
+}
+export async function bankItems(invoke?: Invoke): Promise<BankItem[]> {
+  return (await (await resolve(invoke))("bank_items")) as BankItem[];
+}
+/** Opens the bank sign-in page in the browser; the app is sent back a link when it finishes. */
+export async function bankConnect(invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("bank_connect");
+}
+export async function bankFinishLink(publicToken: string, institution: string, invoke?: Invoke): Promise<BankSyncReport> {
+  return (await (await resolve(invoke))("bank_finish_link", { publicToken, institution })) as BankSyncReport;
+}
+export async function bankSyncAll(invoke?: Invoke): Promise<BankOutcome[]> {
+  return (await (await resolve(invoke))("bank_sync_all")) as BankOutcome[];
+}
+export async function bankSetPaused(itemId: string, paused: boolean, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("bank_set_paused", { itemId, paused });
+}
+export async function bankUnlink(itemId: string, invoke?: Invoke): Promise<number> {
+  return (await (await resolve(invoke))("bank_unlink", { itemId })) as number;
+}
+type BankListen = (event: string, handler: (e: { payload: BankLinkReturn }) => void) => Promise<() => void>;
+/** Call `handler` when the person comes back from their bank's sign-in page. Returns a stop function. */
+export async function onBankLink(handler: (r: BankLinkReturn) => void, listen?: BankListen): Promise<() => void> {
+  let on = listen;
+  if (!on) {
+    if (!inTauri()) return () => {};
+    on = (await import("@tauri-apps/api/event")).listen as unknown as BankListen;
+  }
+  return on("plaid-link", (e) => handler(e.payload));
+}

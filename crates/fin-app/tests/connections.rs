@@ -25,3 +25,30 @@ fn a_local_model_address_is_in_use_but_stays_private() {
     assert!(local.in_use);
     assert!(c.private, "a model on this computer sends nothing out");
 }
+
+#[test]
+fn a_linked_bank_makes_the_plaid_connection_in_use_and_not_private() {
+    let app = App::in_memory().unwrap();
+    app.db()
+        .set_setting(
+            "bank.items",
+            r#"[{"itemId":"i","institution":"Chase","cursor":"","status":"active"}]"#,
+        )
+        .unwrap();
+    let c = app.connections().unwrap();
+    let plaid = c.items.iter().find(|i| i.name.contains("Plaid")).unwrap();
+    assert!(plaid.in_use);
+    assert!(!c.private);
+}
+
+#[test]
+fn a_paused_bank_is_not_in_use() {
+    let app = App::in_memory().unwrap();
+    app.db()
+        .set_setting(
+            "bank.items",
+            r#"[{"itemId":"i","institution":"Chase","cursor":"","status":"paused"}]"#,
+        )
+        .unwrap();
+    assert!(app.connections().unwrap().private);
+}

@@ -9,6 +9,7 @@ use fin_app::keystore::{open_private, KeyStore};
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
+mod bank;
 mod deep_link;
 
 /// The database key lives in the macOS Keychain / Windows Credential Manager.
@@ -877,6 +878,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            bank::bank_items,
+            bank::bank_connect,
+            bank::bank_finish_link,
+            bank::bank_sync_all,
+            bank::bank_set_paused,
+            bank::bank_unlink,
             estimate_tax,
             quick_plan,
             app_info,

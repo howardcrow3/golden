@@ -30,6 +30,7 @@ impl App {
     pub fn connections(&self) -> Result<Connections, String> {
         let saved = self.model_settings()?;
         let local_model = !saved.endpoint.trim().is_empty();
+        let banks_on = self.bank_items()?.iter().any(|i| i.status == "active");
         let items = vec![
             Connection {
                 name: "Built-in model download".into(),
@@ -54,10 +55,10 @@ impl App {
             },
             Connection {
                 name: "Bank connections (Plaid)".into(),
-                host: "plaid.com".into(),
-                sends: "Not available yet. Statement files are the only way in for now.".into(),
-                in_use: false,
-                when: "Off. It will be opt-in".into(),
+                host: "Golden's bank sync service, then plaid.com".into(),
+                sends: "Your licence key and a bank sign-in token go to Golden's sync service, which asks Plaid for your transactions and passes them back to this computer. Plaid sees your bank sign-in; Golden never does. Needs the Plaid add-on.".into(),
+                in_use: banks_on,
+                when: "Off until you connect a bank. Then about once a day, or when you press Sync".into(),
             },
         ];
         // A local-address model never leaves the computer, so only services that do count here.

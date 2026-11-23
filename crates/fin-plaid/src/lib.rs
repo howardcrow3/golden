@@ -222,6 +222,7 @@ pub fn sync_all(api: &dyn PlaidApi, cursor: Option<&str>) -> Result<Changes, Pla
 
 /// A linked bank, as kept on this computer. The access token lives in the OS keychain, never here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LinkedItem {
     pub item_id: String,
     pub institution: String,
