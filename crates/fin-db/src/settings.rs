@@ -24,7 +24,7 @@ impl Db {
     /// they are names, not personal data.
     pub fn erase_personal_data(&self, keep: &[&str]) -> Result<()> {
         self.conn.execute_batch(
-            "DELETE FROM txn; DELETE FROM account; DELETE FROM person; DELETE FROM document;",
+            "DELETE FROM txn; DELETE FROM bank_account; DELETE FROM account; DELETE FROM person; DELETE FROM document;",
         )?;
         let mut stmt = self.conn.prepare("SELECT key FROM setting")?;
         let keys: Vec<String> = stmt

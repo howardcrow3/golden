@@ -1,9 +1,11 @@
 //! City and county income taxes on top of the state's. Each is a percent of earned income, or
 //! of taxable income for New York City and the Maryland counties. Rates are approximate and
 //! change often: Philadelphia's 3.735% resident wage tax (from July 1, 2026) was read from
-//! phila.gov; New York City's top 3.876% rate was read from tax.ny.gov, and its bracket
-//! thresholds, the Ohio, Michigan, Pittsburgh and Maryland rates are the usual published
-//! figures that should be re-checked each year.
+//! phila.gov; New York City's top 3.876% rate was read from tax.ny.gov; Pittsburgh's 3% (1% city
+//! plus 2% school district) from pittsburghpa.gov; and the 3.2% Baltimore City and Montgomery
+//! County rates from Maryland's 2026 local tax rate table (dls.maryland.gov), all in Nov 2026.
+//! New York City's bracket thresholds and the Ohio and Michigan rates are the usual published
+//! figures that still need checking against an official page; re-check them each year.
 use fin_core::Money;
 
 use crate::tax::FilingStatus;

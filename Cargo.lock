@@ -573,6 +573,7 @@ dependencies = [
  "fin-ingest",
  "fin-ledger",
  "fin-license",
+ "fin-plaid",
  "fin-plan",
  "getrandom 0.2.17",
  "rand 0.8.8",

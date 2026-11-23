@@ -26,6 +26,11 @@ impl App {
         verify(key, &token, APP_MAJOR).ok()
     }
 
+    /// The saved licence token, for the bank sync service to check. None when there is none.
+    pub(crate) fn license_token(&self) -> Option<String> {
+        self.db.get_setting(LICENSE).ok()?
+    }
+
     fn current_access(&self, today: NaiveDate) -> Result<(Access, Option<LicensePayload>), String> {
         let first = self
             .db

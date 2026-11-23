@@ -35,6 +35,7 @@ fn txn(id: &str, amount: f64) -> PlaidTxn {
 
 fn page(added: Vec<PlaidTxn>, next: &str, more: bool) -> SyncPage {
     SyncPage {
+        accounts: vec![],
         added,
         modified: vec![],
         removed: vec![],
@@ -188,4 +189,48 @@ fn a_real_looking_page_deserializes() {
     let p: SyncPage = parse_ok(body).unwrap();
     assert!(p.added[0].pending);
     assert_eq!(p.removed[0].transaction_id, "y");
+}
+
+#[test]
+fn accounts_are_collected_once_and_classified() {
+    let acct = |id: &str, kind: &str, sub: &str| PlaidAccount {
+        account_id: id.into(),
+        name: "x".into(),
+        mask: Some("1234".into()),
+        kind: kind.into(),
+        subtype: Some(sub.into()),
+    };
+    let mut p1 = page(vec![], "c1", true);
+    p1.accounts = vec![acct("a", "depository", "checking")];
+    let mut p2 = page(vec![], "c2", false);
+    p2.accounts = vec![
+        acct("a", "depository", "checking"),
+        acct("b", "credit", "credit card"),
+    ];
+    let out = sync_all(&Fake::new(vec![Ok(p1), Ok(p2)]), None).unwrap();
+    assert_eq!(out.accounts.len(), 2);
+    assert_eq!(acct("a", "depository", "savings").golden_kind(), "savings");
+    assert_eq!(
+        acct("a", "depository", "checking").golden_kind(),
+        "checking"
+    );
+    assert_eq!(acct("a", "credit", "credit card").golden_kind(), "credit");
+    assert_eq!(acct("a", "investment", "401k").golden_kind(), "retirement");
+    assert_eq!(
+        acct("a", "investment", "brokerage").golden_kind(),
+        "investment"
+    );
+    assert_eq!(acct("a", "loan", "mortgage").golden_kind(), "loan");
+    assert_eq!(acct("a", "other", "x").golden_kind(), "other");
+}
+
+#[test]
+fn accounts_deserialize_from_plaid_json() {
+    let p: SyncPage = parse_ok(
+        r#"{"accounts":[{"account_id":"a","name":"Plaid Checking","mask":"0000","type":"depository","subtype":"checking","balances":{}}],
+            "added":[],"modified":[],"removed":[],"next_cursor":"c","has_more":false}"#,
+    )
+    .unwrap();
+    assert_eq!(p.accounts[0].kind, "depository");
+    assert_eq!(p.accounts[0].mask.as_deref(), Some("0000"));
 }

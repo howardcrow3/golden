@@ -40,9 +40,43 @@ pub struct RemovedTxn {
     pub transaction_id: String,
 }
 
+/// A bank account as Plaid describes it (balances are not requested).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PlaidAccount {
+    pub account_id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub mask: Option<String>,
+    /// "depository", "credit", "loan", "investment" or "other".
+    #[serde(default, rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub subtype: Option<String>,
+}
+
+impl PlaidAccount {
+    /// The kind Golden files this account under.
+    pub fn golden_kind(&self) -> &'static str {
+        match (self.kind.as_str(), self.subtype.as_deref()) {
+            ("credit", _) => "credit",
+            ("loan", _) => "loan",
+            ("investment", Some("401k" | "403b" | "ira" | "roth" | "roth 401k" | "529")) => {
+                "retirement"
+            }
+            ("investment", _) => "investment",
+            ("depository", Some("savings" | "cd" | "money market" | "hsa")) => "savings",
+            ("depository", _) => "checking",
+            _ => "other",
+        }
+    }
+}
+
 /// One page of `/transactions/sync`.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct SyncPage {
+    #[serde(default)]
+    pub accounts: Vec<PlaidAccount>,
     #[serde(default)]
     pub added: Vec<PlaidTxn>,
     #[serde(default)]
@@ -145,6 +179,8 @@ pub struct Changes {
     pub added: Vec<Mapped>,
     pub modified: Vec<Mapped>,
     pub removed: Vec<String>,
+    /// Every account Plaid described along the way, once each.
+    pub accounts: Vec<PlaidAccount>,
     /// Save this and pass it next time.
     pub cursor: String,
 }
@@ -169,6 +205,11 @@ pub fn sync_all(api: &dyn PlaidApi, cursor: Option<&str>) -> Result<Changes, Pla
             out.modified.extend(page.modified.iter().map(map_txn));
             out.removed
                 .extend(page.removed.into_iter().map(|r| r.transaction_id));
+            for a in page.accounts {
+                if !out.accounts.iter().any(|x| x.account_id == a.account_id) {
+                    out.accounts.push(a);
+                }
+            }
             out.cursor = page.next_cursor.clone();
             if !page.has_more {
                 return Ok(out);
