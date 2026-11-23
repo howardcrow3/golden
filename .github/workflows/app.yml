@@ -126,6 +126,21 @@ jobs:
           releaseBody: "Latest main, build ${{ github.run_number }} (version 0.1.${{ github.run_number }}). macOS is signed and notarized when Apple credentials are configured; if it is not, right-click, Open the first time. Windows: choose More info, then Run anyway."
           releaseDraft: false
           prerelease: true
+      - name: Notarize and staple the disk image
+        # Tauri notarizes the app inside; this does the .dmg itself too so Gatekeeper accepts the
+        # download without a network check, then replaces the release's copy with the stapled one.
+        if: github.event_name != 'pull_request' && runner.os == 'macOS' && env.APPLE_ID != '' && env.APPLE_PASSWORD != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for dmg in apps/desktop/src-tauri/target/*/release/bundle/dmg/*.dmg; do
+            echo "Notarizing $dmg"
+            xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            xcrun stapler staple "$dmg"
+            xcrun stapler validate "$dmg"
+            gh release upload nightly "$dmg" --repo "$GITHUB_REPOSITORY" --clobber
+          done
       - name: Remove installers from older builds
         # Installer names carry the build number, so old ones would pile up on the release.
         if: github.event_name != 'pull_request'
