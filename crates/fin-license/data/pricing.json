@@ -1,6 +1,7 @@
 {
   "currency": "USD",
   "coreCents": 3999,
-  "plaidCents": 500,
-  "plaidInterval": "month"
+  "plaidCents": 997,
+  "plaidInterval": "month",
+  "plaidYearlyCents": 10000
 }

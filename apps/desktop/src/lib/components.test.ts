@@ -158,13 +158,13 @@ describe("License prices", () => {
   it("shows $39.99 once and $5 a month by default", () => {
     render(License);
     expect(screen.getByTestId("prices").textContent).toBe(
-      "Golden is $39.99 once per major version. Bank connections are an optional $5.00 a month.",
+      "Golden is $39.99 once per major version. Bank connections are an optional $9.97 a month, or $100.00 a year.",
     );
   });
   it("uses the prices the app reports and shows a bad price ID warning", async () => {
     const invoke = async (cmd: string) =>
       cmd === "pricing"
-        ? { currency: "USD", coreCents: 2500, plaidCents: 2000, plaidInterval: "year", corePriceId: null, plaidPriceId: null, warning: "Core price: pro_x is a Paddle product ID." }
+        ? { currency: "USD", coreCents: 2500, plaidCents: 2000, plaidInterval: "year", plaidYearlyCents: 0, corePriceId: null, plaidPriceId: null, warning: "Core price: pro_x is a Paddle product ID." }
         : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
     render(License, { invoke });
     await vi.waitFor(() =>
@@ -176,7 +176,7 @@ describe("License prices", () => {
 
 describe("License buy buttons", () => {
   const priced = (url: string | null) => ({
-    currency: "USD", coreCents: 3999, plaidCents: 500, plaidInterval: "month",
+    currency: "USD", coreCents: 3999, plaidCents: 997, plaidInterval: "month", plaidYearlyCents: 10000,
     corePriceId: "pri_a", plaidPriceId: "pri_b", coreCheckoutUrl: url, plaidCheckoutUrl: url, warning: null,
   });
   it("are off until a checkout page is configured", async () => {
@@ -192,7 +192,7 @@ describe("License buy buttons", () => {
       return cmd === "pricing" ? priced("https://x.example/c/?price=pri_a&app=golden") : cmd === "open_checkout" ? undefined : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
     };
     render(License, { invoke });
-    const plaid = (await screen.findByRole("button", { name: /Add bank connections, \$5\.00 a month/ })) as HTMLButtonElement;
+    const plaid = (await screen.findByRole("button", { name: /Add bank connections, \$9\.97 a month/ })) as HTMLButtonElement;
     await vi.waitFor(() => expect(plaid.disabled).toBe(false));
     await fireEvent.click(plaid);
     await vi.waitFor(() => expect(calls.find(([c]) => c === "open_checkout")![1]).toEqual({ plan: "plaid" }));

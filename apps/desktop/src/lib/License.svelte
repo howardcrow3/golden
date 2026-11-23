@@ -19,7 +19,8 @@
     const core = formatCents(p.coreCents);
     const plaid = formatCents(p.plaidCents);
     const per = p.plaidInterval === "year" ? "a year" : "a month";
-    return `Golden is ${core} once per major version. Bank connections are an optional ${plaid} ${per}.`;
+    const yearly = p.plaidYearlyCents > 0 ? `, or ${formatCents(p.plaidYearlyCents)} a year` : "";
+    return `Golden is ${core} once per major version. Bank connections are an optional ${plaid} ${per}${yearly}.`;
   }
 
   $effect(() => {

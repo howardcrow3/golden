@@ -89,6 +89,7 @@ describe("default pricing", () => {
     expect(DEFAULT_PRICING.coreCents).toBe(pricingFile.coreCents);
     expect(DEFAULT_PRICING.plaidCents).toBe(pricingFile.plaidCents);
     expect(DEFAULT_PRICING.plaidInterval).toBe(pricingFile.plaidInterval);
+    expect(DEFAULT_PRICING.plaidYearlyCents).toBe(pricingFile.plaidYearlyCents);
   });
 });
 

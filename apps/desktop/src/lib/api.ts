@@ -488,6 +488,7 @@ export interface Pricing {
   coreCents: number;
   plaidCents: number;
   plaidInterval: "month" | "year";
+  plaidYearlyCents: number;
   corePriceId: string | null;
   plaidPriceId: string | null;
   coreCheckoutUrl: string | null;
@@ -498,8 +499,9 @@ export interface Pricing {
 export const DEFAULT_PRICING: Pricing = {
   currency: "USD",
   coreCents: 3999,
-  plaidCents: 500,
+  plaidCents: 997,
   plaidInterval: "month",
+  plaidYearlyCents: 10000,
   corePriceId: null,
   plaidPriceId: null,
   coreCheckoutUrl: null,

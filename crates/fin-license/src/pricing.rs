@@ -13,6 +13,8 @@ pub struct Pricing {
     pub plaid_cents: i64,
     /// "month" or "year".
     pub plaid_interval: String,
+    /// The same add-on paid once a year instead, in cents.
+    pub plaid_yearly_cents: i64,
 }
 
 impl Pricing {

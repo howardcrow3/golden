@@ -47,7 +47,7 @@ Today every merge refreshes the rolling `nightly` release. Before selling, add a
 
 ## 5. Prices and Paddle
 
-- Prices: `crates/fin-license/data/pricing.json` (core one-time and Plaid per month, in cents). The Licence screen and tests read it, so change it there only. Currently $39.99 and $5 a month.
+- Prices: `crates/fin-license/data/pricing.json` (core one-time, Plaid per month and Plaid per year, in cents). The Licence screen and tests read it, so change it there only. Currently $39.99, and the Plaid add-on at $9.97 a month or $100 a year (the yearly plan is its own Paddle price).
 - Paddle price IDs are repository secrets `GOLDEN_PRICE_ID` (core) and `GOLDEN_PLAID_PRICE_ID` (Plaid). CI passes them into the app build. They must be **price** IDs (`pri_...`), not product IDs (`pro_...`); the app refuses a product ID and says so on the Licence screen.
 - Changing a price in Paddle creates a new price ID: update the secret too, or checkout would charge the old amount.
 
