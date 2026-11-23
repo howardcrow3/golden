@@ -647,6 +647,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fin-plaid"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "fin-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "fin-plan"
 version = "0.1.0"
 dependencies = [

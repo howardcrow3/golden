@@ -1,0 +1,14 @@
+[package]
+name = "fin-plaid"
+description = "Golden: Plaid bank sync logic (no network code; the transport is injected)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fin-core = { path = "../fin-core" }
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
