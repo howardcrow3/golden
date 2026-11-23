@@ -1,7 +1,7 @@
 //! The requests Golden sends to the sync service, and the answers it expects. The service adds
 //! Plaid's client id and secret, so none of that is ever in the app. Every request carries the
 //! person's licence token so the service can check the Plaid add-on is paid.
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::PlaidError;
