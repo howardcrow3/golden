@@ -139,6 +139,15 @@ jobs:
             xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
             xcrun stapler staple "$dmg"
             xcrun stapler validate "$dmg"
+            echo "Checking what Gatekeeper will say about the download"
+            spctl -a -vv -t open --context context:primary-signature "$dmg"
+            mnt=$(mktemp -d)
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
+            app="$mnt/Golden.app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            spctl -a -vv -t exec "$app"
+            xcrun stapler validate "$app"
+            hdiutil detach "$mnt" >/dev/null
             gh release upload nightly "$dmg" --repo "$GITHUB_REPOSITORY" --clobber
           done
       - name: Remove installers from older builds
