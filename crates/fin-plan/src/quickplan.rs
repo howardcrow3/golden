@@ -402,6 +402,46 @@ pub fn backtest(
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct MixRow {
+    pub stock_share: f64,
+    pub success_rate: f64,
+    /// Start year of the weakest window for this mix.
+    pub worst_year: i32,
+    /// Money left in the weakest window (zero when it ran out).
+    pub worst_final_cents: i64,
+    /// Median money left across every start year.
+    pub median_final_cents: i64,
+}
+
+/// Replay history for several stock/bond mixes so they can be compared side by side.
+pub fn compare_mixes(
+    plan: &PlanInput,
+    picks: &Picks,
+    shares: &[f64],
+) -> Result<Vec<MixRow>, String> {
+    let mut out = Vec::new();
+    for &share in shares.iter().take(8) {
+        let b = backtest(plan, picks, share)?;
+        let worst = b
+            .windows
+            .iter()
+            .find(|w| Some(&w.start_year) == b.worst.first())
+            .ok_or("No history windows to compare.")?;
+        let mut finals: Vec<i64> = b.windows.iter().map(|w| w.final_cents).collect();
+        finals.sort_unstable();
+        out.push(MixRow {
+            stock_share: share,
+            success_rate: b.success_rate,
+            worst_year: worst.start_year,
+            worst_final_cents: worst.final_cents.max(0),
+            median_final_cents: finals[finals.len() / 2],
+        });
+    }
+    Ok(out)
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct BootstrapResult {
     pub success_rate: f64,
     pub p10_cents: i64,
@@ -534,6 +574,20 @@ mod backtest_tests {
         assert!((0.0..=1.0).contains(&r.success_rate));
         let again = bootstrap(&couple(), &Picks::new(), 0.6, 5, 1).unwrap();
         assert_eq!(r, again);
+    }
+
+    #[test]
+    fn mixes_compare_side_by_side() {
+        let rows = compare_mixes(&couple(), &Picks::new(), &[0.4, 0.6, 1.0]).unwrap();
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[1].stock_share, 0.6);
+        let single = backtest(&couple(), &Picks::new(), 0.6).unwrap();
+        assert_eq!(rows[1].success_rate, single.success_rate);
+        assert_eq!(rows[1].worst_year, single.worst[0]);
+        assert!(rows.iter().all(|r| r.worst_final_cents >= 0));
+        assert!(compare_mixes(&couple(), &Picks::new(), &[])
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

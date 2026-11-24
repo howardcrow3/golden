@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { backtest, bootstrap, type BacktestResult, type BootstrapResult, type Invoke } from "./api";
+  import { backtest, backtestCompare, bootstrap, type BacktestResult, type MixRow, type BootstrapResult, type Invoke } from "./api";
   import { formatCents, formatPercent } from "./money";
 
   let { invoke, refresh = null }: { invoke?: Invoke; refresh?: unknown } = $props();
@@ -8,11 +8,13 @@
   let busy = $state(false);
   let share = $state(0.6);
   let boot = $state<BootstrapResult | null>(null);
+  let mixes = $state<MixRow[] | null>(null);
 
   $effect(() => {
     refresh;
     data = null;
     boot = null;
+    mixes = null;
   });
 
   async function run() {
@@ -21,6 +23,17 @@
     try {
       data = await backtest(share, invoke);
       boot = await bootstrap(share, 5, 1000, invoke);
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      busy = false;
+    }
+  }
+  async function compare() {
+    busy = true;
+    error = "";
+    try {
+      mixes = await backtestCompare([0.2, 0.4, 0.6, 0.8, 1], invoke);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -46,7 +59,23 @@
     </select>
   </label>
   <button type="button" disabled={busy} onclick={run}>{busy ? "Working…" : "Replay history"}</button>
+  <button type="button" disabled={busy} onclick={compare}>Compare mixes</button>
   {#if error}<p class="err" role="alert">{error}</p>{/if}
+  {#if mixes}
+    <table data-testid="bt-mixes">
+      <thead><tr><th>Stocks</th><th>Worked</th><th>Typical left</th><th>Weakest start</th></tr></thead>
+      <tbody>
+        {#each mixes as m}
+          <tr>
+            <td>{Math.round(m.stockShare * 100)}%</td>
+            <td>{formatPercent(m.successRate, 0)}</td>
+            <td class="num">{formatCents(m.medianFinalCents, { whole: true })}</td>
+            <td>{m.worstYear}: {formatCents(m.worstFinalCents, { whole: true })} left</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/if}
   {#if data}
     <p data-testid="bt-summary">
       It worked in <strong>{worked} of {data.windows.length}</strong> starting years ({formatPercent(data.successRate, 0)}), each run for {data.years} years.
@@ -82,5 +111,7 @@
   .cell { flex: 1; background: var(--good); }
   .cell.fail { background: var(--bad); }
   ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  table { border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+  th, td { text-align: left; padding: 3px 12px 3px 0; }
   .err { color: var(--bad); }
 </style>

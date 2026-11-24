@@ -306,6 +306,15 @@ async fn backtest(state: Shared<'_>, stock_share: f64) -> Result<quickplan::Back
         .map_err(|e| e.to_string())?
 }
 
+/// The same replay for several stock/bond mixes, for a side-by-side table.
+#[tauri::command]
+async fn backtest_compare(state: Shared<'_>, shares: Vec<f64>) -> Result<Vec<quickplan::MixRow>, String> {
+    let (plan, picks) = lock(&state)?.plan(today())?;
+    tauri::async_runtime::spawn_blocking(move || quickplan::compare_mixes(&plan, &picks, &shares))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Monte Carlo that redraws blocks of historical returns, for the saved household.
 #[tauri::command]
 async fn bootstrap(
@@ -1062,6 +1071,7 @@ pub fn run() {
             daf_bunching,
             ss_explore,
             backtest,
+            backtest_compare,
             bootstrap,
             whatif,
             keep_whatif,

@@ -33,4 +33,18 @@ describe("Backtest", () => {
     await waitFor(() => screen.getByRole("alert"));
     expect(screen.getByRole("alert").textContent).toContain("history only covers");
   });
+
+  it("compares stock mixes side by side", async () => {
+    const rows = [0.4, 1].map((x, i) => ({ stockShare: x, successRate: [0.9, 0.8][i], worstYear: 1966, worstFinalCents: 0, medianFinalCents: 50_000_000 }));
+    let args: unknown;
+    const invoke = async (_c: string, a?: unknown) => { args = a; return rows; };
+    render(Backtest, { invoke });
+    await fireEvent.click(screen.getByText("Compare mixes"));
+    await waitFor(() => screen.getByTestId("bt-mixes"));
+    const t = screen.getByTestId("bt-mixes").textContent!;
+    expect(t).toContain("40%");
+    expect(t).toContain("100%");
+    expect(t).toContain("80%");
+    expect(args).toEqual({ shares: [0.2, 0.4, 0.6, 0.8, 1] });
+  });
 });
