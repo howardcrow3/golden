@@ -61,6 +61,30 @@ pub fn balance_after(balance: Money, rate: f64, years_left: i32, years: i32) -> 
     Money::from_cents(owed.max(0.0).round() as i64)
 }
 
+/// What a savings balance held in an offset account does to a mortgage: interest is charged only
+/// on what is owed beyond the offset, while the payment stays what it was. Returns the months
+/// until the loan is gone and the interest paid over that time. The offset balance is assumed to
+/// stay put (it earns nothing, which is the point of an offset).
+pub fn offset_payoff(balance: Money, rate: f64, years_left: i32, offset: Money) -> (i32, Money) {
+    let pay = monthly_payment(balance, rate, years_left).cents() as f64;
+    let r = rate / 12.0;
+    let off = offset.cents().max(0) as f64;
+    let mut owed = balance.cents().max(0) as f64;
+    let mut interest = 0.0_f64;
+    let mut months = 0;
+    while owed > 0.5 && months < 12 * 100 {
+        let i = ((owed - off).max(0.0)) * r;
+        if pay <= i && owed > off {
+            // The payment no longer covers interest: never pays off.
+            return (months, Money::from_cents(interest.round() as i64));
+        }
+        interest += i;
+        owed = owed + i - pay;
+        months += 1;
+    }
+    (months, Money::from_cents(interest.round() as i64))
+}
+
 /// The gain on a primary home that is taxed: over $250,000 ($500,000 if married filing
 /// jointly). Source: IRC section 121. Taxed at 15% here, as a middle guess.
 pub fn taxable_gain_tax(fs: FilingStatus, gain: Money) -> Money {
@@ -168,6 +192,27 @@ mod tests {
         v.iter()
             .find(|c| c.year == y)
             .map_or(Money::ZERO, |c| c.amount)
+    }
+
+    #[test]
+    fn an_offset_account_shortens_the_loan_and_saves_interest() {
+        let b = Money::from_dollars(200_000);
+        let (m0, i0) = offset_payoff(b, 0.04, 15, Money::ZERO);
+        assert!((m0 - 180).abs() <= 1, "{m0}");
+        let (m1, i1) = offset_payoff(b, 0.04, 15, Money::from_dollars(50_000));
+        assert!(m1 < m0 - 12, "{m1} vs {m0}");
+        assert!(i1 < i0, "{i1:?} vs {i0:?}");
+        // Offsetting the whole loan means no interest at all.
+        let (_, i2) = offset_payoff(b, 0.04, 15, b);
+        assert_eq!(i2, Money::ZERO);
+    }
+
+    #[test]
+    fn no_interest_without_a_rate_and_negative_offsets_are_ignored() {
+        let b = Money::from_dollars(12_000);
+        let (m, i) = offset_payoff(b, 0.0, 1, Money::from_dollars(-5));
+        assert_eq!(m, 12);
+        assert_eq!(i, Money::ZERO);
     }
 
     #[test]
