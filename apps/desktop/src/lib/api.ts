@@ -392,6 +392,17 @@ export async function backtest(stockShare: number, invoke?: Invoke): Promise<Bac
   return (await (await resolve(invoke))("backtest", { stockShare })) as BacktestResult;
 }
 
+export interface MixRow {
+  stockShare: number;
+  successRate: number;
+  worstYear: number;
+  worstFinalCents: number;
+  medianFinalCents: number;
+}
+export async function backtestCompare(shares: number[], invoke?: Invoke): Promise<MixRow[]> {
+  return (await (await resolve(invoke))("backtest_compare", { shares })) as MixRow[];
+}
+
 export interface BootstrapResult {
   successRate: number;
   p10Cents: number;
