@@ -28,6 +28,7 @@ pub mod licensing;
 pub mod localmodel;
 pub mod mcp;
 pub mod model;
+pub mod offset;
 pub mod paystub;
 pub mod planfile;
 pub mod progress;

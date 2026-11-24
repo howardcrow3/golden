@@ -667,6 +667,22 @@ export interface DebtPlan {
 export async function getDebtPlan(extraCents: number, invoke?: Invoke): Promise<DebtPlan> {
   return (await (await resolve(invoke))("debt_plan", { extraCents })) as DebtPlan;
 }
+export interface OffsetEffect {
+  monthsWithout: number;
+  monthsWith: number;
+  interestWithoutCents: number;
+  interestWithCents: number;
+  interestSavedCents: number;
+}
+export async function getMortgageOffset(
+  balanceCents: number,
+  rateBp: number,
+  yearsLeft: number,
+  offsetCents: number,
+  invoke?: Invoke,
+): Promise<OffsetEffect> {
+  return (await (await resolve(invoke))("mortgage_offset", { balanceCents, rateBp, yearsLeft, offsetCents })) as OffsetEffect;
+}
 export async function setDebtTerms(name: string, aprBp: number, minCents: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_debt_terms", { name, aprBp, minCents });
 }
