@@ -183,8 +183,41 @@ fn activate_license(state: Shared, token: String) -> Result<LicenseStatus, Strin
     lock(&state)?.activate_license(&token, today())
 }
 
+/// Wrap the command handler so every command the screens run leaves a line in the log: the
+/// command's name only, never its arguments, which can hold financial data.
+fn logged<R: tauri::Runtime>(
+    inner: impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
+) -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
+    move |invoke| {
+        let cmd = invoke.message.command();
+        if cmd != "client_log" {
+            log::info!(target: "cmd", "{cmd}");
+        }
+        inner(invoke)
+    }
+}
+
+/// A line from the screens: a failed command, an uncaught error or a crash in the page.
+#[tauri::command]
+fn client_log(level: String, source: String, message: String) {
+    fin_log::from_ui(&level, &source, &message);
+}
+
+/// Where the log files are kept, for the About page.
+#[tauri::command]
+fn log_folder() -> Option<String> {
+    fin_log::dir().map(|d| d.display().to_string())
+}
+
+/// The newest log lines (already scrubbed of amounts and numbers), for "Copy log".
+#[tauri::command]
+fn log_tail(lines: usize) -> String {
+    fin_log::tail(lines.clamp(1, 2000))
+}
+
 /// Write why Golden could not start to `Golden-startup-error.txt` in the home folder.
 fn write_startup_note(message: &str) {
+    log::error!("{message}");
     let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"));
     if let Some(home) = home {
         let path = std::path::Path::new(&home).join("Golden-startup-error.txt");
@@ -873,6 +906,11 @@ pub fn run() {
             let result = (|| -> Result<(), Box<dyn std::error::Error>> {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
+            // The local log comes first so everything after it, including a failed start, is written down.
+            let verbose = std::env::var("GOLDEN_LOG").map_or(false, |v| v == "debug");
+            if let Err(e) = fin_log::init(&dir.join("Logs"), verbose) {
+                eprintln!("could not start the log: {e}");
+            }
             let db = open_private(&dir.join("golden.db"), &OsKeyStore)?;
             let mut core = Core::new(db)
                 .with_public_key(bundled_public_key())
@@ -908,7 +946,7 @@ pub fn run() {
             }
             result
         })
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(logged(tauri::generate_handler![
             bank::bank_items,
             bank::bank_connect,
             bank::bank_finish_link,
@@ -1016,8 +1054,11 @@ pub fn run() {
             activate_license,
             accounts,
             cash_flow,
-            categories
-        ])
+            categories,
+            client_log,
+            log_folder,
+            log_tail
+        ]))
         .run(tauri::generate_context!())
         .expect("error while running Golden");
 }
