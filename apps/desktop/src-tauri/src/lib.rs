@@ -359,6 +359,11 @@ fn holdings(state: Shared) -> Result<Vec<fin_plan::investments::Holding>, String
 }
 
 #[tauri::command]
+fn parse_holdings(state: Shared, text: String) -> Result<Vec<fin_plan::investments::Holding>, String> {
+    lock(&state)?.parse_holdings(&text)
+}
+
+#[tauri::command]
 fn save_holdings(state: Shared, holdings: Vec<fin_plan::investments::Holding>) -> Result<(), String> {
     lock(&state)?.save_holdings(&holdings)
 }
@@ -1039,6 +1044,7 @@ pub fn run() {
             import_plan_file,
             holdings,
             save_holdings,
+            parse_holdings,
             investment_checkup,
             harvest_plan,
             rent_vs_buy,

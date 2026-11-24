@@ -1117,6 +1117,10 @@ export interface Checkup {
 export async function getHoldings(invoke?: Invoke): Promise<Holding[]> {
   return (await (await resolve(invoke))("holdings")) as Holding[];
 }
+/** Read a broker positions CSV into holdings (nothing is saved). */
+export async function parseHoldings(text: string, invoke?: Invoke): Promise<Holding[]> {
+  return (await (await resolve(invoke))("parse_holdings", { text })) as Holding[];
+}
 export async function saveHoldings(holdings: Holding[], invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("save_holdings", { holdings });
 }

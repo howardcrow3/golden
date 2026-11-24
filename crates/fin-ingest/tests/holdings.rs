@@ -57,3 +57,10 @@ fn classify_falls_back_to_the_name() {
     assert_eq!(classify("", "Mystery Thing"), AssetKind::Other);
     assert_eq!(classify("Treasury", "Anything"), AssetKind::Bond);
 }
+
+#[test]
+fn a_fund_named_total_something_is_kept() {
+    let h = parse("Name,Value\nTotal Stock Market Index,\"$5,000\"\nAccount Total,\"$5,000\"\nTotal,\"$5,000\"\n").unwrap();
+    assert_eq!(h.len(), 1);
+    assert_eq!(h[0].name, "Total Stock Market Index");
+}
