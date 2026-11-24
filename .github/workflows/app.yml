@@ -12,6 +12,8 @@ env:
   CARGO_TERM_COLOR: always
   # llama.cpp uses std::filesystem, which needs macOS 10.15 or later.
   MACOSX_DEPLOYMENT_TARGET: "13.0"
+  # Golden's bank-sync service (AWS Lambda; public address, no secrets in it). Built into the app.
+  GOLDEN_PLAID_SERVICE_URL: https://xp5i3v3hsjv5wpxyzxbnn4jkay0oyptk.lambda-url.us-east-2.on.aws
 jobs:
   ui:
     name: UI checks
