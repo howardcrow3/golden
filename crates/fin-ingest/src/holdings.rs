@@ -127,7 +127,7 @@ pub fn parse(text: &str) -> Result<Vec<ParsedHolding>, IngestError> {
     let mut rdr = csv::ReaderBuilder::new()
         .flexible(true)
         .trim(csv::Trim::All)
-        .from_reader(text[start..].as_bytes());
+        .from_reader(&text.as_bytes()[start..]);
     let headers: Vec<String> = rdr
         .headers()
         .map_err(|e| IngestError::Csv(e.to_string()))?
