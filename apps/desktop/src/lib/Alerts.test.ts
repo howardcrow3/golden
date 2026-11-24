@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/svelte";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import Alerts from "./Alerts.svelte";
 import type { QuickPlanResult } from "./api";
 
@@ -26,5 +26,28 @@ describe("Alerts", () => {
     cleanup();
     const b = render(Alerts, { result: base });
     expect(b.container.querySelector("section")).toBeNull();
+  });
+
+  describe("notifications", () => {
+    beforeEach(() => localStorage.clear());
+
+    it("raises one generic OS notification for new warnings, never the message text", async () => {
+      const calls: [string, unknown][] = [];
+      const invoke = async (c: string, a?: unknown) => { calls.push([c, a]); return null; };
+      const result = { ...base, alerts: [{ key: "off_track", severity: "danger", message: "You are off track by $12,345." }] } as QuickPlanResult;
+      render(Alerts, { result, invoke });
+      await waitFor(() => expect(calls).toEqual([["os_notify", { count: 1 }]]));
+      cleanup();
+      render(Alerts, { result, invoke });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(calls).toHaveLength(1);
+    });
+
+    it("stays quiet for good news", async () => {
+      const calls: string[] = [];
+      render(Alerts, { result: { ...base, alerts: [{ key: "ok", severity: "good", message: "On track." }] } as QuickPlanResult, invoke: async (c: string) => { calls.push(c); return null; } });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(calls).toEqual([]);
+    });
   });
 });

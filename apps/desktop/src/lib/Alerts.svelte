@@ -1,8 +1,14 @@
 <script lang="ts">
-  import type { QuickPlanResult } from "./api";
+  import { osNotify, type Invoke, type QuickPlanResult } from "./api";
+  import { newlyUrgent } from "./alertNotify";
 
-  let { result }: { result: QuickPlanResult } = $props();
+  let { result, invoke }: { result: QuickPlanResult; invoke?: Invoke } = $props();
   let items = $derived(result.alerts ?? []);
+  // Tell the person once per heads-up, even when the window is in the background.
+  $effect(() => {
+    const fresh = newlyUrgent(items);
+    if (fresh > 0) osNotify(fresh, invoke).catch(() => {});
+  });
   const icon = { good: "✓", info: "•", warn: "!", danger: "!!" } as const;
 </script>
 

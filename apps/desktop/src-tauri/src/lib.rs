@@ -596,6 +596,24 @@ fn recurring(
     lock(&state)?.recurring(&from, &to)
 }
 
+/// Raise an operating-system notification. The text is generic on purpose: banners can show
+/// on a locked screen, so no amounts or names go into them.
+#[tauri::command]
+fn os_notify(app: tauri::AppHandle, count: u32) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    let body = if count == 1 {
+        "Your plan has a new heads-up. Open Golden to see it."
+    } else {
+        "Your plan has new heads-ups. Open Golden to see them."
+    };
+    app.notification()
+        .builder()
+        .title("Golden")
+        .body(body)
+        .show()
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn mortgage_offset(
     balance_cents: i64,
@@ -926,6 +944,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let result = (|| -> Result<(), Box<dyn std::error::Error>> {
             let dir = app.path().app_data_dir()?;
@@ -1037,6 +1056,7 @@ pub fn run() {
             reopen_month,
             debt_plan,
             mortgage_offset,
+            os_notify,
             set_debt_terms,
             recurring,
             set_opening_balance,
