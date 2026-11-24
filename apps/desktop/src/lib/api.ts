@@ -176,6 +176,9 @@ export async function logFolder(invoke?: Invoke): Promise<string | null> {
   const f = await (await resolve(invoke))("log_folder");
   return typeof f === "string" ? f : null;
 }
+export async function osNotify(count: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("os_notify", { count });
+}
 export async function logTail(lines: number, invoke?: Invoke): Promise<string> {
   return String(await (await resolve(invoke))("log_tail", { lines }));
 }
