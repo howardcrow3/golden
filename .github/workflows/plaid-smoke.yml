@@ -1,0 +1,31 @@
+name: Plaid service smoke test
+
+# Checks the deployed bank-sync service answers and refuses unlicensed calls.
+# Run by hand, or daily. It sends no credentials and touches no bank.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Deployed service answers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      URL: https://xp5i3v3hsjv5wpxyzxbnn4jkay0oyptk.lambda-url.us-east-2.on.aws
+    steps:
+      - name: Link page is served
+        run: |
+          code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$URL/link")
+          echo "GET /link -> $code"
+          [ "$code" = 200 ]
+      - name: Sync without a licence is refused
+        run: |
+          code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{}' "$URL/transactions/sync")
+          echo "POST /transactions/sync -> $code"
+          [ "$code" = 401 ] || [ "$code" = 403 ]
