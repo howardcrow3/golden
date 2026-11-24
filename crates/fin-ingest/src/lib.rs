@@ -3,6 +3,7 @@
 pub mod csv_reader;
 pub mod dates;
 pub mod docclass;
+pub mod holdings;
 pub mod ofx;
 pub mod paystub;
 pub mod pdf;
