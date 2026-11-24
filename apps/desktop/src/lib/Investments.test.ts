@@ -60,4 +60,32 @@ describe("Investments", () => {
     await fireEvent.click(screen.getByText("Check my investments"));
     expect((await screen.findByRole("alert")).textContent).toContain("at least one");
   });
+
+  it("adds holdings read from a positions file", async () => {
+    const found = [{ name: "Total Stock Market Index", valueCents: 5_000_000, class: "stock", expenseBp: 3, singleStock: false }];
+    const calls: [string, unknown][] = [];
+    const invoke = vi.fn(async (cmd: string, args?: unknown) => {
+      calls.push([cmd, args]);
+      if (cmd === "holdings") return [];
+      if (cmd === "parse_holdings") return found;
+      return undefined;
+    });
+    render(Investments, { invoke });
+    const file = new File(["Name,Value\nTotal Stock Market Index,50000\n"], "positions.csv", { type: "text/csv" });
+    await fireEvent.change(screen.getByTestId("inv-import"), { target: { files: [file] } });
+    await waitFor(() => expect(screen.getAllByTestId("holding-row")).toHaveLength(1));
+    expect(screen.getByTestId("inv-imported").textContent).toContain("Added 1 holding from positions.csv");
+    expect((calls.find(([c]) => c === "parse_holdings")![1] as { text: string }).text).toContain("Total Stock Market Index");
+  });
+
+  it("shows why a positions file could not be read", async () => {
+    const invoke = vi.fn(async (cmd: string) => {
+      if (cmd === "holdings") return [];
+      if (cmd === "parse_holdings") throw new Error("No holdings with a value were found in that file.");
+      return undefined;
+    });
+    render(Investments, { invoke });
+    await fireEvent.change(screen.getByTestId("inv-import"), { target: { files: [new File(["x"], "bad.csv")] } });
+    expect((await screen.findByRole("alert")).textContent).toContain("No holdings");
+  });
 });

@@ -144,7 +144,12 @@ pub fn parse(text: &str) -> Result<Vec<ParsedHolding>, IngestError> {
         let rec = rec.map_err(|e| IngestError::Csv(e.to_string()))?;
         let name = rec.get(name_c).unwrap_or("").trim().to_string();
         let lower = name.to_ascii_lowercase();
-        if name.is_empty() || lower.starts_with("total") || lower.contains("account total") {
+        // A total line, but not a fund that merely starts with the word ("Total Stock Market").
+        let total_line = matches!(
+            lower.as_str(),
+            "total" | "totals" | "grand total" | "total value" | "total holdings"
+        ) || lower.ends_with(" total");
+        if name.is_empty() || total_line {
             continue;
         }
         let raw = rec.get(value_c).unwrap_or("").trim();

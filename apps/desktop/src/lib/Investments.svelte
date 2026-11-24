@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getHoldings, investmentCheckup, saveHoldings, type AssetClass, type Checkup, type Holding, type Invoke, type RiskProfile } from "./api";
+  import { getHoldings, investmentCheckup, parseHoldings, saveHoldings, type AssetClass, type Checkup, type Holding, type Invoke, type RiskProfile } from "./api";
   import { formatCents, formatPercent, parseDollars } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -10,6 +10,7 @@
   let error = $state("");
   let saved = $state(false);
   let edited = false;
+  let imported = $state("");
 
   $effect(() => {
     getHoldings(invoke)
@@ -35,6 +36,40 @@
       if (!Number.isFinite(fee) || fee < 0) throw new Error(`${label}: enter the yearly fee as a percentage.`);
       return { name: label, valueCents: v, class: r.class, expenseBp: Math.round(fee * 100), singleStock: r.single };
     });
+  }
+
+  function readText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result ?? ""));
+      r.onerror = () => reject(new Error("Couldn't read that file."));
+      r.readAsText(file);
+    });
+  }
+
+  async function importFile(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    error = "";
+    try {
+      const found = await parseHoldings(await readText(file), invoke);
+      edited = true;
+      for (const x of found) {
+        rows.push({
+          name: x.name,
+          value: formatCents(x.valueCents, { whole: true }).replace("$", ""),
+          class: x.class,
+          fee: String(x.expenseBp / 100),
+          single: x.singleStock,
+        });
+      }
+      imported = `Added ${found.length} holding${found.length === 1 ? "" : "s"} from ${file.name}. Check them, then run the check-up.`;
+    } catch (e) {
+      imported = "";
+      error = e instanceof Error ? e.message : String(e);
+    }
   }
 
   async function run() {
@@ -69,6 +104,8 @@
       <button type="button" onclick={() => { edited = true; rows.splice(i, 1); }}>Remove</button>
     </div>
   {/each}
+  <label class="file">Import a positions file (CSV) <input type="file" accept=".csv,text/csv" onchange={importFile} data-testid="inv-import" /></label>
+  {#if imported}<p class="hint" data-testid="inv-imported">{imported}</p>{/if}
   <button type="button" onclick={() => { edited = true; rows.push({ name: "", value: "0", class: "stock", fee: "0", single: false }); }}>Add a holding</button>
   <label class="risk">Risk profile
     <select bind:value={risk} aria-label="Risk profile">

@@ -45,3 +45,25 @@ fn unnamed_holdings_are_refused() {
         .unwrap_err()
         .contains("name"));
 }
+
+#[test]
+fn a_positions_file_becomes_holdings_without_saving() {
+    let a = App::in_memory().unwrap();
+    let csv = "Description,Market Value,Asset Class,Expense Ratio\nTotal Stock Index,\"$60,000.00\",Equity,0.04%\nBond Index,\"$40,000.00\",Fixed Income,0.05%\nTotal,\"$100,000.00\",,\n";
+    let h = a.parse_holdings(csv).unwrap();
+    assert_eq!(h.len(), 2);
+    assert_eq!(h[0].value_cents, 6_000_000);
+    assert_eq!(h[0].class, Class::Stock);
+    assert_eq!(h[0].expense_bp, 4);
+    assert_eq!(h[1].class, Class::Bond);
+    assert!(a.holdings().unwrap().is_empty());
+}
+
+#[test]
+fn an_unreadable_positions_file_says_why() {
+    let a = App::in_memory().unwrap();
+    assert!(a.parse_holdings("").is_err());
+    assert!(a.parse_holdings("Date,Amount\n2026-01-01,5\n").is_err());
+    let err = a.parse_holdings("Name,Value\nA,0\n").unwrap_err();
+    assert!(err.contains("No holdings"), "{err}");
+}
