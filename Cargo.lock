@@ -648,6 +648,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fin-log"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "log",
+ "tempfile",
+]
+
+[[package]]
 name = "fin-plaid"
 version = "0.1.0"
 dependencies = [
