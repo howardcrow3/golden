@@ -13,6 +13,8 @@ export interface TaxEstimate {
   stateIsEstimate: boolean;
 }
 
+import { shellReporter, wrapInvoke } from "./clientLog";
+
 export type Invoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 /** True when running inside the Tauri shell (as opposed to a plain browser during UI development). */
@@ -22,7 +24,9 @@ export function inTauri(): boolean {
 
 async function tauriInvoke(): Promise<Invoke> {
   const mod = await import("@tauri-apps/api/core");
-  return mod.invoke as Invoke;
+  const raw = mod.invoke as Invoke;
+  // Failed commands land in Golden's local log (command name and error text only).
+  return wrapInvoke(raw, shellReporter(raw));
 }
 
 export async function estimateTax(req: TaxRequest, invoke?: Invoke): Promise<TaxEstimate> {
@@ -166,6 +170,14 @@ async function resolve(invoke?: Invoke): Promise<Invoke> {
   const call = invoke ?? (inTauri() ? await tauriInvoke() : null);
   if (!call) throw new Error("Your data lives in the Golden desktop app.");
   return call;
+}
+
+export async function logFolder(invoke?: Invoke): Promise<string | null> {
+  const f = await (await resolve(invoke))("log_folder");
+  return typeof f === "string" ? f : null;
+}
+export async function logTail(lines: number, invoke?: Invoke): Promise<string> {
+  return String(await (await resolve(invoke))("log_tail", { lines }));
 }
 
 export async function importStatement(bytes: Uint8Array, account: string, kind: string, invoke?: Invoke): Promise<ImportReport> {

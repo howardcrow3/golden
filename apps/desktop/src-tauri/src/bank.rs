@@ -74,7 +74,16 @@ fn lock<'a>(s: &'a tauri::State<'_, Mutex<Core>>) -> Result<std::sync::MutexGuar
 /// a bank needing sign-in) are left for the Banks page, which shows them when the person syncs.
 pub fn sync_quietly(core: &mut Core) {
     if core.bank_items().map(|i| i.iter().any(|b| b.status == "active")).unwrap_or(false) {
-        let _ = core.bank_sync_all(&Https, &Keychain);
+        match core.bank_sync_all(&Https, &Keychain) {
+            Ok(outcomes) => {
+                let failed = outcomes.iter().filter(|o| o.error.is_some()).count();
+                log::info!(target: "bank", "daily bank sync finished: {} linked, {failed} failed", outcomes.len());
+                for o in outcomes.iter().filter(|o| o.error.is_some()) {
+                    log::warn!(target: "bank", "sync failed for {}: {}", o.bank, o.error.as_deref().unwrap_or(""));
+                }
+            }
+            Err(e) => log::warn!(target: "bank", "daily bank sync failed: {e}"),
+        }
     }
 }
 
