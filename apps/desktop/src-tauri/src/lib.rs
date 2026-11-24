@@ -588,6 +588,16 @@ fn recurring(
 }
 
 #[tauri::command]
+fn mortgage_offset(
+    balance_cents: i64,
+    rate_bp: i64,
+    years_left: i32,
+    offset_cents: i64,
+) -> Result<fin_app::offset::OffsetEffect, String> {
+    fin_app::offset::mortgage_offset(balance_cents, rate_bp, years_left, offset_cents)
+}
+
+#[tauri::command]
 fn debt_plan(state: Shared, extra_cents: i64) -> Result<fin_app::debts::DebtPlan, String> {
     lock(&state)?.debt_plan(extra_cents)
 }
@@ -1017,6 +1027,7 @@ pub fn run() {
             close_month,
             reopen_month,
             debt_plan,
+            mortgage_offset,
             set_debt_terms,
             recurring,
             set_opening_balance,
