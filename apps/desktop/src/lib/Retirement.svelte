@@ -17,6 +17,7 @@
   import Milestones from "./Milestones.svelte";
   import Legacy from "./Legacy.svelte";
   import Alerts from "./Alerts.svelte";
+  import CareCostPicker from "./CareCostPicker.svelte";
   import SelfEmployedRoom from "./SelfEmployedRoom.svelte";
   import Backtest from "./Backtest.svelte";
   import Sepp from "./Sepp.svelte";
@@ -244,6 +245,7 @@
         <label>Cost per year <input bind:value={f.healthDetail.ltcAnnual} aria-label="Long-term care cost" inputmode="numeric" /></label>
         <label>Chance % <input bind:value={f.healthDetail.ltcChance} aria-label="Chance of needing care" size="4" /></label>
       </div>
+      <CareCostPicker region={f.state} onuse={(d) => { if (f) f.healthDetail.ltcAnnual = d; }} {invoke} />
       <p class="hint">Change these to match your area and plan. Set the start age to 0 to leave long-term care out. Costs differ a lot by state: care often runs $80,000 to $150,000 a year.</p>
     {/if}
     <button type="submit" disabled={busy}>{busy ? "Running…" : "Save and run plan"}</button>

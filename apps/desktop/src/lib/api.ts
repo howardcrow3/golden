@@ -681,6 +681,15 @@ export interface DebtPlan {
 export async function getDebtPlan(extraCents: number, invoke?: Invoke): Promise<DebtPlan> {
   return (await (await resolve(invoke))("debt_plan", { extraCents })) as DebtPlan;
 }
+export type CareKind = "nursing_home_private" | "nursing_home_semi_private" | "assisted_living" | "adult_day" | "caregiver";
+export interface CareCost {
+  annualCents: number;
+  national: boolean;
+}
+export async function getCareCost(state: string, kind: CareKind, invoke?: Invoke): Promise<CareCost> {
+  return (await (await resolve(invoke))("care_cost", { state, kind })) as CareCost;
+}
+
 export interface OffsetEffect {
   monthsWithout: number;
   monthsWith: number;

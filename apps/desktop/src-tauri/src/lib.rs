@@ -614,6 +614,24 @@ fn os_notify(app: tauri::AppHandle, count: u32) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CareCost {
+    annual_cents: i64,
+    national: bool,
+}
+
+/// Typical yearly cost of a kind of long-term care in a state (CareScout survey, 2025).
+#[tauri::command]
+fn care_cost(state: String, kind: String) -> Result<CareCost, String> {
+    let care = fin_plan::carecost::Care::from_key(&kind).ok_or("Unknown kind of care.")?;
+    let c = fin_plan::carecost::cost(&state, care);
+    Ok(CareCost {
+        annual_cents: c.annual.cents(),
+        national: c.national_fallback,
+    })
+}
+
 #[tauri::command]
 fn mortgage_offset(
     balance_cents: i64,
@@ -1056,6 +1074,7 @@ pub fn run() {
             reopen_month,
             debt_plan,
             mortgage_offset,
+            care_cost,
             os_notify,
             set_debt_terms,
             recurring,
