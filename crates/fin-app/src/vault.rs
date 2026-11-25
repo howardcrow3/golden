@@ -29,12 +29,7 @@ pub struct DocumentRow {
     pub fields: Vec<DocField>,
 }
 
-/// Reads the words in a picture. The app supplies the engine its operating system provides
-/// (Vision on a Mac, Windows OCR on Windows), so nothing leaves the computer.
-pub trait Ocr: Send + Sync {
-    /// Text in an image file (JPEG or PNG), or why it could not be read.
-    fn read_image(&self, bytes: &[u8]) -> Result<String, String>;
-}
+pub use fin_ingest::ocr::Ocr;
 
 fn is_picture(bytes: &[u8]) -> bool {
     bytes.starts_with(&[0xFF, 0xD8, 0xFF]) || bytes.starts_with(&[0x89, b'P', b'N', b'G'])
