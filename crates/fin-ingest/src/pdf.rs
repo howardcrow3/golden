@@ -396,3 +396,90 @@ mod tests {
         assert!(extract_text(b"not a pdf at all").is_err());
     }
 }
+
+/// The JPEG pictures embedded in a PDF, in page order. A scanned statement is normally one JPEG
+/// per page, so these are what an OCR engine needs. Pictures stored in other ways (raw pixels,
+/// fax encodings) are skipped.
+pub fn embedded_jpegs(bytes: &[u8]) -> Vec<Vec<u8>> {
+    let Ok(doc) = lopdf::Document::load_mem(bytes) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (_, page) in doc.get_pages() {
+        let Ok(images) = doc.get_page_images(page) else {
+            continue;
+        };
+        for img in images {
+            let jpeg = img
+                .filters
+                .as_ref()
+                .is_some_and(|f| f.len() == 1 && f[0] == "DCTDecode")
+                && img.content.starts_with(&[0xFF, 0xD8]);
+            if jpeg {
+                out.push(img.content.to_vec());
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod embedded_tests {
+    use super::*;
+    use lopdf::{dictionary, Document, Object, Stream};
+
+    fn pdf_with(images: &[(&str, Vec<u8>)]) -> Vec<u8> {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let mut xobjects = lopdf::Dictionary::new();
+        for (i, (filter, data)) in images.iter().enumerate() {
+            let id = doc.add_object(Stream::new(
+                dictionary! {
+                    "Type" => "XObject",
+                    "Subtype" => "Image",
+                    "Width" => 2,
+                    "Height" => 2,
+                    "ColorSpace" => "DeviceGray",
+                    "BitsPerComponent" => 8,
+                    "Filter" => *filter,
+                },
+                data.clone(),
+            ));
+            xobjects.set(format!("Im{i}"), Object::Reference(id));
+        }
+        let page_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => vec![0.into(), 0.into(), 100.into(), 100.into()],
+            "Resources" => dictionary! { "XObject" => xobjects },
+        });
+        doc.objects.insert(
+            pages_id,
+            Object::Dictionary(dictionary! {
+                "Type" => "Pages",
+                "Kids" => vec![page_id.into()],
+                "Count" => 1,
+            }),
+        );
+        let catalog = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog);
+        let mut out = Vec::new();
+        doc.save_to(&mut out).unwrap();
+        out
+    }
+
+    #[test]
+    fn finds_jpegs_and_skips_other_pictures() {
+        let jpeg = vec![0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
+        let pdf = pdf_with(&[("DCTDecode", jpeg.clone()), ("FlateDecode", vec![1, 2, 3])]);
+        assert_eq!(embedded_jpegs(&pdf), vec![jpeg]);
+    }
+
+    #[test]
+    fn a_pdf_without_pictures_or_not_a_pdf_gives_nothing() {
+        assert!(embedded_jpegs(&pdf_with(&[])).is_empty());
+        assert!(embedded_jpegs(b"not a pdf").is_empty());
+        // Marked as a JPEG but not one.
+        assert!(embedded_jpegs(&pdf_with(&[("DCTDecode", vec![9, 9, 9])])).is_empty());
+    }
+}
