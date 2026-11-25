@@ -114,6 +114,8 @@ pub struct App {
     pub(crate) ai: Option<std::sync::Arc<dyn model::Completer + Sync>>,
     pub(crate) embedded: Option<std::sync::Arc<dyn model::Completer + Sync>>,
     pub(crate) activity: activity::ActivityLog,
+    /// Reads text out of pictures (scans, photos) on this computer, when the platform has one.
+    pub(crate) ocr: Option<std::sync::Arc<dyn vault::Ocr>>,
     library_root: Option<std::path::PathBuf>,
     pub(crate) library_default: Option<std::path::PathBuf>,
 }
@@ -159,6 +161,7 @@ impl App {
             interpreter: Box::new(chat::RuleInterpreter),
             ai: None,
             embedded: None,
+            ocr: None,
             activity: activity::ActivityLog::default(),
             library_root: None,
             library_default: None,

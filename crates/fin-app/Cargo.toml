@@ -24,6 +24,7 @@ sha2 = "0.10"
 rand = "0.8"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 tempfile = "3"
+lopdf = { version = "0.42", default-features = false }
 
 [features]
 default = ["plain"]

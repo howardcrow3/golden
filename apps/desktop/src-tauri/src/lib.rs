@@ -978,6 +978,8 @@ pub fn run() {
                 .with_library(Some(fin_app::library::default_root(&dir)));
             // Use the local language model for the what-if chat when one was set up.
             core.refresh_interpreter();
+            // Read scans and photos in the document vault with the operating system's own OCR.
+            core.set_ocr(fin_ocr::system_engine());
             app.manage(Mutex::new(core));
             app.manage(std::sync::Arc::new(fin_ai::manager::DownloadState::default()));
             attach_model(app.handle());

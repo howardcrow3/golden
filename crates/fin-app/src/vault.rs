@@ -29,11 +29,37 @@ pub struct DocumentRow {
     pub fields: Vec<DocField>,
 }
 
-fn text_of(bytes: &[u8]) -> String {
+pub use fin_ingest::ocr::Ocr;
+
+fn is_picture(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xFF, 0xD8, 0xFF]) || bytes.starts_with(&[0x89, b'P', b'N', b'G'])
+}
+
+fn read_pictures(ocr: &dyn Ocr, pictures: &[&[u8]]) -> String {
+    pictures
+        .iter()
+        .filter_map(|p| ocr.read_image(p).ok())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn text_of(bytes: &[u8], ocr: Option<&dyn Ocr>) -> String {
     if bytes.starts_with(b"%PDF") {
-        return fin_ingest::pdf::extract_text(bytes).unwrap_or_default();
+        if let Ok(text) = fin_ingest::pdf::extract_text(bytes) {
+            return text;
+        }
+        // No text layer: a scan. Read the page pictures when an OCR engine is available.
+        let Some(ocr) = ocr else {
+            return String::new();
+        };
+        let jpegs = fin_ingest::pdf::embedded_jpegs(bytes);
+        let refs: Vec<&[u8]> = jpegs.iter().map(|j| j.as_slice()).collect();
+        return read_pictures(ocr, &refs);
     }
-    // Plain text, CSV and the like; binary files (scans, images) have no readable text.
+    if is_picture(bytes) {
+        return ocr.map(|o| read_pictures(o, &[bytes])).unwrap_or_default();
+    }
+    // Plain text, CSV and the like; other binary files have no readable text.
     match std::str::from_utf8(bytes) {
         Ok(s) if !s.contains('\0') => s.to_string(),
         _ => String::new(),
@@ -53,6 +79,11 @@ fn view(r: DocRow) -> DocumentRow {
 }
 
 impl App {
+    /// Use the operating system's text recognition for scans and photos (or stop with `None`).
+    pub fn set_ocr(&mut self, ocr: Option<std::sync::Arc<dyn Ocr>>) {
+        self.ocr = ocr;
+    }
+
     /// Put a file in the vault and read what it can. Returns the stored row.
     pub fn vault_add(&self, name: &str, bytes: &[u8]) -> Result<DocumentRow, String> {
         self.require_edit()?;
@@ -66,7 +97,7 @@ impl App {
         if bytes.len() > MAX_BYTES {
             return Err("That file is over 25 MB.".into());
         }
-        let body = text_of(bytes);
+        let body = text_of(bytes, self.ocr.as_deref());
         let found = recognise(&body);
         let fields: Vec<DocField> = found
             .fields
