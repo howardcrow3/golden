@@ -153,4 +153,24 @@ mod ocr {
         b.set_ocr(None);
         assert_eq!(b.vault_add("again.jpg", &jpeg).unwrap().kind, "Document");
     }
+
+    #[test]
+    fn unreadable_scans_are_flagged() {
+        let jpeg = vec![0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4];
+        let mut a = App::in_memory().unwrap();
+        assert!(!a.vault_add("scan.jpg", &jpeg).unwrap().has_text);
+        a.set_ocr(Some(Arc::new(FakeOcr)));
+        let row = a.vault_add("w2.jpg", &jpeg).unwrap();
+        assert!(row.has_text);
+        assert!(a
+            .vault_list("")
+            .unwrap()
+            .iter()
+            .any(|d| d.name == "w2.jpg" && d.has_text));
+        assert!(a
+            .vault_list("")
+            .unwrap()
+            .iter()
+            .any(|d| d.name == "scan.jpg" && !d.has_text));
+    }
 }

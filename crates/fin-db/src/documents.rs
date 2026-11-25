@@ -12,6 +12,8 @@ pub struct DocRow {
     pub size: i64,
     /// JSON text of the figures read from the document.
     pub fields: String,
+    /// False when no text could be read (for example a scan no engine could read).
+    pub has_text: bool,
 }
 
 pub struct NewDoc<'a> {
@@ -24,7 +26,7 @@ pub struct NewDoc<'a> {
     pub content: &'a [u8],
 }
 
-const COLS: &str = "id, name, kind, year, added, size, fields";
+const COLS: &str = "id, name, kind, year, added, size, fields, length(trim(body)) > 0";
 
 fn row(r: &rusqlite::Row) -> rusqlite::Result<DocRow> {
     Ok(DocRow {
@@ -35,6 +37,7 @@ fn row(r: &rusqlite::Row) -> rusqlite::Result<DocRow> {
         added: r.get(4)?,
         size: r.get(5)?,
         fields: r.get(6)?,
+        has_text: r.get(7)?,
     })
 }
 

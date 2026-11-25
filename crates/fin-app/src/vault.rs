@@ -27,6 +27,8 @@ pub struct DocumentRow {
     pub added: String,
     pub size: i64,
     pub fields: Vec<DocField>,
+    /// False when nothing could be read from the file.
+    pub has_text: bool,
 }
 
 pub use fin_ingest::ocr::Ocr;
@@ -75,6 +77,7 @@ fn view(r: DocRow) -> DocumentRow {
         added: r.added,
         size: r.size,
         fields: serde_json::from_str(&r.fields).unwrap_or_default(),
+        has_text: r.has_text,
     }
 }
 

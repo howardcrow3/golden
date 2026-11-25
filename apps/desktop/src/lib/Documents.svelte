@@ -69,7 +69,7 @@
   <h2>Documents</h2>
   <p class="hint">
     Tax forms, statements and other papers, kept inside Golden's encrypted data on this computer. Golden reads what it can from each one here; nothing is uploaded.
-    A scan without a text layer is kept but not read.
+    Photos and scans are read with your computer's own text recognition; if that fails the file is still kept.
   </p>
   <div class="row">
     <label>Add files <input type="file" multiple aria-label="Document files" onchange={onFiles} disabled={busy} /></label>
@@ -85,6 +85,9 @@
         <li data-testid="doc-row">
           <strong>{d.name}</strong>
           <span class="meta">{d.kind}{d.year ? ` ${d.year}` : ""} · {size(d.size)} · added {d.added}</span>
+          {#if d.hasText === false}
+            <p class="hint" data-testid="doc-unread">Couldn't read any text in this file. It's kept as is, but search won't find words inside it.</p>
+          {/if}
           {#if d.fields.length > 0}
             <ul class="fields">
               {#each d.fields as f}<li>{f.label}: {formatCents(f.cents)}</li>{/each}

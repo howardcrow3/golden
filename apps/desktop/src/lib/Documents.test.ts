@@ -60,4 +60,17 @@ describe("Documents", () => {
     await waitFor(() => expect(calls).toContainEqual({ query: "roof" }));
     expect(screen.getByTestId("docs-empty").textContent).toContain("Nothing matches");
   });
+
+  it("says when a file had no readable text", async () => {
+    const scan = { ...w2, id: 2, name: "scan.jpg", kind: "Other", year: null, fields: [], hasText: false };
+    render(Documents, { invoke: mock([scan]).invoke });
+    await waitFor(() => screen.getByTestId("doc-unread"));
+    expect(screen.getByTestId("doc-unread").textContent).toContain("Couldn't read any text");
+  });
+
+  it("stays quiet when text was read", async () => {
+    render(Documents, { invoke: mock([{ ...w2, hasText: true }]).invoke });
+    await waitFor(() => screen.getByTestId("doc-row"));
+    expect(screen.queryByTestId("doc-unread")).toBeNull();
+  });
 });
