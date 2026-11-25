@@ -7,6 +7,7 @@
   import Forecast from "./Forecast.svelte";
   import BalanceSheet from "./BalanceSheet.svelte";
   import RecurringList from "./RecurringList.svelte";
+  import NextWeeks from "./NextWeeks.svelte";
   import Debts from "./Debts.svelte";
   import Offset from "./Offset.svelte";
   import Insights from "./Insights.svelte";
@@ -40,6 +41,7 @@
 <Insights />
 <MonthClose />
 <BalanceSheet />
+<NextWeeks />
 <RecurringList />
 <Goals />
 <Debts />
