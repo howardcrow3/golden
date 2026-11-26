@@ -18,6 +18,10 @@ pub struct TxnRow {
     pub amount_cents: i64,
     pub category: Option<String>,
     pub account: String,
+    /// Your own note.
+    pub note: String,
+    /// Your own tags.
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -28,7 +32,27 @@ pub struct Recategorized {
     pub also_updated: usize,
 }
 
+fn split_tags(s: &str) -> Vec<String> {
+    s.split(',')
+        .map(|t| t.trim().to_lowercase())
+        .filter(|t| !t.is_empty())
+        .collect()
+}
+
 impl App {
+    /// Save a note and tags on a transaction. Tags are comma separated; duplicates are dropped.
+    pub fn set_note_tags(&mut self, id: i64, note: &str, tags: &str) -> Result<(), String> {
+        self.require_edit()?;
+        let txn = self.db.get_txn(id).map_err(|e| e.to_string())?;
+        self.ensure_open(txn.day)?;
+        let mut list = split_tags(tags);
+        let mut seen = std::collections::HashSet::new();
+        list.retain(|t| seen.insert(t.clone()));
+        self.db
+            .set_txn_note_tags(id, note.trim(), &list.join(","))
+            .map_err(|e| e.to_string())
+    }
+
     pub(crate) fn load_saved_rules(&mut self) {
         if let Ok(Some(json)) = self.db.get_setting(RULES_KEY) {
             if let Ok(saved) = serde_json::from_str::<Vec<Rule>>(&json) {
@@ -51,6 +75,7 @@ impl App {
             .into_iter()
             .map(|(id, n, _, _)| (id.0, n))
             .collect();
+        let extras = self.db.txn_extras().map_err(|e| e.to_string())?;
         let mut rows = self
             .db
             .txns_between(parse_day(from)?, parse_day(to)?)
@@ -60,14 +85,19 @@ impl App {
             .into_iter()
             .filter(|t| !only_uncategorized || t.category.is_none())
             .take(MAX_ROWS)
-            .map(|t| TxnRow {
-                id: t.id,
-                day: t.day.format("%Y-%m-%d").to_string(),
-                payee: t.payee,
-                memo: t.memo,
-                amount_cents: t.amount.cents(),
-                category: t.category,
-                account: names.get(&t.account.0).cloned().unwrap_or_default(),
+            .map(|t| {
+                let (note, tags) = extras.get(&t.id).cloned().unwrap_or_default();
+                TxnRow {
+                    id: t.id,
+                    day: t.day.format("%Y-%m-%d").to_string(),
+                    payee: t.payee,
+                    memo: t.memo,
+                    amount_cents: t.amount.cents(),
+                    category: t.category,
+                    account: names.get(&t.account.0).cloned().unwrap_or_default(),
+                    note,
+                    tags: split_tags(&tags),
+                }
             })
             .collect())
     }

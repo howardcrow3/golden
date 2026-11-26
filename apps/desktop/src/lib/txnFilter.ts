@@ -1,11 +1,11 @@
 import type { TxnRow } from "./api";
 
-/** Lines whose payee, memo, category, account or amount contain every word typed. */
+/** Lines whose payee, memo, note, tag, category, account or amount contain every word typed. */
 export function filterTxns(rows: TxnRow[], query: string): TxnRow[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return rows;
   return rows.filter((r) => {
-    const hay = [r.payee, r.memo, r.category ?? "", r.account, (Math.abs(r.amountCents) / 100).toFixed(2), r.day].join(" ").toLowerCase();
+    const hay = [r.payee, r.memo, r.category ?? "", r.account, r.note ?? "", (r.tags ?? []).join(" "), (Math.abs(r.amountCents) / 100).toFixed(2), r.day].join(" ").toLowerCase();
     return words.every((w) => hay.includes(w));
   });
 }
