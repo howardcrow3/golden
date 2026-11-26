@@ -605,6 +605,16 @@ fn add_holding(state: Shared, name: String, kind: String, value_cents: i64) -> R
 }
 
 #[tauri::command]
+fn watch_lists(state: Shared) -> Result<Vec<fin_app::watchlists::WatchList>, String> {
+    lock(&state)?.watch_lists()
+}
+
+#[tauri::command]
+fn save_watch_lists(state: Shared, lists: Vec<fin_app::watchlists::WatchList>) -> Result<Vec<fin_app::watchlists::WatchList>, String> {
+    lock(&state)?.save_watch_lists(lists)
+}
+
+#[tauri::command]
 fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(), String> {
     lock(&state)?.set_budget(&category, monthly_cents).map(|_| ())
 }
@@ -1163,6 +1173,8 @@ pub fn run() {
             suggest_allocation,
             apply_paystub,
             set_budget,
+            watch_lists,
+            save_watch_lists,
             add_holding,
             cancel_marks,
             set_cancel_mark,
