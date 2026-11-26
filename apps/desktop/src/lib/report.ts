@@ -1,4 +1,4 @@
-import type { QuickPlanResult } from "./api";
+import type { BudgetRow, QuickPlanResult } from "./api";
 import { formatCents, formatPercent } from "./money";
 
 const esc = (s: string) =>
@@ -62,4 +62,13 @@ ${rows}
 <p class="note">Assumes ${esc(formatPercent(r.realReturn))} real return, ${esc(formatPercent(r.volatility))} volatility, Social Security at ${r.ssClaimAge}. Amounts are in today's dollars. These are estimates, not advice.</p>
 </body></html>
 `;
+}
+
+/** Budget against spending for a period, one row per category, in plain dollars. */
+export function budgetCsv(rows: BudgetRow[], period: string): string {
+  const lines = [["Period", "Category", "Budget", "Spent", "Remaining"].join(",")];
+  for (const r of rows) {
+    lines.push([period, r.category, r.budgetCents / 100, r.spentCents / 100, r.remainingCents / 100].map(csvCell).join(","));
+  }
+  return lines.join("\n") + "\n";
 }
