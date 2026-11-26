@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/svelte";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import FanChart from "./FanChart.svelte";
 import { bandPath } from "./chart";
 import type { QuickPlanResult } from "./api";
@@ -29,15 +29,22 @@ describe("bandPath", () => {
 });
 
 describe("FanChart", () => {
-  it("draws the band, the histogram and says how it was made", () => {
+  it("hands the band, median and histogram to the chart kit and says how it was made", () => {
+    const line = vi.fn();
+    const columns = vi.fn();
+    (globalThis as { TBChart?: unknown }).TBChart = { line, columns };
     render(FanChart, { result: base });
-    expect(screen.getByTestId("band").getAttribute("d")).toContain("M");
-    expect(screen.getByRole("img", { name: /How many simulated futures/ })).toBeTruthy();
+    const l = line.mock.calls[0][1];
+    expect(l.series[0].values).toEqual([5, 6]);
+    expect(l.bands[0].lo).toEqual([3, 2]);
+    expect(l.bands[0].hi).toEqual([8, 11]);
+    expect(columns.mock.calls[0][1].series[0].values[0]).toBe(20);
     expect(document.body.textContent).toContain("100 simulated futures, seed 20260101");
+    delete (globalThis as { TBChart?: unknown }).TBChart;
   });
   it("draws nothing for results without percentile data", () => {
     const plain = { ...base, histogram: undefined, years: base.years.map((y) => ({ ...y, p10Cents: undefined, p50Cents: undefined, p90Cents: undefined })) };
     render(FanChart, { result: plain });
-    expect(screen.queryByTestId("band")).toBeNull();
+    expect(screen.queryByTestId("fan-chart")).toBeNull();
   });
 });
