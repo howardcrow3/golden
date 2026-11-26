@@ -585,6 +585,11 @@ fn budget_status(state: Shared, day: String, grain: String) -> Result<Vec<Budget
 }
 
 #[tauri::command]
+fn set_budget_rollover(state: Shared, category: String, on: bool) -> Result<(), String> {
+    lock(&state)?.set_rollover(&category, on).map(|_| ())
+}
+
+#[tauri::command]
 fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(), String> {
     lock(&state)?.set_budget(&category, monthly_cents).map(|_| ())
 }
@@ -1143,6 +1148,7 @@ pub fn run() {
             suggest_allocation,
             apply_paystub,
             set_budget,
+            set_budget_rollover,
             set_category,
             set_note_tags,
             set_splits,

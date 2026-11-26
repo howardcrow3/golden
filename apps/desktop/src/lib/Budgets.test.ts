@@ -28,4 +28,20 @@ describe("budget export", () => {
     expect((call[1] as { kind: string; content: string }).kind).toBe("csv");
     expect((call[1] as { content: string }).content).toContain("Food,400,125.5,274.5");
   });
+
+  it("turns rollover on for a category and shows what carried in", async () => {
+    const rolled = { ...food, rolloverCents: 5_000, rolls: true, remainingCents: 32_450 };
+    const invoke = vi.fn(async (cmd: string) => (cmd === "budget_status" ? [rolled] : cmd === "category_choices" ? ["Food"] : undefined));
+    render(Budgets, { grain: "month", today, invoke });
+    expect((await screen.findByText(/rolled over/)).textContent).toContain("$50");
+    await fireEvent.click(screen.getByLabelText("Roll over Food"));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("set_budget_rollover", { category: "Food", on: false }));
+  });
+
+  it("offers no rollover in the year view", async () => {
+    const invoke = vi.fn(async (cmd: string) => (cmd === "budget_status" ? [food] : cmd === "category_choices" ? ["Food"] : undefined));
+    render(Budgets, { grain: "year", today, invoke });
+    await screen.findByTestId("budget-row");
+    expect(screen.queryByLabelText("Roll over Food")).toBeNull();
+  });
 });
