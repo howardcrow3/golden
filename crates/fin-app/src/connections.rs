@@ -54,6 +54,13 @@ impl App {
                 when: "Only when you press Buy".into(),
             },
             Connection {
+                name: "Send feedback".into(),
+                host: "feedback.turtlebox.studio".into(),
+                sends: "Only what you write in the feedback form: your star rating, your words, and your email if you add it, with Golden's version and your operating system. None of your financial data.".into(),
+                in_use: false,
+                when: "Only when you press Send".into(),
+            },
+            Connection {
                 name: "Bank connections (Plaid)".into(),
                 host: "Golden's bank sync service, then plaid.com".into(),
                 sends: "Your licence key and a bank sign-in token go to Golden's sync service, which asks Plaid for your transactions and passes them back to this computer. Plaid sees your bank sign-in; Golden never does. Needs the Plaid add-on.".into(),

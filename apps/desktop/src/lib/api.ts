@@ -1249,3 +1249,24 @@ export async function onBankLink(handler: (r: BankLinkReturn) => void, listen?: 
   }
   return on("plaid-link", (e) => handler(e.payload));
 }
+
+/** "Send feedback". Sending and signing happen in the desktop shell. */
+export interface FeedbackInput {
+  rating: number | null;
+  category: "feature" | "issue" | "praise" | "other";
+  message: string;
+  email: string | null;
+}
+
+/** True when this build can send feedback (it carries a feedback key). */
+export async function feedbackAvailable(invoke?: Invoke): Promise<boolean> {
+  try {
+    return (await (await resolve(invoke))("feedback_available")) === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function sendFeedback(input: FeedbackInput, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("send_feedback", { input });
+}

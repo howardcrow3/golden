@@ -11,12 +11,17 @@
   import About from "./lib/About.svelte";
   import Privacy from "./lib/Privacy.svelte";
   import Ask from "./lib/Ask.svelte";
+  import Feedback from "./lib/Feedback.svelte";
   import PrivacyBadge from "./lib/PrivacyBadge.svelte";
-  import { licenseStatus, onLicenseLink, type LicenseStatus } from "./lib/api";
+  import { feedbackAvailable, licenseStatus, onLicenseLink, type LicenseStatus } from "./lib/api";
   import { setHideAmounts } from "./lib/money";
 
   const pages = ["Overview", "Transactions", "Import", "Banks", "Documents", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
-  let page = $state<(typeof pages)[number]>("Overview");
+  let page = $state<(typeof pages)[number] | "Feedback">("Overview");
+  let canFeedback = $state(false);
+  $effect(() => {
+    feedbackAvailable().then((ok) => (canFeedback = ok));
+  });
   let lic = $state<LicenseStatus | null>(null);
   $effect(() => {
     licenseStatus().then((s) => (lic = s)).catch(() => (lic = null));
@@ -65,13 +70,14 @@
       <button aria-pressed={page === p} onclick={() => (page = p)}>{p}</button>
     {/each}
     <div class="spacer"></div>
+    {#if canFeedback}<button class="hide-toggle" aria-pressed={page === "Feedback"} onclick={() => (page = "Feedback")}>Send feedback</button>{/if}
     <button class="hide-toggle" aria-pressed={hide} onclick={toggleHide} title="Hide dollar amounts, for screen sharing">{hide ? "Show amounts" : "Hide amounts"}</button>
     {#if badge}<div class="badge" data-testid="badge">{badge}</div>{/if}
     <PrivacyBadge onclick={() => (page = "Privacy")} />
   </nav>
   <main>
     {#key hide}
-    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License notice={linkNotice} />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License notice={linkNotice} />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else if page === "Feedback"}<Feedback />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
 </div>
