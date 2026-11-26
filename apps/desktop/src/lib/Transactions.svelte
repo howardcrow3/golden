@@ -2,7 +2,7 @@
   import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, type Invoke, type TxnRow } from "./api";
   import CategorySuggest from "./CategorySuggest.svelte";
   import { formatCents } from "./money";
-  import { filterTxns, sumTxns } from "./txnFilter";
+  import { filterTxns, groupByCategory, sumTxns } from "./txnFilter";
 
   let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
   let rows = $state<TxnRow[]>([]);
@@ -15,6 +15,8 @@
   let query = $state("");
   let shown = $derived(filterTxns(rows, query));
   let totals = $derived(sumTxns(shown));
+  let view = $state<"list" | "board">("list");
+  let lanes = $derived(groupByCategory(shown));
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   function lastYear(): string {
@@ -174,6 +176,22 @@
 {:else if rows.length > 0}
   <p class="muted" data-testid="shown">{shown.length} of {rows.length} lines · in {formatCents(totals.inCents)} · out {formatCents(totals.outCents)}</p>
   {#if shown.length === 0}<p class="empty">Nothing matches that search.</p>{/if}
+  <div class="tb-seg" role="group" aria-label="View">
+    <button type="button" aria-pressed={view === "list"} onclick={() => (view = "list")}>List</button>
+    <button type="button" aria-pressed={view === "board"} onclick={() => (view = "board")}>By category</button>
+  </div>
+  {#if view === "board"}
+    <div class="board" data-testid="board">
+      {#each lanes as lane (lane.category ?? "")}
+        <section class="lane" aria-label={lane.category ?? "Needs a category"}>
+          <header><b>{lane.category ?? "Needs a category"}</b><span class="muted">{lane.rows.length} · {formatCents(lane.totalCents)}</span></header>
+          {#each lane.rows as r (r.id)}
+            <div class="tile"><span>{r.payee}</span><span class="num" class:neg={r.amountCents < 0}>{formatCents(r.amountCents)}</span><small class="muted">{r.day}</small></div>
+          {/each}
+        </section>
+      {/each}
+    </div>
+  {:else}
   {#if selected.size > 0}
     <div class="bulk" role="group" aria-label="Selected transactions" data-testid="bulk-bar">
       <b>{selected.size} selected</b>
@@ -199,6 +217,7 @@
       {/each}
     </tbody>
   </table>
+  {/if}
 {/if}
 
 <style>
@@ -219,4 +238,10 @@
   tr.sel td { background: var(--accent-soft); }
   .bulk { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; padding: 6px 10px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink); }
   .bulk input { width: 220px; }
+  .tb-seg { margin: 0 0 10px; }
+  .board { display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; padding-bottom: 8px; }
+  .lane { flex: 0 0 240px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px; display: grid; gap: 6px; }
+  .lane header { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+  .tile { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); font-size: 12.5px; }
+  .tile small { grid-column: 1 / -1; }
 </style>

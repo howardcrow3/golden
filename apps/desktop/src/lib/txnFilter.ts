@@ -20,3 +20,18 @@ export function sumTxns(rows: TxnRow[]): { inCents: number; outCents: number; ne
   }
   return { inCents, outCents, netCents: inCents - outCents };
 }
+
+export type Lane = { category: string | null; rows: TxnRow[]; totalCents: number };
+
+/** Groups lines into board lanes: uncategorised first, then categories by size of spend. */
+export function groupByCategory(rows: TxnRow[]): Lane[] {
+  const lanes = new Map<string | null, Lane>();
+  for (const r of rows) {
+    const key = r.category ?? null;
+    const lane = lanes.get(key) ?? { category: key, rows: [], totalCents: 0 };
+    lane.rows.push(r);
+    lane.totalCents += r.amountCents;
+    lanes.set(key, lane);
+  }
+  return [...lanes.values()].sort((a, b) => (a.category === null ? -1 : b.category === null ? 1 : Math.abs(b.totalCents) - Math.abs(a.totalCents)));
+}
