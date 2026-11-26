@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { leftToAssign } from "./budgetAssign";
+import { expectedIncome, leftToAssign } from "./budgetAssign";
 import type { BudgetRow } from "./api";
 
 const row = (category: string, budgetCents: number) => ({ category, budgetCents, spentCents: 0, remainingCents: budgetCents }) as BudgetRow;
@@ -14,5 +14,18 @@ describe("leftToAssign", () => {
   });
   it("is the whole income with no budgets", () => {
     expect(leftToAssign(100_000, []).leftCents).toBe(100_000);
+  });
+});
+
+describe("expectedIncome", () => {
+  const item = (date: string, cents: number) => ({ date, payee: "x", cents });
+  it("adds pay still to come this month to what has arrived", () => {
+    expect(expectedIncome(0, [item("2026-03-14", 200_000), item("2026-03-28", 200_000)], "2026-03-31")).toBe(400_000);
+  });
+  it("ignores bills and pay after the month ends", () => {
+    expect(expectedIncome(100_000, [item("2026-03-10", -50_000), item("2026-04-02", 200_000)], "2026-03-31")).toBe(100_000);
+  });
+  it("is what has arrived when nothing recurs", () => {
+    expect(expectedIncome(123_000, [], "2026-03-31")).toBe(123_000);
   });
 });
