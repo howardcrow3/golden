@@ -2,7 +2,7 @@
   import { ask, type AskAnswer, type Invoke } from "./api";
   import { formatCents } from "./money";
 
-  let { invoke }: { invoke?: Invoke } = $props();
+  let { invoke, compact = false }: { invoke?: Invoke; compact?: boolean } = $props();
   type Turn = { question: string; answer: AskAnswer };
   let text = $state("");
   let turns = $state<Turn[]>([]);
@@ -32,9 +32,10 @@
   }
 </script>
 
-<h1>Ask</h1>
-<p class="sub">Ask about your own numbers in plain words. Every figure comes straight from your statements, and the transactions behind it are listed.</p>
+{#if !compact}<h1>Ask</h1>{/if}
+{#if !compact}<p class="sub">Ask about your own numbers in plain words. Every figure comes straight from your statements, and the transactions behind it are listed.</p>{/if}
 
+<div class="ask" class:compact>
 <div class="tb-thread">
 {#each turns as t}
   <section class="turn" data-testid="answer">
@@ -57,13 +58,14 @@
 </div>
 
 <form class="tb-composer" onsubmit={(e) => { e.preventDefault(); go(text); }}>
-  <input bind:value={text} aria-label="Question" placeholder="How much did I spend on dining out last month?" />
+  <input bind:value={text} aria-label="Question" placeholder={compact ? "Ask about your money" : "How much did I spend on dining out last month?"} />
   <button type="submit" class="tb-send" disabled={busy || !text.trim()}>{busy ? "Looking…" : "Ask"}</button>
 </form>
 <div class="tb-sugs">
   {#each examples as ex}<button type="button" class="tb-sug" onclick={() => go(ex)} disabled={busy}>{ex}</button>{/each}
 </div>
 {#if error}<p class="err" role="alert">{error}</p>{/if}
+</div>
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }
@@ -74,4 +76,7 @@
   .msg { font-size: 14px; }
   summary { color: var(--muted); font-size: 12.5px; cursor: pointer; }
   ul { padding-left: 18px; }
+  .compact .msg { font-size: 13px; }
+  .compact .tb-msg-a { font-size: 13px; }
+  .compact .tb-sugs { margin-bottom: 8px; }
 </style>
