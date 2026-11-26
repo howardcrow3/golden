@@ -20,7 +20,7 @@
 </script>
 
 {#if rows.length}
-  <section class="card" data-testid="recurring">
+  <section class="tb-section" data-testid="recurring">
     <h2>What repeats</h2>
     <p class="muted" data-testid="recurring-total">
       Regular payments add up to <b class="num">{formatCents(yearlyOut, { whole: true })}</b> a year, from the last 12 months of statements.

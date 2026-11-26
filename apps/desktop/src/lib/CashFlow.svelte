@@ -47,7 +47,7 @@
 </script>
 
 {#if ready && active.length > 0}
-  <section class="card" data-testid="cashflow">
+  <section class="tb-section" data-testid="cashflow">
     <h2>Cash flow by {grain}</h2>
     <div class="chart" use:columnsChart={chart} data-testid="cashflow-chart"></div>
     <table>
@@ -60,7 +60,7 @@
     </table>
   </section>
   {#if cats.length > 0}
-    <section class="card" data-testid="categories">
+    <section class="tb-section" data-testid="categories">
       <h2>Spending by category this {grain}</h2>
       {#each cats as c}<div class="line"><span>{c.category}</span><b class="num">{formatCents(c.cents, { whole: true })}</b></div>{/each}
     </section>

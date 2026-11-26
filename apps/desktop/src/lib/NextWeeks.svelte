@@ -21,7 +21,7 @@
 </script>
 
 {#if items.length}
-  <section class="card" data-testid="next-weeks">
+  <section class="tb-section" data-testid="next-weeks">
     <h2>Next 13 weeks</h2>
     <p class="muted" data-testid="next-weeks-total">
       The biggest dated items coming in: <b class="num">{formatCents(inflow, { whole: true })}</b> in, <b class="num">{formatCents(outflow, { whole: true })}</b> out.

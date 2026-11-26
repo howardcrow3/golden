@@ -61,7 +61,7 @@
 </script>
 
 {#if available}
-  <section class="card" data-testid="goals">
+  <section class="tb-section" data-testid="goals">
     <h2>Goals</h2>
     {#each rows as g}
       <div class="goal" data-testid="goal-row">

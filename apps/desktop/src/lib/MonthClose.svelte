@@ -35,7 +35,7 @@
 </script>
 
 {#if report}
-  <section class="card" data-testid="month-close">
+  <section class="tb-section" data-testid="month-close">
     <h2>Month close <span class="badge">{report.closed ? "Closed" : "Open"}</span></h2>
     <p>{report.summary}</p>
     {#if report.issues.length}

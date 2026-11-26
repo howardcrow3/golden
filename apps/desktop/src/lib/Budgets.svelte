@@ -54,7 +54,7 @@
 </script>
 
 {#if available}
-  <section class="card" data-testid="budgets">
+  <section class="tb-section" data-testid="budgets">
     <h2>Budgets this {grain}</h2>
     {#if rows.length === 0}
       <p class="muted">No budgets yet. Set one below, per month.</p>

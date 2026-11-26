@@ -30,7 +30,7 @@
   const span = (m: number) => `${Math.floor(m / 12)} years ${m % 12} months`;
 </script>
 
-<section class="card" data-testid="offset">
+<section class="tb-section" data-testid="offset">
   <h2>Mortgage offset account</h2>
   <p class="muted">Savings held in an offset account cut the interest on your loan while you keep the same payment.</p>
   <div class="row">
