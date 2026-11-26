@@ -64,14 +64,14 @@
 </script>
 
 <div class="shell" class:hide>
-  <nav aria-label="Main">
-    <div class="brand">Golden</div>
+  <nav class="side" aria-label="Main">
+    <div class="wm"><i>G</i>Golden</div>
     {#each pages as p}
-      <button aria-pressed={page === p} onclick={() => (page = p)}>{p}</button>
+      <button class="nav" aria-pressed={page === p} aria-current={page === p ? "true" : undefined} onclick={() => (page = p)}>{p}</button>
     {/each}
-    <div class="spacer"></div>
-    {#if canFeedback}<button class="hide-toggle" aria-pressed={page === "Feedback"} onclick={() => (page = "Feedback")}>Send feedback</button>{/if}
-    <button class="hide-toggle" aria-pressed={hide} onclick={toggleHide} title="Hide dollar amounts, for screen sharing">{hide ? "Show amounts" : "Hide amounts"}</button>
+    <div class="grow"></div>
+    {#if canFeedback}<button class="nav" aria-pressed={page === "Feedback"} aria-current={page === "Feedback" ? "true" : undefined} onclick={() => (page = "Feedback")}>Send feedback</button>{/if}
+    <button class="nav" aria-pressed={hide} onclick={toggleHide} title="Hide dollar amounts, for screen sharing">{hide ? "Show amounts" : "Hide amounts"}</button>
     {#if badge}<div class="badge" data-testid="badge">{badge}</div>{/if}
     <PrivacyBadge onclick={() => (page = "Privacy")} />
   </nav>
@@ -83,14 +83,14 @@
 </div>
 
 <style>
-  .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-  nav { border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--paper); }
-  nav button { text-align: left; border-color: transparent; background: transparent; }
-  nav button[aria-pressed="true"] { border-color: var(--gold); background: var(--ivory); }
-  .brand { font-weight: 600; font-size: 18px; margin-bottom: 18px; }
-  .spacer { flex: 1; }
-  .badge { font-size: 12px; border: 1px solid var(--gold); padding: 6px 8px; }
+  .shell { display: grid; grid-template-columns: 216px 1fr; height: 100vh; }
+  /* .side, .wm and .nav come from the framework; the nav buttons here are plain buttons, so reset the bare-control look. */
+  nav.side { overflow-y: auto; }
+  nav.side .nav { border-color: transparent; background: transparent; height: 28px; padding: 0 8px; font-weight: 450; }
+  nav.side .nav:hover:not(:disabled) { background: var(--hover); }
+  nav.side .nav[aria-pressed="true"] { background: var(--selected); border-color: transparent; color: var(--ink); }
+  .badge { font-size: 11px; font-weight: 500; color: var(--ink); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--r-sm); padding: 4px 8px; margin: 6px 0 2px; }
   .hide :global(input) { -webkit-text-security: disc; }
-  .hide-toggle { font-size: 12px; }
-  main { padding: 32px 40px; max-width: 1100px; }
+  main { padding: 28px 36px; overflow-y: auto; min-width: 0; }
+  main > :global(*) { max-width: 1040px; }
 </style>

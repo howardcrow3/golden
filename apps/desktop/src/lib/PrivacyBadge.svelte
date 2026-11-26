@@ -20,5 +20,5 @@
 </button>
 
 <style>
-  .mode { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: left; border-color: transparent; background: transparent; padding: 0; cursor: pointer; }
+  .mode { margin: 4px 0 0; font-size: 11px; color: var(--muted); text-align: left; border-color: transparent; background: transparent; padding: 4px 8px; height: auto; line-height: 1.35; font-weight: 400; }
 </style>
