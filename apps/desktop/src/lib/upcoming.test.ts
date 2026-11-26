@@ -24,7 +24,7 @@ describe("upcoming", () => {
 
   it("steps quarterly and yearly payments by calendar months", () => {
     expect(upcoming([r("Tax", "quarterly", -100, "2026-01-15")], "2026-01-01", 40).map((x) => x.date)).toEqual(["2026-01-15", "2026-04-15", "2026-07-15"]);
-    expect(upcoming([r("Ins", "yearly", -100, "2026-03-01")], "2026-03-01", 110).map((x) => x.date)).toEqual(["2026-03-01", "2027-03-01"]);
+    expect(upcoming([r("Ins", "yearly", -100, "2026-03-01")], "2026-03-01", 60).map((x) => x.date)).toEqual(["2026-03-01", "2027-03-01"]);
   });
 
   it("orders items from different payees by date", () => {
