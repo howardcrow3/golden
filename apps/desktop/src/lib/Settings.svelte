@@ -40,3 +40,9 @@
     </div>
   </div>
 </div>
+
+<style>
+  /* The modal header already names the tab, so the screen's own title is redundant here. */
+  .tb-mpanel :global(h1) { display: none; }
+  .tb-mhead h2 { margin: 0; }
+</style>
