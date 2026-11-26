@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterTxns, sumTxns } from "./txnFilter";
+import { filterTxns, groupByCategory, sumTxns } from "./txnFilter";
 import type { TxnRow } from "./api";
 
 const row = (id: number, payee: string, amountCents: number, category: string | null = null, account = "Checking", day = "2026-10-01"): TxnRow =>
@@ -36,5 +36,14 @@ describe("sumTxns", () => {
   });
   it("is zero for nothing", () => {
     expect(sumTxns([])).toEqual({ inCents: 0, outCents: 0, netCents: 0 });
+  });
+});
+
+describe("groupByCategory", () => {
+  it("puts uncategorised lines first, then categories by size", () => {
+    const lanes = groupByCategory(rows);
+    expect(lanes.map((l) => l.category)).toEqual([null, "Salary", "Groceries"]);
+    expect(lanes[1].totalCents).toBe(500_000);
+    expect(lanes[0].rows.map((r) => r.id)).toEqual([3]);
   });
 });
