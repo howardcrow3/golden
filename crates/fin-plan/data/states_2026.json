@@ -149,7 +149,8 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "",
+   "taxes_social_security": true
   },
   "CT": {
    "name": "Connecticut",
@@ -2010,7 +2011,8 @@
      80000000,
      0.0699
     ]
-   ]
+   ],
+   "taxes_social_security": true
   },
   "DC": {
    "name": "District of Columbia",
@@ -2552,7 +2554,8 @@
      33793000,
      0.0985
     ]
-   ]
+   ],
+   "taxes_social_security": true
   },
   "MO": {
    "name": "Missouri",
@@ -2639,7 +2642,8 @@
      9500000,
      0.0565
     ]
-   ]
+   ],
+   "taxes_social_security": true
   },
   "NC": {
    "name": "North Carolina",
@@ -2874,7 +2878,8 @@
      31500000,
      0.059
     ]
-   ]
+   ],
+   "taxes_social_security": true
   },
   "NV": {
    "name": "Nevada",
@@ -3134,7 +3139,8 @@
    "std_joint": 3290000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled."
+   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled.",
+   "taxes_social_security": true
   },
   "SC": {
    "name": "South Carolina",
@@ -3202,7 +3208,8 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "",
+   "taxes_social_security": true
   },
   "VA": {
    "name": "Virginia",
@@ -3278,7 +3285,8 @@
    "agi_floor_tax": {
     "agi_over": 15000000,
     "rate": 0.03
-   }
+   },
+   "taxes_social_security": true
   },
   "WA": {
    "name": "Washington",

@@ -43,6 +43,12 @@ pub struct StateRules {
     /// credit all step with adjusted gross income.
     #[serde(default)]
     pub agi_tables: Option<AgiTables>,
+    /// True for the few states that tax Social Security benefits (Colorado, Connecticut,
+    /// Minnesota, Montana, New Mexico, Rhode Island, Utah, Vermont, each only partly or above an
+    /// income level; the full federally taxable amount is used here, which errs high). All other
+    /// states leave benefits out of state income.
+    #[serde(default)]
+    pub taxes_social_security: bool,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -182,6 +188,24 @@ impl StateTaxYear {
         self.states.get(&code.to_ascii_uppercase())
     }
 
+    /// State income tax for a resident of `code` on federal AGI that includes `taxable_ss`, the
+    /// federally taxable part of Social Security. States that do not tax benefits leave it out.
+    pub fn income_tax_with_ss(
+        &self,
+        code: &str,
+        fs: FilingStatus,
+        federal_agi: Money,
+        taxable_ss: Money,
+    ) -> Option<Money> {
+        let r = self.rules(code)?;
+        let income = if r.taxes_social_security {
+            federal_agi
+        } else {
+            (federal_agi - taxable_ss.max(Money::ZERO)).max(Money::ZERO)
+        };
+        self.income_tax(code, fs, income)
+    }
+
     /// State income tax on `federal_agi`-like income for a resident of `code`.
     /// Returns None if the state code is unknown.
     pub fn income_tax(&self, code: &str, fs: FilingStatus, income: Money) -> Option<Money> {
@@ -248,6 +272,33 @@ mod tests {
 
     fn m(d: i64) -> Money {
         Money::from_dollars(d)
+    }
+
+    #[test]
+    fn most_states_leave_social_security_out_and_a_few_tax_it() {
+        let y = StateTaxYear::y2026();
+        // $60,000 of income of which $20,000 is taxable Social Security.
+        let with = |c: &str| {
+            y.income_tax_with_ss(c, FilingStatus::Single, m(60_000), m(20_000))
+                .unwrap()
+        };
+        let plain = |c: &str, inc: i64| y.income_tax(c, FilingStatus::Single, m(inc)).unwrap();
+        // Illinois (4.95%, no standard deduction) does not tax benefits.
+        assert_eq!(with("IL"), plain("IL", 40_000));
+        // Utah does, so nothing comes out.
+        assert_eq!(with("UT"), plain("UT", 60_000));
+        // Without any Social Security the two ways agree.
+        assert_eq!(
+            y.income_tax_with_ss("IL", FilingStatus::Single, m(60_000), Money::ZERO),
+            y.income_tax("IL", FilingStatus::Single, m(60_000))
+        );
+        // The list: exactly the eight states that tax benefits.
+        let mut taxing: Vec<&str> = y
+            .codes()
+            .filter(|c| y.rules(c).unwrap().taxes_social_security)
+            .collect();
+        taxing.sort();
+        assert_eq!(taxing, ["CO", "CT", "MN", "MT", "NM", "RI", "UT", "VT"]);
     }
 
     #[test]
