@@ -1250,6 +1250,33 @@ export async function onBankLink(handler: (r: BankLinkReturn) => void, listen?: 
   return on("plaid-link", (e) => handler(e.payload));
 }
 
+export interface VestResult {
+  valueCents: number;
+  withheldCents: number;
+  sharesSold: number;
+  sharesKept: number;
+  cashBackCents: number;
+}
+export async function getRsuVest(shares: number, priceCents: number, federalRate: number, otherRate: number, invoke?: Invoke): Promise<VestResult> {
+  return (await (await resolve(invoke))("rsu_vest", { shares, priceCents, federalRate, otherRate })) as VestResult;
+}
+export interface EsppResult {
+  purchasePriceCents: number;
+  shares: number;
+  leftoverCents: number;
+  discountGainCents: number;
+}
+export async function getEsppPurchase(
+  contributionsCents: number,
+  offeringCents: number,
+  purchaseCents: number,
+  discount: number,
+  lookback: boolean,
+  invoke?: Invoke,
+): Promise<EsppResult> {
+  return (await (await resolve(invoke))("espp_purchase", { contributionsCents, offeringCents, purchaseCents, discount, lookback })) as EsppResult;
+}
+
 /** "Send feedback". Sending and signing happen in the desktop shell. */
 export interface FeedbackInput {
   rating: number | null;

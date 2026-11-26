@@ -363,6 +363,29 @@ fn harvest_plan(
     fin_plan::harvest::plan_cents(filing, income_cents, gains_cents, household_size)
 }
 
+/// What an RSU vest is worth and how many shares are sold to cover tax.
+#[tauri::command]
+fn rsu_vest(
+    shares: u64,
+    price_cents: i64,
+    federal_rate: f64,
+    other_rate: f64,
+) -> Result<fin_plan::equity::VestResult, String> {
+    fin_plan::equity::rsu_vest_cents(shares, price_cents, federal_rate, other_rate)
+}
+
+/// Shares bought, and the day-one gain, for one ESPP purchase.
+#[tauri::command]
+fn espp_purchase(
+    contributions_cents: i64,
+    offering_cents: i64,
+    purchase_cents: i64,
+    discount: f64,
+    lookback: bool,
+) -> Result<fin_plan::equity::EsppResult, String> {
+    fin_plan::equity::espp_purchase_cents(contributions_cents, offering_cents, purchase_cents, discount, lookback)
+}
+
 #[tauri::command]
 fn holdings(state: Shared) -> Result<Vec<fin_plan::investments::Holding>, String> {
     lock(&state)?.holdings()
@@ -1111,6 +1134,8 @@ pub fn run() {
             parse_holdings,
             investment_checkup,
             harvest_plan,
+            rsu_vest,
+            espp_purchase,
             rent_vs_buy,
             daf_bunching,
             ss_explore,
