@@ -7,6 +7,7 @@
   import Transactions from "./lib/Transactions.svelte";
   import WhatIf from "./lib/WhatIf.svelte";
   import Banks from "./lib/Banks.svelte";
+  import ChatDock from "./lib/ChatDock.svelte";
   import Settings, { type SettingsTab } from "./lib/Settings.svelte";
   import Ask from "./lib/Ask.svelte";
   import PrivacyBadge from "./lib/PrivacyBadge.svelte";
@@ -38,6 +39,24 @@
       stop();
     };
   });
+  const DOCK_KEY = "golden.chatDock";
+  let dockOpen = $state(true);
+  try {
+    dockOpen = localStorage.getItem(DOCK_KEY) !== "0";
+  } catch {
+    // storage can be unavailable; the dock stays open for this session
+  }
+  function setDock(open: boolean) {
+    dockOpen = open;
+    try {
+      localStorage.setItem(DOCK_KEY, open ? "1" : "0");
+    } catch {
+      // not remembered, still applied
+    }
+  }
+  /** Ask and What if are chats themselves, so they do not get the dock beside them. */
+  let showDock = $derived(dockOpen && page !== "Ask" && page !== "What if");
+
   const KEY = "golden.hideAmounts";
   let remembered = false;
   try {
@@ -68,6 +87,7 @@
       <button class="nav" aria-pressed={page === p} aria-current={page === p ? "true" : undefined} onclick={() => (page = p)}>{p}</button>
     {/each}
     <div class="grow"></div>
+    <button class="nav" aria-pressed={dockOpen} onclick={() => setDock(!dockOpen)} title="Ask about your numbers beside any screen">Chat pane</button>
     <button class="nav" aria-pressed={hide} onclick={toggleHide} title="Hide dollar amounts, for screen sharing">{hide ? "Show amounts" : "Hide amounts"}</button>
     {#if badge}<div class="badge" data-testid="badge">{badge}</div>{/if}
     <PrivacyBadge onclick={() => (settings = "Privacy")} />
@@ -78,12 +98,15 @@
     {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
+  {#if showDock}<ChatDock page={page} onhide={() => setDock(false)} />{/if}
 </div>
 
 {#if settings}<Settings bind:tab={settings} {canFeedback} notice={linkNotice} onclose={() => (settings = null)} />{/if}
 
 <style>
-  .shell { display: grid; grid-template-columns: 216px 1fr; height: 100vh; }
+  .shell { display: flex; height: 100vh; }
+  .shell > nav { width: 216px; flex: none; }
+  .shell > main { flex: 1; }
   /* .side, .wm and .nav come from the framework; the nav buttons here are plain buttons, so reset the bare-control look. */
   nav.side { overflow-y: auto; }
   nav.side .nav { border-color: transparent; background: transparent; height: 28px; padding: 0 8px; font-weight: 450; }

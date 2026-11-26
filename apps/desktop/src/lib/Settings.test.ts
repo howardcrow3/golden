@@ -29,3 +29,19 @@ describe("Settings modal", () => {
     expect(screen.getByRole("tab", { name: "Feedback" })).toBeTruthy();
   });
 });
+
+describe("Chat dock", () => {
+  it("sits beside work screens, hides, and is absent on the chat screens", async () => {
+    try { localStorage.clear(); } catch { /* ignore */ }
+    render(App);
+    expect(screen.getByRole("complementary", { name: "Chat" })).toBeTruthy();
+    expect(screen.getByText("Looking at Overview")).toBeTruthy();
+    await fireEvent.click(screen.getByRole("button", { name: "Hide chat" }));
+    expect(screen.queryByRole("complementary", { name: "Chat" })).toBeNull();
+    expect(localStorage.getItem("golden.chatDock")).toBe("0");
+    await fireEvent.click(screen.getByRole("button", { name: "Chat pane" }));
+    expect(screen.getByRole("complementary", { name: "Chat" })).toBeTruthy();
+    await fireEvent.click(screen.getAllByRole("button", { name: "Ask" })[0]);
+    expect(screen.queryByRole("complementary", { name: "Chat" })).toBeNull();
+  });
+});
