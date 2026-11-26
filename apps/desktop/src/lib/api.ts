@@ -1297,3 +1297,17 @@ export async function feedbackAvailable(invoke?: Invoke): Promise<boolean> {
 export async function sendFeedback(input: FeedbackInput, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("send_feedback", { input });
 }
+
+export interface SsaSummary {
+  monthlyAt62Cents: number | null;
+  monthlyAtFullRetirementCents: number | null;
+  fullRetirementAge: number | null;
+  monthlyAt70Cents: number | null;
+}
+export async function readSsaStatement(text: string, invoke?: Invoke): Promise<SsaSummary> {
+  return (await (await resolve(invoke))("read_ssa_statement", { text })) as SsaSummary;
+}
+/** Sets a person's yearly Social Security; `claim` is "62", "fra" or "70". Returns the yearly cents. */
+export async function applySsaStatement(text: string, person: number, claim: string, invoke?: Invoke): Promise<number> {
+  return (await (await resolve(invoke))("apply_ssa_statement", { text, person, claim })) as number;
+}

@@ -589,6 +589,26 @@ fn read_paystub(state: Shared, text: String) -> Result<fin_app::paystub::Paystub
     lock(&state)?.read_paystub(&text)
 }
 
+/// Read a Social Security Statement's text. Changes nothing.
+#[tauri::command]
+fn read_ssa_statement(
+    state: Shared,
+    text: String,
+) -> Result<fin_app::ssa::SsaSummary, String> {
+    lock(&state)?.read_ssa_statement(&text)
+}
+
+/// Set a person's yearly Social Security from a statement; `claim` is "62", "fra" or "70".
+#[tauri::command]
+fn apply_ssa_statement(
+    state: Shared,
+    text: String,
+    person: usize,
+    claim: String,
+) -> Result<i64, String> {
+    lock(&state)?.apply_ssa_statement(&text, person, &claim)
+}
+
 #[tauri::command]
 fn apply_paystub(
     state: Shared,
@@ -1108,6 +1128,8 @@ pub fn run() {
             recurring,
             set_opening_balance,
             read_paystub,
+            read_ssa_statement,
+            apply_ssa_statement,
             suggest_allocation,
             apply_paystub,
             set_budget,

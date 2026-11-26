@@ -3,6 +3,7 @@
   import { formatCents } from "./money";
   import ImportFolder from "./ImportFolder.svelte";
   import Paystub from "./Paystub.svelte";
+  import SsaStatement from "./SsaStatement.svelte";
   import Withholding from "./Withholding.svelte";
   let bump = $state(0);
 
@@ -113,6 +114,7 @@
 {/each}
 
 <Paystub {invoke} onapplied={() => bump++} />
+<SsaStatement {invoke} />
 {#key bump}<Withholding {invoke} />{/key}
 
 <style>
