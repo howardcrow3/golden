@@ -2,7 +2,8 @@
 @import "@fontsource-variable/inter";
 @import "./turtlebox/tokens.css";
 @import "./turtlebox/base.css";
-@import "./turtlebox/components.css";
+@import "./turtlebox/shell.css";
+@import "./turtlebox/extensions.css";
 
 :root {
   --sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -39,3 +40,16 @@ input[type="checkbox"], input[type="radio"] { height: auto; padding: 0; accent-c
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; }
 .num { font-variant-numeric: tabular-nums; }
+
+/* Screens written before the framework use these names. Style them once here. */
+.err { color: var(--danger); }
+.ok { color: var(--ok); }
+.hint, .muted { color: var(--muted); }
+.hint { font-size: 12px; }
+table { border-collapse: collapse; font-size: 12.5px; }
+th { font-size: 11px; font-weight: 500; color: var(--muted); text-align: left; padding: 0 10px; height: 26px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 0 10px; height: 30px; border-bottom: 1px solid var(--line); color: var(--body); }
+tbody tr:hover td { background: var(--hover); }
+th.r, td.r { text-align: right; }
+td.num, td.r { font-variant-numeric: tabular-nums; }
+table.card { padding: 0; }
