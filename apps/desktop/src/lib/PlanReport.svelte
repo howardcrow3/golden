@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { localIso } from "./localDate";
   import { saveReport, type Invoke, type QuickPlanResult } from "./api";
   import { planCsv, planHtml, planJson } from "./report";
 
@@ -14,7 +15,7 @@
     const content =
       kind === "html" ? planHtml(result, title, when) : kind === "csv" ? planCsv(result) : planJson(result, title, when);
     try {
-      const path = await saveReport(`Golden plan ${new Date().toISOString().slice(0, 10)}`, kind, content, invoke);
+      const path = await saveReport(`Golden plan ${localIso()}`, kind, content, invoke);
       note = `Saved to ${path}`;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

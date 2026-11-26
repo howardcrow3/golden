@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { localIso } from "./localDate";
   import { addJournalEntry, getProgress, removeJournalEntry, startProgress, stopProgress, type Invoke, type ProgressReport } from "./api";
   import { pairPoints } from "./chart";
   import { formatCents, parseDollars } from "./money";
@@ -31,7 +32,7 @@
   $effect(() => {
     load();
   });
-  let jDate = $state(new Date().toISOString().slice(0, 10));
+  let jDate = $state(localIso());
   let jAmount = $state("");
   let jNote = $state("");
   async function addEntry() {

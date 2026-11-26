@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { cashFlow, categories, type CategoryRow, type Invoke, type PeriodRow } from "./api";
   import type { Grain } from "./grain";
   import { formatCents } from "./money";
   import { columnsChart } from "./tbchart";
 
-  let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
+  let { grain, today = localToday(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let rows = $state<PeriodRow[]>([]);
   let cats = $state<CategoryRow[]>([]);
   let ready = $state(false);

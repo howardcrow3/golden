@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { cashFlow, type Invoke, type PeriodRow } from "./api";
   import type { Grain } from "./grain";
   import { formatCents } from "./money";
 
-  let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
+  let { grain, today = localToday(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let latest = $state<PeriodRow | null>(null);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
