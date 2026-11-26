@@ -54,7 +54,7 @@
 </div>
 
 <style>
-  .sepp { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .sepp { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -62,5 +62,5 @@
   table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 14px; }
   th, td { text-align: left; padding: 4px 8px; }
   .num { text-align: right; }
-  .err { color: var(--danger, #b3261e); }
+  .err { color: var(--danger); }
 </style>

@@ -42,7 +42,7 @@
 
 <style>
   figure { margin: 12px 0; }
-  svg { width: 100%; height: 200px; border: 1px solid var(--line); background: var(--ivory); }
+  svg { width: 100%; height: 200px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md); }
   figcaption { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .hist { display: flex; align-items: flex-end; gap: 3px; height: 80px; border-bottom: 1px solid var(--line); }
   .col { flex: 1; height: 100%; display: flex; align-items: flex-end; }

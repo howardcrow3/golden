@@ -88,7 +88,7 @@
   section { margin-top: 16px; }
   .goal { margin-bottom: 12px; }
   .bar { height: 6px; background: var(--line); margin: 4px 0; max-width: 360px; }
-  .bar span { display: block; height: 100%; background: var(--accent, #c9a227); }
+  .bar span { display: block; height: 100%; background: var(--accent); }
   form { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
   label { display: inline-flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
   input { width: 120px; }

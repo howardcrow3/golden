@@ -105,7 +105,7 @@
   .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--line); }
   .muted { color: var(--muted); margin: 8px 0 0; }
   .neg { color: var(--bad); }
-  .trend { width: 100%; max-width: 420px; height: 50px; color: var(--accent, #c9a227); margin: 4px 0 12px; }
+  .trend { width: 100%; max-width: 420px; height: 50px; color: var(--accent); margin: 4px 0 12px; }
   .err { color: var(--bad); }
   .link { background: none; border: none; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; }
 </style>

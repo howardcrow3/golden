@@ -108,9 +108,9 @@
   .row { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
   ul { list-style: none; padding: 0; }
-  li { padding: 8px 0; border-bottom: 1px solid var(--line, #ddd); }
+  li { padding: 8px 0; border-bottom: 1px solid var(--line); }
   .meta { color: var(--muted); font-size: 12px; margin-left: 8px; }
   .fields { font-size: 13px; margin: 4px 0; }
   .fields li { border: 0; padding: 0; }
-  .err { color: var(--danger, #b3261e); }
+  .err { color: var(--danger); }
 </style>

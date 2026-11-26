@@ -76,7 +76,7 @@
     await act(() => renameScenario(s.id, draft, invoke));
     if (!error) renaming = null;
   }
-  const colours = ["var(--ink, #222)", "var(--gold)", "#4a7", "#a47"];
+  const colours = ["var(--ink)", "var(--s1)", "var(--s2)", "var(--s3)"];
   async function remove(s: SavedScenario) {
     error = "";
     try {
@@ -191,7 +191,7 @@
   .muted { color: var(--muted); }
   .key { margin-right: 12px; font-size: 12px; }
   figure { margin: 8px 0; }
-  svg { width: 100%; height: 180px; border: 1px solid var(--line); background: var(--ivory); }
+  svg { width: 100%; height: 180px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md); }
   table { border-collapse: collapse; }
   th, td { text-align: left; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--line); }
 </style>

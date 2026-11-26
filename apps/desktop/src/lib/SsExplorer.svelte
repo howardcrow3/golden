@@ -66,13 +66,13 @@
 </div>
 
 <style>
-  .ss { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .ss { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 14px; }
-  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line, #ddd); }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); }
   th:first-child, tbody th { text-align: left; font-weight: 400; }
-  tr.best { background: var(--ivory, #faf6ea); }
+  tr.best { background: var(--accent-soft); }
   .be { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
-  .err { color: var(--bad, #b00020); }
+  .err { color: var(--bad); }
 </style>
