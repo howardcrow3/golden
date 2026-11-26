@@ -291,15 +291,17 @@ impl Db {
 
     /// Replace the split of a transaction. An empty list removes the split.
     pub fn set_splits(&self, txn_id: i64, parts: &[(String, i64)]) -> Result<()> {
-        self.conn
-            .execute("DELETE FROM split WHERE txn_id=?1", [txn_id])?;
+        // All or nothing: a failure part-way must not leave a half-written split.
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM split WHERE txn_id=?1", [txn_id])?;
         for (cat, cents) in parts {
             let cid = self.category_id(cat.trim())?;
-            self.conn.execute(
+            tx.execute(
                 "INSERT INTO split(txn_id, category_id, cents) VALUES (?1,?2,?3)",
                 params![txn_id, cid, cents],
             )?;
         }
+        tx.commit()?;
         Ok(())
     }
 

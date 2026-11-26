@@ -1,6 +1,6 @@
 <script lang="ts">
   import { localToday } from "./localDate";
-  import { getWatchLists, listTransactions, saveWatchLists, type Invoke, type TxnRow, type WatchList } from "./api";
+  import { getWatchLists, listAllTransactions, saveWatchLists, type Invoke, type TxnRow, type WatchList } from "./api";
   import { formatCents } from "./money";
   import { watchTotals } from "./watchTotals";
 
@@ -18,7 +18,7 @@
     try {
       lists = await getWatchLists(invoke);
       const from = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
-      rows = await listTransactions(iso(from), iso(today), false, invoke);
+      rows = await listAllTransactions(iso(from), iso(today), invoke);
       available = true;
     } catch {
       available = false;

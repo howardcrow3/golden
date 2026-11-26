@@ -478,6 +478,10 @@ export interface Recategorized {
 export async function listTransactions(from: string, to: string, onlyUncategorized: boolean, invoke?: Invoke): Promise<TxnRow[]> {
   return (await (await resolve(invoke))("transactions", { from, to, onlyUncategorized })) as TxnRow[];
 }
+/** Every line in the range, with no 500-line cap; for totals. */
+export async function listAllTransactions(from: string, to: string, invoke?: Invoke): Promise<TxnRow[]> {
+  return (await (await resolve(invoke))("all_transactions", { from, to })) as TxnRow[];
+}
 export async function categoryChoices(invoke?: Invoke): Promise<string[]> {
   return (await (await resolve(invoke))("category_choices")) as string[];
 }

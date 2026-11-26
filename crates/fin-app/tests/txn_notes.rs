@@ -127,3 +127,26 @@ fn clearing_a_split_restores_the_line_category() {
         .splits
         .is_empty());
 }
+
+#[test]
+fn the_uncapped_list_returns_every_line_where_the_normal_list_stops_at_500() {
+    let mut csv = String::from("Date,Description,Amount\n");
+    for i in 0..620 {
+        csv.push_str(&format!("10/{:02}/2026,SHOP {i},-1.00\n", 1 + i % 28));
+    }
+    let mut app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 16));
+    app.import_statement(csv.as_bytes(), "Checking", "checking")
+        .unwrap();
+    assert_eq!(
+        app.transactions("2026-10-01", "2026-10-31", false)
+            .unwrap()
+            .len(),
+        500
+    );
+    assert_eq!(
+        app.all_transactions("2026-10-01", "2026-10-31")
+            .unwrap()
+            .len(),
+        620
+    );
+}
