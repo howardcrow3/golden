@@ -68,7 +68,7 @@
 <style>
   section { margin-top: 16px; }
   .muted { color: var(--muted); margin: 0 0 8px; }
-  .line { width: 100%; max-width: 480px; height: 60px; color: var(--accent, #c9a227); margin: 4px 0 8px; }
+  .line { width: 100%; max-width: 480px; height: 60px; color: var(--accent); margin: 4px 0 8px; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: normal; }
   th { color: var(--muted); font-size: 12px; }

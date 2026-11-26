@@ -81,20 +81,18 @@
 <h1>What if</h1>
 <p class="sub">Ask in plain words. Golden runs your plan with and without the change and shows both. Nothing is saved until you keep it.</p>
 
-<form class="card ask" onsubmit={(e) => { e.preventDefault(); ask(text); }}>
-  <label>Your question <input bind:value={text} aria-label="What if question" placeholder="What if I retire at 65?" /></label>
+<form class="tb-composer" onsubmit={(e) => { e.preventDefault(); ask(text); }}>
+  <input bind:value={text} aria-label="What if question" placeholder="What if I retire at 65?" />
   {#if scenarios.length}
-    <label>Build on
-      <select bind:value={base} aria-label="Build on">
-        <option value="">Current plan</option>
-        {#each scenarios as sc}<option value={String(sc.id)}>{sc.name}</option>{/each}
-      </select>
-    </label>
+    <select bind:value={base} aria-label="Build on">
+      <option value="">Current plan</option>
+      {#each scenarios as sc}<option value={String(sc.id)}>{sc.name}</option>{/each}
+    </select>
   {/if}
-  <button type="submit" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
+  <button type="submit" class="tb-send" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
 </form>
-<div class="chips">
-  {#each examples as ex}<button type="button" class="chip" onclick={() => ask(ex)} disabled={busy}>{ex}</button>{/each}
+<div class="tb-sugs">
+  {#each examples as ex}<button type="button" class="tb-sug" onclick={() => ask(ex)} disabled={busy}>{ex}</button>{/each}
 </div>
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
@@ -106,7 +104,7 @@
 
 {#each turns as t, i}
   <section class="card turn" data-testid="turn">
-    <div class="q">{t.question}</div>
+    <div class="tb-msg-u">{t.question}</div>
     <p class="msg">{t.reply.message}</p>
     {#if t.reply.before && t.reply.after}
       {@const b = verdict(t.reply.before.successRate)}
@@ -148,13 +146,11 @@
 
 <style>
   .sub { color: var(--muted); margin: 0 0 20px; }
-  .ask { display: flex; gap: 12px; align-items: end; margin-bottom: 12px; }
-  .ask label { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  .ask input { width: 100%; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .chip { font-size: 13px; }
+  .tb-composer { margin-bottom: 10px; }
+  .tb-composer select { border: 0; background-color: transparent; height: 26px; }
+  .tb-sugs { margin-bottom: 16px; }
   .turn { margin-bottom: 12px; }
-  .q { font-weight: 600; }
+  .tb-msg-u { margin-bottom: 10px; width: fit-content; margin-left: auto; }
   .msg { color: var(--muted); font-size: 13px; }
   .compare { display: flex; gap: 32px; align-items: baseline; flex-wrap: wrap; }
   .compare span { display: block; font-size: 12px; color: var(--muted); }

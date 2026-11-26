@@ -11,6 +11,7 @@ use tauri::{Manager, State};
 
 mod bank;
 mod deep_link;
+mod feedback;
 
 /// The database key lives in the macOS Keychain / Windows Credential Manager.
 struct OsKeyStore;
@@ -1033,6 +1034,8 @@ pub fn run() {
             result
         })
         .invoke_handler(logged(tauri::generate_handler![
+            feedback::feedback_available,
+            feedback::send_feedback,
             bank::bank_items,
             bank::bank_connect,
             bank::bank_finish_link,

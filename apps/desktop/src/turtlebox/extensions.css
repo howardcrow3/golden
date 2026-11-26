@@ -1,0 +1,82 @@
+/* Turtlebox UI extensions, added for Golden (v0.3). Requires tokens.css, base.css and components.css.
+   Role tokens only, no hex. See docs/EXTENSIONS.md. */
+
+/* Segmented control: one choice from a few, such as week, month, quarter, year. Use buttons with aria-pressed. */
+.tb-seg{display:inline-flex;border:1px solid var(--control);border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}
+.tb-seg>button{height:24px;border:0;border-radius:0;background:transparent;color:var(--body);font:500 12.5px var(--sans);padding:0 12px;cursor:pointer}
+.tb-seg>button+button{border-left:1px solid var(--line)}
+.tb-seg>button:hover{background:var(--hover);color:var(--ink)}
+.tb-seg>button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+
+/* Field: label above a control, with optional help or error text. */
+.tb-field{display:grid;gap:4px;min-width:0}
+.tb-field>label,.tb-field>.lbl{font-size:12px;color:var(--muted)}
+.tb-field .help{font-size:12px;line-height:1.4;color:var(--muted)}
+.tb-field.invalid .input,.tb-field.invalid .select{border-color:var(--danger)}
+.tb-field.invalid .help{color:var(--danger)}
+.tb-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px 16px;align-items:end}
+
+/* Notice: a message inside a screen. Neutral by default; ok, warn (gold wash) and danger variants. Never colour alone: pair with words. */
+.tb-notice{border:1px solid var(--line);border-left-width:3px;border-radius:var(--r-sm);background:var(--surface);padding:8px 12px;font-size:12.5px;line-height:1.5;color:var(--ink)}
+.tb-notice.ok{border-left-color:var(--ok)}
+.tb-notice.warn{border-color:var(--accent);background:var(--accent-soft)}
+.tb-notice.danger{border-left-color:var(--danger);color:var(--danger)}
+
+/* Badge: a short status label. */
+.tb-badge{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:var(--r-pill);font:500 11px/1 var(--sans);border:1px solid var(--line);color:var(--body);background:transparent;white-space:nowrap}
+.tb-badge.accent{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.tb-badge.ok{color:var(--ok);border-color:var(--ok)}
+.tb-badge.danger{color:var(--danger);border-color:var(--danger)}
+
+/* Empty state: what is missing and the one action that fixes it. */
+.tb-empty{display:grid;gap:8px;justify-items:start;padding:20px;border:1px dashed var(--line);border-radius:var(--r-md);color:var(--muted);font-size:12.5px}
+.tb-empty b{color:var(--ink);font-weight:600;font-size:13px}
+
+/* Progress: determinate bar. Set the value with --v (0 to 1) or the width of the fill. */
+.tb-progress{height:6px;border-radius:var(--r-pill);background:var(--selected);overflow:hidden}
+.tb-progress>i{display:block;height:100%;width:calc(var(--v,0)*100%);background:var(--accent);transition:width .15s ease-out}
+
+/* Data table for screens: dense, numbers right-aligned and tabular, sticky header optional. */
+.tb-data{width:100%;border-collapse:collapse;font-size:12.5px}
+.tb-data th{font-size:11px;font-weight:500;color:var(--muted);text-align:left;padding:0 10px;height:26px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tb-data td{padding:0 10px;height:30px;border-bottom:1px solid var(--line);color:var(--body)}
+.tb-data tr:hover td{background:var(--hover)}
+.tb-data .num,.tb-data th.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.tb-data tfoot td{font-weight:600;color:var(--ink);border-top:1px solid var(--control)}
+
+/* Section: a titled group inside a work surface, with the framework group label. */
+.tb-section{display:grid;gap:10px;margin:0 0 20px}
+.tb-section>h2{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* Chat: a conversation column. The question is a right-aligned bubble, the answer is plain text with its tools underneath. */
+.tb-thread{display:grid;gap:18px;max-width:720px}
+.tb-msg-u{justify-self:end;background:var(--hover);color:var(--ink);padding:8px 12px;border-radius:var(--r-lg);max-width:80%;font-size:13px}
+.tb-msg-a{display:grid;gap:10px;color:var(--ink);font-size:14px;line-height:1.55;min-width:0}
+.tb-msg-a p{margin:0}
+/* Composer: one rounded bar with the input and the send button. Put a form around it. */
+.tb-composer{display:flex;align-items:center;gap:8px;max-width:720px;background:var(--surface);border:1px solid var(--control);border-radius:var(--r-lg);padding:6px 6px 6px 14px}
+.tb-composer:focus-within{border-color:var(--ink)}
+.tb-composer input{flex:1;border:0;background:transparent;height:28px;padding:0;font-size:14px;min-width:0}
+.tb-composer input:focus-visible{outline:none}
+.tb-composer .tb-send{height:26px;border-radius:var(--r-pill);background:var(--ink);color:var(--on-ink);border:0;padding:0 14px;font:500 12.5px var(--sans);cursor:pointer}
+.tb-composer .tb-send:hover:not(:disabled){background:var(--accent);color:var(--on-accent)}
+.tb-composer .tb-send:disabled{opacity:.4;cursor:default}
+/* Suggestion chips under the composer. */
+.tb-sugs{display:flex;gap:8px;flex-wrap:wrap;max-width:720px}
+.tb-sug{height:26px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface);color:var(--body);font:450 12px var(--sans);cursor:pointer}
+.tb-sug:hover:not(:disabled){background:var(--hover);color:var(--ink)}
+
+/* Settings modal: tabs down the left, one panel on the right. Fixed to the window. Close on Escape and on a click outside. */
+.tb-scrim{position:fixed;inset:0;background:var(--scrim);display:grid;place-items:center;z-index:50;padding:16px}
+.tb-modal{width:min(780px,100%);height:min(520px,100%);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);display:grid;grid-template-columns:184px 1fr;overflow:hidden;font-size:13px;color:var(--body)}
+.tb-mtabs{background:var(--sidebar);border-right:1px solid var(--line);padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.tb-mtabs .ttl{padding:2px 8px 10px;font-weight:600;color:var(--ink);font-size:14px;letter-spacing:-.02em}
+.tb-mtabs button{display:flex;align-items:center;height:28px;padding:0 8px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--body);font:450 13px var(--sans);text-align:left;cursor:pointer}
+.tb-mtabs button:hover{background:var(--hover);color:var(--ink)}
+.tb-mtabs button[aria-selected="true"]{background:var(--selected);color:var(--ink)}
+.tb-mbody{display:flex;flex-direction:column;min-width:0;min-height:0}
+.tb-mhead{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 8px;color:var(--ink)}
+.tb-mhead h2{font-size:15px;text-transform:none;letter-spacing:-.02em;color:var(--ink)}
+.tb-xbtn{width:24px;height:24px;border-radius:var(--r-sm);border:0;background:transparent;color:var(--body);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;padding:0}
+.tb-xbtn:hover{background:var(--hover)}
+.tb-mpanel{padding:0 20px 16px;overflow:auto;flex:1}

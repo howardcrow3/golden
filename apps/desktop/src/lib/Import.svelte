@@ -116,8 +116,8 @@
 {#key bump}<Withholding {invoke} />{/key}
 
 <style>
-  .ok { color: var(--ok, #2e7d32); }
-  .warn { color: var(--warn, #b26a00); }
+  .ok { color: var(--ok); }
+  .warn { color: var(--ink); border-left: 3px solid var(--accent); padding-left: 6px; }
   .sub { color: var(--muted); margin: 0 0 20px; }
   .form { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; margin-bottom: 16px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }

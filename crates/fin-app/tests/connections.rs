@@ -9,6 +9,7 @@ fn private_by_default_and_lists_every_outside_service() {
     let names: Vec<_> = c.items.iter().map(|i| i.name.as_str()).collect();
     assert!(names.iter().any(|n| n.contains("download")));
     assert!(names.iter().any(|n| n.contains("Plaid")));
+    assert!(names.iter().any(|n| n.contains("feedback")));
     assert!(c
         .items
         .iter()

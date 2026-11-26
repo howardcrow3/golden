@@ -144,7 +144,7 @@
 </div>
 
 <style>
-  .inv { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .inv { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 6px; }
@@ -153,5 +153,5 @@
   .risk { margin: 8px 0; max-width: 200px; }
   table { border-collapse: collapse; margin: 8px 0; font-size: 14px; }
   th, td { text-align: left; padding: 3px 12px 3px 0; }
-  .err { color: var(--danger, #b3261e); }
+  .err { color: var(--danger); }
 </style>

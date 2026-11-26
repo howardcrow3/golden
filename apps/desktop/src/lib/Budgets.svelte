@@ -106,7 +106,7 @@
   .row { padding: 8px 0; border-bottom: 1px solid var(--line); }
   .head { display: flex; justify-content: space-between; }
   .bar { height: 8px; background: var(--line); border-radius: 4px; margin: 6px 0 2px; overflow: hidden; }
-  .fill { height: 100%; background: var(--accent, #c9a227); }
+  .fill { height: 100%; background: var(--accent); }
   .fill.over { background: var(--bad); }
   .over { color: var(--bad); }
   .muted { color: var(--muted); }

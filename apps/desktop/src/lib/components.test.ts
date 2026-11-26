@@ -525,6 +525,30 @@ describe("Transactions", () => {
     await screen.findByRole("status");
     expect((log.find(([c]) => c === "set_category")![1] as { remember: boolean }).remember).toBe(false);
   });
+  it("files several selected lines under one category", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    render(Transactions, { invoke: fake(log) });
+    await screen.findByText("ACME PAYROLL");
+    expect(screen.queryByTestId("bulk-bar")).toBeNull();
+    await fireEvent.click(screen.getByLabelText("Select all shown"));
+    expect(screen.getByTestId("bulk-bar").textContent).toMatch(/2 selected/);
+    await fireEvent.input(screen.getByLabelText("Category for selected"), { target: { value: "Hobbies" } });
+    await fireEvent.click(screen.getByRole("button", { name: "File under this" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/Filed 2 lines under Hobbies/);
+    const calls = log.filter(([c]) => c === "set_category").map(([, a]) => a as { id: number; category: string });
+    expect(calls.map((c) => c.id).sort()).toEqual([1, 2]);
+    expect(calls.every((c) => c.category === "Hobbies")).toBe(true);
+    expect(screen.queryByTestId("bulk-bar")).toBeNull();
+  });
+  it("selects a range with shift-click and clears the selection", async () => {
+    render(Transactions, { invoke: fake([]) });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.click(screen.getByLabelText("Select MYSTERY VENDOR 22 on 2026-10-09"));
+    await fireEvent.click(screen.getByLabelText("Select ACME PAYROLL on 2026-10-01"), { shiftKey: true });
+    expect(screen.getByTestId("bulk-bar").textContent).toMatch(/2 selected/);
+    await fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.queryByTestId("bulk-bar")).toBeNull();
+  });
   it("narrows the list as you search and says how much is shown", async () => {
     render(Transactions, { invoke: fake([]) });
     await screen.findByText("ACME PAYROLL");

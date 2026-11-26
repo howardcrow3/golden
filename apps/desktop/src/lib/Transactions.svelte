@@ -99,6 +99,41 @@
     }
   }
 
+  // Bulk select: checkbox per row, shift-click for a range, then file the whole selection under one category.
+  let selected = $state<Set<number>>(new Set());
+  let lastIdx = $state<number | null>(null);
+  let bulkCategory = $state("");
+  let allShown = $derived(shown.length > 0 && shown.every((r) => selected.has(r.id)));
+
+  function toggle(i: number, on: boolean, range: boolean) {
+    const next = new Set(selected);
+    const [a, b] = range && lastIdx !== null ? [Math.min(lastIdx, i), Math.max(lastIdx, i)] : [i, i];
+    for (let k = a; k <= b; k++) (on ? next.add(shown[k].id) : next.delete(shown[k].id));
+    selected = next;
+    lastIdx = i;
+  }
+  function toggleAll(on: boolean) {
+    selected = on ? new Set(shown.map((r) => r.id)) : new Set();
+    lastIdx = null;
+  }
+  async function applyBulk() {
+    const v = bulkCategory.trim();
+    if (!v || selected.size === 0) return;
+    note = "";
+    error = "";
+    try {
+      const ids = [...selected];
+      for (const id of ids) await setCategory(id, v, remember, invoke);
+      note = `Filed ${ids.length} ${ids.length === 1 ? "line" : "lines"} under ${v}.`;
+      selected = new Set();
+      bulkCategory = "";
+      lastIdx = null;
+      await load();
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   async function change(row: TxnRow, value: string) {
     const v = value.trim();
     if (!v || v === row.category) return;
@@ -139,11 +174,20 @@
 {:else if rows.length > 0}
   <p class="muted" data-testid="shown">{shown.length} of {rows.length} lines · in {formatCents(totals.inCents)} · out {formatCents(totals.outCents)}</p>
   {#if shown.length === 0}<p class="empty">Nothing matches that search.</p>{/if}
+  {#if selected.size > 0}
+    <div class="bulk" role="group" aria-label="Selected transactions" data-testid="bulk-bar">
+      <b>{selected.size} selected</b>
+      <input list="categories" bind:value={bulkCategory} placeholder="Category for all…" aria-label="Category for selected" />
+      <button type="button" onclick={applyBulk} disabled={!bulkCategory.trim()}>File under this</button>
+      <button type="button" onclick={() => toggleAll(false)}>Clear</button>
+    </div>
+  {/if}
   <table class="card">
-    <thead><tr><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th></tr></thead>
+    <thead><tr><th class="sel"><input type="checkbox" aria-label="Select all shown" checked={allShown} onchange={(e) => toggleAll(e.currentTarget.checked)} /></th><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th></tr></thead>
     <tbody>
-      {#each shown as r (r.id)}
-        <tr>
+      {#each shown as r, i (r.id)}
+        <tr class:sel={selected.has(r.id)}>
+          <td class="sel"><input type="checkbox" aria-label={`Select ${r.payee} on ${r.day}`} checked={selected.has(r.id)} onclick={(e) => toggle(i, e.currentTarget.checked, e.shiftKey)} /></td>
           <td class="num">{r.day}</td>
           <td>{r.payee}</td>
           <td class="muted">{r.account}</td>
@@ -170,5 +214,9 @@
   .muted { color: var(--muted); }
   .empty { color: var(--muted); }
   .err { color: var(--bad); }
-  td input { width: 100%; min-width: 150px; }
+  td input:not([type="checkbox"]) { width: 100%; min-width: 150px; }
+  .sel { width: 28px; padding-right: 0; }
+  tr.sel td { background: var(--accent-soft); }
+  .bulk { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; padding: 6px 10px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink); }
+  .bulk input { width: 220px; }
 </style>

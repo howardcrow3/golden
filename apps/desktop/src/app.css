@@ -1,24 +1,63 @@
-/* Turtlebox-inspired tokens: warm neutrals, one gold accent (never used as text),
-   Inter only, square corners, borders instead of shadows. */
+/* Golden global styles. The shared framework is vendored in ./turtlebox (tokens, base, components). */
+@import "@fontsource-variable/inter";
+@import "./turtlebox/tokens.css";
+@import "./turtlebox/base.css";
+@import "./turtlebox/shell.css";
+@import "./turtlebox/extensions.css";
+@import "./turtlebox/charts.css";
+
 :root {
-  --ivory: #faf7f0;
-  --paper: #fffdf8;
-  --charcoal: #2a2724;
-  --muted: #6f685f;
-  --line: #e2dccd;
-  --gold: #b08d3a;
-  --good: #3f6b4f;
-  --bad: #8a3b2e;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: var(--charcoal);
-  background: var(--ivory);
+  --sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Legacy names used by screens written before the framework. They resolve to framework role tokens. */
+  --ivory: var(--paper);
+  --charcoal: var(--ink);
+  --gold: var(--accent);
+  --good: var(--ok);
+  --bad: var(--danger);
+  font-family: var(--sans);
 }
-* { box-sizing: border-box; border-radius: 0; }
-body { margin: 0; }
-h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
-h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); }
-button, select, input { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--paper); padding: 6px 12px; }
-button { cursor: pointer; }
-button[aria-pressed="true"] { border-color: var(--gold); border-bottom-width: 3px; }
-.card { background: var(--paper); border: 1px solid var(--line); padding: 20px; }
+html, body { height: 100%; }
+body { overflow: hidden; }
+
+h1 { margin: 0 0 4px; }
+h2 { margin: 0 0 10px; }
+/* Section headings inside screens read as group labels. */
+main h2 { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* Bare controls pick up the framework look, so screens need no per-element classes. */
+button, select, input, textarea {
+  font: 400 12.5px var(--sans); color: var(--ink);
+  border: 1px solid var(--control); background: var(--surface);
+  border-radius: var(--r-sm); padding: 0 10px; height: 26px;
+}
+input, select { height: 28px; }
+textarea { height: auto; padding: 6px 10px; }
+button { font-weight: 500; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--hover); }
+button:disabled { opacity: .5; cursor: default; }
+button[aria-pressed="true"] { border-color: var(--ink); background: var(--selected); }
+input[type="checkbox"], input[type="radio"] { height: auto; padding: 0; accent-color: var(--ink); }
+::placeholder { color: var(--muted); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; }
 .num { font-variant-numeric: tabular-nums; }
+
+/* Screens written before the framework use these names. Style them once here. */
+.err { color: var(--danger); }
+.ok { color: var(--ok); }
+.hint, .muted { color: var(--muted); }
+.hint { font-size: 12px; }
+table { border-collapse: collapse; font-size: 12.5px; }
+th { font-size: 11px; font-weight: 500; color: var(--muted); text-align: left; padding: 0 10px; height: 26px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 0 10px; height: 30px; border-bottom: 1px solid var(--line); color: var(--body); }
+tbody tr:hover td { background: var(--hover); }
+th.r, td.r { text-align: right; }
+td.num, td.r { font-variant-numeric: tabular-nums; }
+table.card { padding: 0; }
+
+/* Buttons sit at their natural width inside grid layouts instead of stretching. */
+button { justify-self: start; align-self: start; }
+nav button { align-self: auto; }
+input[type="file"] { height: auto; padding: 3px 6px; color: var(--muted); }
+input[type="file"]::file-selector-button { font: 500 12px var(--sans); color: var(--ink); background: var(--surface); border: 1px solid var(--control); border-radius: var(--r-sm); height: 22px; padding: 0 10px; margin-right: 8px; cursor: pointer; }
+input[type="file"]::file-selector-button:hover { background: var(--hover); }

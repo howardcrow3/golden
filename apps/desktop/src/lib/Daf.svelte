@@ -66,10 +66,10 @@
 </div>
 
 <style>
-  .daf { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .daf { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin-bottom: 8px; max-width: 180px; }
-  .err { color: var(--danger, #b3261e); }
+  .err { color: var(--danger); }
 </style>

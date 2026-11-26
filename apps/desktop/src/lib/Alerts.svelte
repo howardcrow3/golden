@@ -28,9 +28,9 @@
 <style>
   .alerts { margin-top: 12px; }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-  li { display: flex; gap: 8px; font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--surface, #f4f4f4); }
+  li { display: flex; gap: 8px; font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--surface); }
   .icon { font-weight: 700; width: 1.6em; }
-  .good { color: var(--ok, #1b6e3a); }
-  .warn { color: var(--warn, #8a5a00); }
-  .danger { color: var(--danger, #b3261e); }
+  .good { color: var(--ok); }
+  .warn { color: var(--ink); border-left: 3px solid var(--accent); padding-left: 6px; }
+  .danger { color: var(--danger); }
 </style>

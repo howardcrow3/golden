@@ -57,10 +57,10 @@
 </div>
 
 <style>
-  .pf { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .pf { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .open { font-size: 13px; }
-  .err { color: var(--danger, #b3261e); }
+  .err { color: var(--danger); }
 </style>
