@@ -590,6 +590,16 @@ fn set_budget_rollover(state: Shared, category: String, on: bool) -> Result<(), 
 }
 
 #[tauri::command]
+fn cancel_marks(state: Shared) -> Result<Vec<String>, String> {
+    lock(&state)?.cancel_marks()
+}
+
+#[tauri::command]
+fn set_cancel_mark(state: Shared, payee: String, on: bool) -> Result<Vec<String>, String> {
+    lock(&state)?.set_cancel_mark(&payee, on)
+}
+
+#[tauri::command]
 fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(), String> {
     lock(&state)?.set_budget(&category, monthly_cents).map(|_| ())
 }
@@ -1148,6 +1158,8 @@ pub fn run() {
             suggest_allocation,
             apply_paystub,
             set_budget,
+            cancel_marks,
+            set_cancel_mark,
             set_budget_rollover,
             set_category,
             set_note_tags,

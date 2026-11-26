@@ -663,6 +663,12 @@ export interface Recurring {
   nextExpected: string;
   yearlyCents: number;
 }
+export async function getCancelMarks(invoke?: Invoke): Promise<string[]> {
+  return (await (await resolve(invoke))("cancel_marks")) as string[];
+}
+export async function setCancelMark(payee: string, on: boolean, invoke?: Invoke): Promise<string[]> {
+  return (await (await resolve(invoke))("set_cancel_mark", { payee, on })) as string[];
+}
 export async function getRecurring(from: string, to: string, invoke?: Invoke): Promise<Recurring[]> {
   return (await (await resolve(invoke))("recurring", { from, to })) as Recurring[];
 }
