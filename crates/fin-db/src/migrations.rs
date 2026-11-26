@@ -84,6 +84,11 @@ const MIGRATIONS: &[&str] = &[
         account_id      INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE
     );
     "#,
+    // Your own notes and tags on a transaction (tags are comma separated, lower case).
+    r#"
+    ALTER TABLE txn ADD COLUMN note TEXT NOT NULL DEFAULT '';
+    ALTER TABLE txn ADD COLUMN tags TEXT NOT NULL DEFAULT '';
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

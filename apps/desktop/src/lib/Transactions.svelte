@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, type Invoke, type TxnRow } from "./api";
+  import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, setNoteTags, type Invoke, type TxnRow } from "./api";
   import CategorySuggest from "./CategorySuggest.svelte";
   import { formatCents } from "./money";
   import { filterTxns, groupByCategory, sumTxns } from "./txnFilter";
@@ -136,6 +136,18 @@
     }
   }
 
+  async function saveExtras(row: TxnRow, noteText: string, tagText: string) {
+    const tags = tagText.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+    if (noteText.trim() === row.note && tags.join(",") === row.tags.join(",")) return;
+    error = "";
+    try {
+      await setNoteTags(row.id, noteText, tagText, invoke);
+      await load();
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   async function change(row: TxnRow, value: string) {
     const v = value.trim();
     if (!v || v === row.category) return;
@@ -201,7 +213,7 @@
     </div>
   {/if}
   <table class="card">
-    <thead><tr><th class="sel"><input type="checkbox" aria-label="Select all shown" checked={allShown} onchange={(e) => toggleAll(e.currentTarget.checked)} /></th><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th></tr></thead>
+    <thead><tr><th class="sel"><input type="checkbox" aria-label="Select all shown" checked={allShown} onchange={(e) => toggleAll(e.currentTarget.checked)} /></th><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th><th>Note and tags</th></tr></thead>
     <tbody>
       {#each shown as r, i (r.id)}
         <tr class:sel={selected.has(r.id)}>
@@ -212,6 +224,10 @@
           <td class="r num" class:neg={r.amountCents < 0}>{formatCents(r.amountCents)}</td>
           <td>
             <input list="categories" value={r.category ?? ""} placeholder="Choose…" aria-label={`Category for ${r.payee} on ${r.day}`} onchange={(e) => change(r, e.currentTarget.value)} />
+          </td>
+          <td class="extras">
+            <input value={r.note ?? ""} placeholder="Note" aria-label={`Note for ${r.payee} on ${r.day}`} onchange={(e) => saveExtras(r, e.currentTarget.value, (r.tags ?? []).join(","))} />
+            <input value={(r.tags ?? []).join(", ")} placeholder="tags, comma separated" aria-label={`Tags for ${r.payee} on ${r.day}`} onchange={(e) => saveExtras(r, r.note ?? "", e.currentTarget.value)} />
           </td>
         </tr>
       {/each}
@@ -234,6 +250,7 @@
   .empty { color: var(--muted); }
   .err { color: var(--bad); }
   td input:not([type="checkbox"]) { width: 100%; min-width: 150px; }
+  .extras { display: flex; flex-direction: column; gap: 4px; }
   .sel { width: 28px; padding-right: 0; }
   tr.sel td { background: var(--accent-soft); }
   .bulk { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; padding: 6px 10px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink); }

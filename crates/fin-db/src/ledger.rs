@@ -268,6 +268,27 @@ impl Db {
     }
 
     /// Set (or clear, with `None`) a transaction's category.
+    /// Save your own note and tags (comma separated) on a transaction.
+    pub fn set_txn_note_tags(&self, id: i64, note: &str, tags: &str) -> Result<()> {
+        let n = self.conn.execute(
+            "UPDATE txn SET note=?1, tags=?2 WHERE id=?3",
+            params![note, tags, id],
+        )?;
+        if n == 0 {
+            return Err(DbError::NotFound(format!("transaction {id}")));
+        }
+        Ok(())
+    }
+
+    /// Notes and tags by transaction id, only for transactions that have either.
+    pub fn txn_extras(&self) -> Result<std::collections::HashMap<i64, (String, String)>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT id, note, tags FROM txn WHERE note <> '' OR tags <> ''")?;
+        let rows = st.query_map([], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     pub fn set_txn_category(&self, id: i64, category: Option<&str>) -> Result<()> {
         let cat = match category {
             Some(c) if !c.trim().is_empty() => Some(self.category_id(c.trim())?),

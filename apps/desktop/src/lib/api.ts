@@ -467,6 +467,8 @@ export interface TxnRow {
   amountCents: number;
   category: string | null;
   account: string;
+  note: string;
+  tags: string[];
 }
 export interface Recategorized {
   category: string;
@@ -480,6 +482,9 @@ export async function categoryChoices(invoke?: Invoke): Promise<string[]> {
 }
 export async function setCategory(id: number, category: string, remember: boolean, invoke?: Invoke): Promise<Recategorized> {
   return (await (await resolve(invoke))("set_category", { id, category, remember })) as Recategorized;
+}
+export async function setNoteTags(id: number, note: string, tags: string, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_note_tags", { id, note, tags });
 }
 export async function exportTransactions(from: string, to: string, invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("export_transactions", { from, to })) as string;

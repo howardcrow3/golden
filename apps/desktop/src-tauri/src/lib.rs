@@ -108,6 +108,11 @@ fn set_category(state: Shared, id: i64, category: String, remember: bool) -> Res
     lock(&state)?.set_category(id, &category, remember)
 }
 
+#[tauri::command]
+fn set_note_tags(state: Shared, id: i64, note: String, tags: String) -> Result<(), String> {
+    lock(&state)?.set_note_tags(id, &note, &tags)
+}
+
 /// Write a CSV of the transactions between two dates into the Exports folder and return its path.
 #[tauri::command]
 fn export_transactions(app: tauri::AppHandle, state: Shared, from: String, to: String) -> Result<String, String> {
@@ -1134,6 +1139,7 @@ pub fn run() {
             apply_paystub,
             set_budget,
             set_category,
+            set_note_tags,
             library_folder,
             set_library_folder,
             household,
