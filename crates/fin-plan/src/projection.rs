@@ -282,7 +282,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 },
             );
             let st = states
-                .income_tax(&input.state, input.filing, f.agi)
+                .income_tax_with_ss(&input.state, input.filing, f.agi, taxable_ss)
                 .unwrap_or(Money::ZERO);
             f.income_tax + st
         };
@@ -788,6 +788,42 @@ mod tests {
         assert_eq!(row.taxes, Money::ZERO);
         assert_eq!(row.social_security, Money::from_dollars(21_000));
         assert_eq!(row.withdrawals, Money::from_dollars(29_000));
+    }
+
+    #[test]
+    fn a_state_that_does_not_tax_social_security_taxes_only_the_rest() {
+        let plan = |state: &str| {
+            let mut i = couple();
+            i.state = state.into();
+            i.streams.clear();
+            i.accounts = Accounts {
+                cash: Money::ZERO,
+                taxable: Money::ZERO,
+                taxable_gain_share: 0.0,
+                traditional: Money::from_dollars(900_000),
+                roth: Money::ZERO,
+            };
+            i.social_security = vec![SocialSecurity {
+                person: 0,
+                annual_benefit: Money::from_dollars(60_000),
+                claim_age: 50,
+            }];
+            i.annual_spending = Money::from_dollars(80_000);
+            project_constant(&i, 0.04).rows[0].clone()
+        };
+        let tx = plan("TX");
+        let il = plan("IL");
+        let ut = plan("UT");
+        // Federal tax is the same everywhere; the rest is state tax.
+        let il_extra = il.income_tax - tx.income_tax;
+        let ut_extra = ut.income_tax - tx.income_tax;
+        // Illinois (4.95% flat, no deduction) does not tax the benefits. Taxing all of AGI would
+        // cost about $6,200 over Texas here (state tax plus the extra withdrawal to pay it);
+        // leaving the benefits out brings it to about $3,700.
+        assert!(il_extra > Money::from_dollars(2_000), "{il_extra:?}");
+        assert!(il_extra < Money::from_dollars(5_000), "{il_extra:?}");
+        // Utah taxes benefits, so its bill is higher even at a lower rate.
+        assert!(ut_extra > il_extra, "{ut_extra:?} vs {il_extra:?}");
     }
 
     #[test]
