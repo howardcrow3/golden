@@ -8,7 +8,7 @@
   let missing = $derived(s.items.filter((i) => !i.done));
 </script>
 
-<section class="card" aria-label="Planner score">
+<section class="tb-section" aria-label="Planner score">
   <h2>Plan completeness <span class="num" data-testid="score">{s.score}</span><span class="of">/100</span></h2>
   <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={s.score}><div style:width={`${s.score}%`}></div></div>
   {#if missing.length === 0}

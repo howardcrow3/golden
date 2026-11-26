@@ -58,7 +58,7 @@
 </script>
 
 {#if available && data && (data.assets.length || data.debts.length)}
-  <section class="card" data-testid="balance-sheet">
+  <section class="tb-section" data-testid="balance-sheet">
     <h2>What you're worth</h2>
     <p class="big num" class:neg={data.netWorthCents < 0} data-testid="net-worth">{formatCents(data.netWorthCents, { whole: true })}</p>
     {#if history.length > 1}

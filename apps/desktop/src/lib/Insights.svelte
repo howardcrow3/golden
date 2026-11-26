@@ -12,7 +12,7 @@
 </script>
 
 {#if items.length}
-  <section class="card" data-testid="insights">
+  <section class="tb-section" data-testid="insights">
     <h2>What stands out</h2>
     <ul>
       {#each items as i}

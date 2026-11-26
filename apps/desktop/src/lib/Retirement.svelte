@@ -95,7 +95,7 @@
 {#if f}
   {#if scoreHousehold}<PlannerScore household={scoreHousehold} />{/if}
 <form onsubmit={(e) => { e.preventDefault(); run(); }}>
-  <section class="card" aria-label="People">
+  <section class="tb-section" aria-label="People">
     <h2>People</h2>
     {#each f.people as p, i}
       <div class="controls">
@@ -109,7 +109,7 @@
     {#if f.people.length < 4}<button type="button" onclick={() => f!.people.push(newPerson())}>Add person</button>{/if}
   </section>
 
-  <section class="card" aria-label="Home">
+  <section class="tb-section" aria-label="Home">
     <h2>Home</h2>
     {#if f.home}
       <p class="hint">Your yearly spending should already include the mortgage payment; the plan frees that money once the loan is paid off. Leave "Year to sell" empty to stay put.</p>
@@ -133,7 +133,7 @@
     {/if}
   </section>
 
-  <section class="card" aria-label="Children">
+  <section class="tb-section" aria-label="Children">
     <h2>Children</h2>
     <p class="hint">Costs here are on top of your everyday spending: childcare from birth through age 12, and college for four years from age 18. The child tax credit is counted until 17.</p>
     {#each f.children as c, i}
@@ -148,7 +148,7 @@
     <button type="button" onclick={() => f!.children.push(newChild(new Date().getFullYear()))}>Add a child</button>
   </section>
 
-  <section class="card" aria-label="Income">
+  <section class="tb-section" aria-label="Income">
     <h2>Income</h2>
     <p class="hint">Leave the years empty to earn until that person retires. For a bonus or a stock vest, use "Add one-time income".</p>
     {#each f.streams as s, i}
@@ -255,7 +255,7 @@
 
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 {#if result && v}
-  <section class="card">
+  <section class="tb-section">
     <h2>Chance the money lasts to {result.horizonAge}</h2>
     <div class="big num" data-testid="success">{formatPercent(result.successRate, 0)} <span class={v.tone}>{v.label}</span></div>
     <p class="range num">

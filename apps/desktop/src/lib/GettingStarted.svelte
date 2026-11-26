@@ -12,7 +12,7 @@
 </script>
 
 {#if setup && !setup.complete}
-  <section class="card" data-testid="getting-started">
+  <section class="tb-section" data-testid="getting-started">
     <h2>Getting started · {setup.done} of {setup.steps.length}</h2>
     <ul>
       {#each setup.steps as s (s.key)}

@@ -51,7 +51,7 @@
 </script>
 
 {#if plan && plan.debts.length}
-  <section class="card" data-testid="debts">
+  <section class="tb-section" data-testid="debts">
     <h2>Paying off what you owe</h2>
     {#each plan.debts as d}
       <div class="row" data-testid="debt-terms">

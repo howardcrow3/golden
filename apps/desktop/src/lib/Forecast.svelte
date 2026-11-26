@@ -36,7 +36,7 @@
 </script>
 
 {#if available}
-  <section class="card" data-testid="forecast">
+  <section class="tb-section" data-testid="forecast">
     <h2>Where you're headed</h2>
     {#if data}
       <p class="muted">

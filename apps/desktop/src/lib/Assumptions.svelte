@@ -30,7 +30,7 @@
   }
 </script>
 
-<section class="card" aria-label="Assumptions">
+<section class="tb-section" aria-label="Assumptions">
   <h2>Assumptions</h2>
   <p class="sub">Each assumption has several possible values. Golden uses the likeliest unless you pick another.</p>
   {#if error}<p class="err" role="alert">{error}</p>{/if}

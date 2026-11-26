@@ -33,7 +33,7 @@
   const pct = (bp: number) => `${(bp / 100).toFixed(1)}%`;
 </script>
 
-<section class="card" data-testid="paystub">
+<section class="tb-section" data-testid="paystub">
   <h2>Read a paystub</h2>
   <p class="muted">Paste the text of a paystub. Golden shows what it found and can add the pay to your plan. Nothing leaves this computer.</p>
   <textarea rows="6" bind:value={text} aria-label="Paystub text" placeholder="Gross Pay 4,000.00&#10;Federal Income Tax 420.00&#10;..."></textarea>

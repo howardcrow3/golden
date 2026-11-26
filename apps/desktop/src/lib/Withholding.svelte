@@ -22,7 +22,7 @@
 </script>
 
 {#if check && check.taxableWagesCents > 0}
-  <section class="card" data-testid="withholding">
+  <section class="tb-section" data-testid="withholding">
     <h2>Is enough tax being withheld?</h2>
     {#if check.missing.length}
       <p class="muted" data-testid="withholding-missing">Read a paystub for {check.missing.join(", ")} to include it. Until then this can't be trusted.</p>

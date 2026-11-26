@@ -23,7 +23,7 @@
   }
 </script>
 
-<section class="card" data-testid="allocate">
+<section class="tb-section" data-testid="allocate">
   <h2>Where should new savings go?</h2>
   <p class="muted">A starting order, not advice: emergency cash, then your workplace plan, then an IRA, then a taxable account. It doesn't know about employer matches or income limits.</p>
   <label>Saved per year
