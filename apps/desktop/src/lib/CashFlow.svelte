@@ -2,6 +2,7 @@
   import { cashFlow, categories, type CategoryRow, type Invoke, type PeriodRow } from "./api";
   import type { Grain } from "./grain";
   import { formatCents } from "./money";
+  import { columnsChart } from "./tbchart";
 
   let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let rows = $state<PeriodRow[]>([]);
@@ -34,11 +35,21 @@
     })();
   });
   let active = $derived(rows.filter((r) => r.count > 0));
+  let chart = $derived({
+    cats: rows.map((r) => r.period),
+    series: [
+      { name: "Income", color: "var(--s1)", values: rows.map((r) => r.incomeCents / 100) },
+      { name: "Spending", color: "var(--s2)", values: rows.map((r) => r.spendingCents / 100) },
+    ],
+    height: 200,
+    label: `Income and spending by ${grain}`,
+  });
 </script>
 
 {#if ready && active.length > 0}
   <section class="card" data-testid="cashflow">
     <h2>Cash flow by {grain}</h2>
+    <div class="chart" use:columnsChart={chart} data-testid="cashflow-chart"></div>
     <table>
       <thead><tr><th>Period</th><th class="r">Income</th><th class="r">Spending</th><th class="r">Net</th></tr></thead>
       <tbody>
@@ -58,6 +69,7 @@
 
 <style>
   section { margin-top: 16px; }
+  .chart { margin-bottom: 12px; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: normal; }
   th { color: var(--muted); font-size: 12px; }
