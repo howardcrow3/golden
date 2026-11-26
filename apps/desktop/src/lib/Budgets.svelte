@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { budgetStatus, categoryChoices, setBudget, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
+  import { budgetStatus, categoryChoices, saveReport, setBudget, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
   import { type Grain } from "./grain";
   import { formatCents, parseDollars } from "./money";
+  import { budgetCsv } from "./report";
 
   let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let rows = $state<BudgetRow[]>([]);
@@ -11,6 +12,7 @@
   let amount = $state("");
   let error = $state("");
   let version = $state(0);
+  let savedTo = $state("");
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -33,6 +35,16 @@
   export function usedPercent(r: BudgetRow): number {
     if (r.budgetCents <= 0) return 0;
     return Math.min(100, Math.round((r.spentCents / r.budgetCents) * 100));
+  }
+
+  async function exportCsv() {
+    error = "";
+    try {
+      const day = iso(today);
+      savedTo = await saveReport(`Golden budget ${grain} ${day}`, "csv", budgetCsv(rows, `${grain} of ${day}`), invoke);
+    } catch (e) {
+      error = String(e);
+    }
   }
 
   async function save() {
@@ -97,6 +109,10 @@
       </label>
       <button type="submit">Set budget</button>
     </form>
+    {#if rows.length > 0}
+      <p><button type="button" onclick={exportCsv}>Export budget as CSV</button></p>
+    {/if}
+    {#if savedTo}<p class="muted small" data-testid="budget-saved">Saved to {savedTo}</p>{/if}
     {#if error}<p role="alert" class="err">{error}</p>{/if}
   </section>
 {/if}
