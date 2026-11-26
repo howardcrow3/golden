@@ -73,6 +73,15 @@ impl Db {
         Ok(AccountId(self.conn.last_insert_rowid()))
     }
 
+    /// Institution (or hand-entered holding label) by account id, where there is one.
+    pub fn account_institutions(&self) -> Result<std::collections::HashMap<i64, String>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT id, institution FROM account WHERE institution IS NOT NULL AND institution <> ''")?;
+        let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     /// Find an account by exact name, creating it when missing.
     pub fn find_or_add_account(&self, name: &str, kind: &str) -> Result<AccountId> {
         if let Some(id) = self

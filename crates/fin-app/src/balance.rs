@@ -40,11 +40,65 @@ pub fn is_debt_kind(kind: &str) -> bool {
     .any(|w| k.contains(w))
 }
 
+/// Things you own that no bank statement will show, entered by hand and kept current by you.
+pub const HOLDING_KINDS: [&str; 7] = [
+    "Vehicle",
+    "Crypto",
+    "Private stock",
+    "Collectible",
+    "Precious metals",
+    "Property",
+    "Other asset",
+];
+
 impl App {
+    /// Add something you own to the balance sheet at its current value.
+    pub fn add_holding(&self, name: &str, kind: &str, value_cents: i64) -> Result<(), String> {
+        self.require_edit()?;
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("Give it a name, such as \"2019 Honda Civic\".".into());
+        }
+        let kind = HOLDING_KINDS
+            .iter()
+            .find(|k| k.eq_ignore_ascii_case(kind.trim()))
+            .ok_or_else(|| format!("Choose one of: {}.", HOLDING_KINDS.join(", ")))?;
+        if value_cents < 0 {
+            return Err("A value can't be negative. Debts go in as loans or cards.".into());
+        }
+        if self
+            .accounts()?
+            .iter()
+            .any(|a| a.name.eq_ignore_ascii_case(name))
+        {
+            return Err(format!(
+                "You already have an account or holding called {name}."
+            ));
+        }
+        let db_kind = if *kind == "Property" {
+            "property"
+        } else {
+            "other"
+        };
+        let id = self
+            .db
+            .add_account(name, db_kind, Some(kind), None)
+            .map_err(|e| e.to_string())?;
+        self.set_opening_balance(id.0, value_cents)
+    }
+
     pub fn balance_sheet(&self) -> Result<BalanceSheet, String> {
         let mut assets = vec![];
         let mut debts = vec![];
-        for a in self.accounts()? {
+        let labels = self.db.account_institutions().map_err(|e| e.to_string())?;
+        for mut a in self.accounts()? {
+            // Hand-entered holdings keep the label they were added with, such as "Vehicle".
+            if let Some(l) = labels
+                .get(&a.id)
+                .filter(|l| HOLDING_KINDS.contains(&l.as_str()))
+            {
+                a.kind = l.clone();
+            }
             if is_debt_kind(&a.kind) {
                 // A debt account that is in credit (overpaid) is an asset, so it nets correctly.
                 if a.balance_cents <= 0 {

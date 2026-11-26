@@ -609,6 +609,10 @@ export interface BalanceSheet {
   debtsCents: number;
   netWorthCents: number;
 }
+export const HOLDING_KINDS = ["Vehicle", "Crypto", "Private stock", "Collectible", "Precious metals", "Property", "Other asset"] as const;
+export async function addHolding(name: string, kind: string, valueCents: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("add_holding", { name, kind, valueCents });
+}
 export async function getBalanceSheet(invoke?: Invoke): Promise<BalanceSheet> {
   return (await (await resolve(invoke))("balance_sheet")) as BalanceSheet;
 }

@@ -88,4 +88,26 @@ describe("BalanceSheet", () => {
     await waitFor(() => expect(screen.getByTestId("net-worth-trend")).toBeTruthy());
     expect(screen.getByTestId("net-worth-trend").getAttribute("aria-label")).toContain("2026-09 to 2026-11");
   });
+
+  it("adds a hand-entered holding and shows its kind", async () => {
+    const calls: [string, unknown][] = [];
+    const base = fake(calls);
+    const withCar = { ...sheet, assets: [...sheet.assets, { name: "Civic", kind: "Vehicle", cents: 1_200_000 }] };
+    render(BalanceSheet, { invoke: async (c: string, a?: unknown) => (c === "balance_sheet" && calls.some((x) => x[0] === "add_holding") ? withCar : base(c, a)) });
+    await fireEvent.click(await screen.findByTestId("add-holding"));
+    await fireEvent.input(screen.getByLabelText("Holding name"), { target: { value: "Civic" } });
+    await fireEvent.change(screen.getByLabelText("Holding kind"), { target: { value: "Vehicle" } });
+    await fireEvent.input(screen.getByLabelText("Holding value"), { target: { value: "12000" } });
+    await fireEvent.click(screen.getByText("Add to what I own"));
+    await waitFor(() => expect(calls).toContainEqual(["add_holding", { name: "Civic", kind: "Vehicle", valueCents: 1_200_000 }]));
+    await waitFor(() => expect(screen.getAllByTestId("asset-row").some((r) => r.textContent?.includes("Vehicle"))).toBe(true));
+  });
+
+  it("rejects a value that is not a number", async () => {
+    render(BalanceSheet, { invoke: fake([]) });
+    await fireEvent.click(await screen.findByTestId("add-holding"));
+    await fireEvent.input(screen.getByLabelText("Holding value"), { target: { value: "lots" } });
+    await fireEvent.click(screen.getByText("Add to what I own"));
+    await screen.findByText(/Enter its current value/);
+  });
 });
