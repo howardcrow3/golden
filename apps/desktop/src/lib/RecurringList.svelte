@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getRecurring, type Invoke, type Recurring } from "./api";
+  import { getCancelMarks, getRecurring, setCancelMark, type Invoke, type Recurring } from "./api";
   import { formatCents } from "./money";
 
   let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
@@ -15,6 +15,24 @@
       .catch(() => (rows = []));
   });
 
+  let marks = $state<string[]>([]);
+  let error = $state("");
+  $effect(() => {
+    getCancelMarks(invoke)
+      .then((m) => (marks = m))
+      .catch(() => (marks = []));
+  });
+  async function mark(payee: string, on: boolean) {
+    error = "";
+    try {
+      marks = await setCancelMark(payee, on, invoke);
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
+  }
+  let cancelling = $derived(rows.filter((r) => r.typicalCents < 0 && marks.includes(r.payee)));
+  let savings = $derived(cancelling.reduce((s, r) => s + -r.yearlyCents, 0));
+
   let out = $derived(rows.filter((r) => r.typicalCents < 0));
   let yearlyOut = $derived(out.reduce((s, r) => s + -r.yearlyCents, 0));
 </script>
@@ -25,15 +43,27 @@
     <p class="muted" data-testid="recurring-total">
       Regular payments add up to <b class="num">{formatCents(yearlyOut, { whole: true })}</b> a year, from the last 12 months of statements.
     </p>
+    {#if cancelling.length}
+      <p data-testid="recurring-savings">
+        Cancelling {cancelling.length === 1 ? "the one you marked" : `the ${cancelling.length} you marked`} would save <b class="num">{formatCents(savings, { whole: true })}</b> a year.
+      </p>
+    {/if}
+    {#if error}<p class="err" role="alert">{error}</p>{/if}
     <table>
-      <thead><tr><th>Who</th><th>How often</th><th class="r">Amount</th><th class="r">Next</th></tr></thead>
+      <thead><tr><th>Who</th><th>How often</th><th class="r">Amount</th><th class="r">A year</th><th class="r">Next</th><th>To cancel</th></tr></thead>
       <tbody>
         {#each rows as r}
           <tr data-testid="recurring-row">
             <td>{r.payee}</td>
             <td>{r.cadence}</td>
             <td class="r num" class:neg={r.typicalCents < 0}>{formatCents(r.typicalCents)}</td>
+            <td class="r num">{formatCents(-r.yearlyCents, { whole: true })}</td>
             <td class="r">{r.nextExpected}</td>
+            <td>
+              {#if r.typicalCents < 0}
+                <input type="checkbox" checked={marks.includes(r.payee)} aria-label={`Mark ${r.payee} to cancel`} onchange={(e) => mark(r.payee, e.currentTarget.checked)} />
+              {/if}
+            </td>
           </tr>
         {/each}
       </tbody>
@@ -48,5 +78,6 @@
   th, td { padding: 6px 0; border-bottom: 1px solid var(--line); text-align: left; font-weight: normal; }
   th { color: var(--muted); font-size: 12px; }
   .r { text-align: right; }
+  .err { color: var(--bad); }
   .neg { color: var(--bad); }
 </style>

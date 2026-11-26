@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/svelte";
 import RecurringList from "./RecurringList.svelte";
 
 const rows = [
@@ -14,7 +15,7 @@ describe("RecurringList", () => {
   it("lists what repeats and totals only the money going out", async () => {
     const seen: unknown[] = [];
     render(RecurringList, {
-      invoke: async (c: string, a?: unknown) => (seen.push([c, a]), rows),
+      invoke: async (c: string, a?: unknown) => (c === "cancel_marks" ? [] : (seen.push([c, a]), rows)),
       today: new Date("2026-11-16T12:00:00Z"),
     });
     await waitFor(() => expect(screen.getAllByTestId("recurring-row")).toHaveLength(3));
@@ -31,5 +32,23 @@ describe("RecurringList", () => {
     render(RecurringList, {});
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByTestId("recurring")).toBeNull();
+  });
+
+  it("shows the yearly cost and what marking payments to cancel would save", async () => {
+    const invoke = vi.fn(async (c: string) => (c === "cancel_marks" ? [] : c === "set_cancel_mark" ? ["NETFLIX"] : rows));
+    render(RecurringList, { invoke, today: new Date("2026-11-16T12:00:00Z") });
+    await waitFor(() => expect(screen.getAllByTestId("recurring-row")).toHaveLength(3));
+    expect(screen.queryByTestId("recurring-savings")).toBeNull();
+    expect(screen.queryByLabelText("Mark ACME PAYROLL to cancel")).toBeNull(); // income can't be cancelled
+    await fireEvent.click(screen.getByLabelText("Mark NETFLIX to cancel"));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("set_cancel_mark", { payee: "NETFLIX", on: true }));
+    await waitFor(() => expect(screen.getByTestId("recurring-savings").textContent).toContain("$186"));
+  });
+
+  it("remembers marks from earlier", async () => {
+    const invoke = async (c: string) => (c === "cancel_marks" ? ["NETFLIX"] : rows);
+    render(RecurringList, { invoke, today: new Date("2026-11-16T12:00:00Z") });
+    await waitFor(() => expect(screen.getByTestId("recurring-savings")).toBeTruthy());
+    expect((screen.getByLabelText("Mark NETFLIX to cancel") as HTMLInputElement).checked).toBe(true);
   });
 });
