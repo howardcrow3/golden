@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, setNoteTags, type Invoke, type TxnRow } from "./api";
+  import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, setNoteTags, setSplits, type Invoke, type TxnRow } from "./api";
   import CategorySuggest from "./CategorySuggest.svelte";
   import { formatCents } from "./money";
+  import { splitLeftCents, splitToParts, type SplitDraft } from "./splitMath";
   import { filterTxns, groupByCategory, sumTxns } from "./txnFilter";
 
   let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
@@ -136,6 +137,41 @@
     }
   }
 
+  // Split editor: one line at a time.
+  let splitting = $state<number | null>(null);
+  let drafts = $state<SplitDraft[]>([]);
+  let splitError = $state("");
+  function openSplit(r: TxnRow) {
+    splitting = r.id;
+    splitError = "";
+    drafts = r.splits.length
+      ? r.splits.map((p) => ({ category: p.category, amount: (Math.abs(p.cents) / 100).toFixed(2) }))
+      : [{ category: r.category ?? "", amount: (Math.abs(r.amountCents) / 100).toFixed(2) }, { category: "", amount: "" }];
+  }
+  async function saveSplit(r: TxnRow) {
+    const res = splitToParts(r.amountCents, drafts);
+    if (!res.ok) {
+      splitError = res.error;
+      return;
+    }
+    try {
+      await setSplits(r.id, res.parts, invoke);
+      splitting = null;
+      await load();
+    } catch (e) {
+      splitError = e instanceof Error ? e.message : String(e);
+    }
+  }
+  async function clearSplit(r: TxnRow) {
+    try {
+      await setSplits(r.id, [], invoke);
+      splitting = null;
+      await load();
+    } catch (e) {
+      splitError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   async function saveExtras(row: TxnRow, noteText: string, tagText: string) {
     const tags = tagText.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
     if (noteText.trim() === row.note && tags.join(",") === row.tags.join(",")) return;
@@ -213,7 +249,7 @@
     </div>
   {/if}
   <table class="card">
-    <thead><tr><th class="sel"><input type="checkbox" aria-label="Select all shown" checked={allShown} onchange={(e) => toggleAll(e.currentTarget.checked)} /></th><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th><th>Note and tags</th></tr></thead>
+    <thead><tr><th class="sel"><input type="checkbox" aria-label="Select all shown" checked={allShown} onchange={(e) => toggleAll(e.currentTarget.checked)} /></th><th>Date</th><th>Payee</th><th>Account</th><th class="r">Amount</th><th>Category</th><th>Note and tags</th><th>Split</th></tr></thead>
     <tbody>
       {#each shown as r, i (r.id)}
         <tr class:sel={selected.has(r.id)}>
@@ -229,7 +265,31 @@
             <input value={r.note ?? ""} placeholder="Note" aria-label={`Note for ${r.payee} on ${r.day}`} onchange={(e) => saveExtras(r, e.currentTarget.value, (r.tags ?? []).join(","))} />
             <input value={(r.tags ?? []).join(", ")} placeholder="tags, comma separated" aria-label={`Tags for ${r.payee} on ${r.day}`} onchange={(e) => saveExtras(r, r.note ?? "", e.currentTarget.value)} />
           </td>
+          <td>
+            <button type="button" aria-label={`Split ${r.payee} on ${r.day}`} onclick={() => openSplit(r)}>{(r.splits ?? []).length ? `Split ${r.splits.length} ways` : "Split"}</button>
+          </td>
         </tr>
+        {#if splitting === r.id}
+          <tr data-testid="split-editor">
+            <td></td>
+            <td colspan="7">
+              {#each drafts as p, i}
+                <div class="part">
+                  <input list="categories" bind:value={p.category} placeholder="Category" aria-label={`Part ${i + 1} category`} />
+                  <input bind:value={p.amount} placeholder="0.00" inputmode="decimal" aria-label={`Part ${i + 1} amount`} />
+                </div>
+              {/each}
+              <div class="part">
+                <button type="button" onclick={() => (drafts = [...drafts, { category: "", amount: "" }])}>Add a part</button>
+                <span class="muted" data-testid="split-left">{formatCents(splitLeftCents(r.amountCents, drafts))} left</span>
+                <button type="button" onclick={() => saveSplit(r)}>Save split</button>
+                {#if (r.splits ?? []).length}<button type="button" onclick={() => clearSplit(r)}>Remove split</button>{/if}
+                <button type="button" onclick={() => (splitting = null)}>Cancel</button>
+              </div>
+              {#if splitError}<p class="err" role="alert">{splitError}</p>{/if}
+            </td>
+          </tr>
+        {/if}
       {/each}
     </tbody>
   </table>
@@ -250,6 +310,8 @@
   .empty { color: var(--muted); }
   .err { color: var(--bad); }
   td input:not([type="checkbox"]) { width: 100%; min-width: 150px; }
+  .part { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+  .part input:not([type="checkbox"]) { max-width: 200px; min-width: 100px; }
   .extras { display: flex; flex-direction: column; gap: 4px; }
   .sel { width: 28px; padding-right: 0; }
   tr.sel td { background: var(--accent-soft); }

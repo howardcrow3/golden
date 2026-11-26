@@ -22,6 +22,16 @@ pub struct TxnRow {
     pub note: String,
     /// Your own tags.
     pub tags: Vec<String>,
+    /// Empty unless the line is split across categories.
+    pub splits: Vec<SplitPart>,
+}
+
+#[derive(Debug, Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SplitPart {
+    pub category: String,
+    /// Same sign as the transaction.
+    pub cents: i64,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -53,6 +63,44 @@ impl App {
             .map_err(|e| e.to_string())
     }
 
+    /// Split a transaction across categories. The parts must add up exactly to the amount and
+    /// carry its sign. An empty list removes the split.
+    pub fn set_splits(&mut self, id: i64, parts: Vec<SplitPart>) -> Result<(), String> {
+        self.require_edit()?;
+        let txn = self.db.get_txn(id).map_err(|e| e.to_string())?;
+        self.ensure_open(txn.day)?;
+        if !parts.is_empty() {
+            if parts.len() < 2 {
+                return Err("A split needs at least two parts.".into());
+            }
+            let amount = txn.amount.cents();
+            if parts.iter().any(|p| p.category.trim().is_empty()) {
+                return Err("Give every part a category.".into());
+            }
+            if parts
+                .iter()
+                .any(|p| p.cents == 0 || (p.cents < 0) != (amount < 0))
+            {
+                return Err(
+                    "Every part must be a non-zero amount in the same direction as the line."
+                        .into(),
+                );
+            }
+            let sum: i64 = parts.iter().map(|p| p.cents).sum();
+            if sum != amount {
+                return Err(format!(
+                    "The parts add up to {} cents but the line is {} cents.",
+                    sum, amount
+                ));
+            }
+        }
+        let list: Vec<(String, i64)> = parts
+            .into_iter()
+            .map(|p| (p.category.trim().to_string(), p.cents))
+            .collect();
+        self.db.set_splits(id, &list).map_err(|e| e.to_string())
+    }
+
     pub(crate) fn load_saved_rules(&mut self) {
         if let Ok(Some(json)) = self.db.get_setting(RULES_KEY) {
             if let Ok(saved) = serde_json::from_str::<Vec<Rule>>(&json) {
@@ -75,6 +123,7 @@ impl App {
             .into_iter()
             .map(|(id, n, _, _)| (id.0, n))
             .collect();
+        let all_splits = self.db.all_splits().map_err(|e| e.to_string())?;
         let extras = self.db.txn_extras().map_err(|e| e.to_string())?;
         let mut rows = self
             .db
@@ -97,6 +146,17 @@ impl App {
                     account: names.get(&t.account.0).cloned().unwrap_or_default(),
                     note,
                     tags: split_tags(&tags),
+                    splits: all_splits
+                        .get(&t.id)
+                        .map(|v| {
+                            v.iter()
+                                .map(|(c, n)| SplitPart {
+                                    category: c.clone(),
+                                    cents: *n,
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default(),
                 }
             })
             .collect())

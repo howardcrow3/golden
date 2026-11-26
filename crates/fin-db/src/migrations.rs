@@ -89,6 +89,16 @@ const MIGRATIONS: &[&str] = &[
     ALTER TABLE txn ADD COLUMN note TEXT NOT NULL DEFAULT '';
     ALTER TABLE txn ADD COLUMN tags TEXT NOT NULL DEFAULT '';
     "#,
+    // Split one transaction across several categories. The parts add up to the amount.
+    r#"
+    CREATE TABLE split (
+        id          INTEGER PRIMARY KEY,
+        txn_id      INTEGER NOT NULL REFERENCES txn(id) ON DELETE CASCADE,
+        category_id INTEGER NOT NULL REFERENCES category(id),
+        cents       INTEGER NOT NULL
+    );
+    CREATE INDEX split_txn ON split(txn_id);
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

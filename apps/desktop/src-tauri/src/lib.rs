@@ -113,6 +113,11 @@ fn set_note_tags(state: Shared, id: i64, note: String, tags: String) -> Result<(
     lock(&state)?.set_note_tags(id, &note, &tags)
 }
 
+#[tauri::command]
+fn set_splits(state: Shared, id: i64, parts: Vec<fin_app::transactions::SplitPart>) -> Result<(), String> {
+    lock(&state)?.set_splits(id, parts)
+}
+
 /// Write a CSV of the transactions between two dates into the Exports folder and return its path.
 #[tauri::command]
 fn export_transactions(app: tauri::AppHandle, state: Shared, from: String, to: String) -> Result<String, String> {
@@ -1140,6 +1145,7 @@ pub fn run() {
             set_budget,
             set_category,
             set_note_tags,
+            set_splits,
             library_folder,
             set_library_folder,
             household,

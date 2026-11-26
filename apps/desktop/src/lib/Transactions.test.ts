@@ -4,7 +4,7 @@ import Transactions from "./Transactions.svelte";
 
 afterEach(cleanup);
 
-const row = { id: 7, day: "2026-10-06", payee: "Corner Cafe", memo: "", amountCents: -1050, category: "Food", account: "Checking", note: "", tags: [] as string[] };
+const row = { id: 7, day: "2026-10-06", payee: "Corner Cafe", memo: "", amountCents: -1050, category: "Food", account: "Checking", note: "", tags: [] as string[], splits: [] as { category: string; cents: number }[] };
 
 function mock(rows: unknown[]) {
   return vi.fn(async (cmd: string) => (cmd === "transactions" ? rows : cmd === "category_choices" ? ["Food"] : undefined));
@@ -33,5 +33,23 @@ describe("Transactions notes and tags", () => {
     await fireEvent.input(search, { target: { value: "trip" } });
     await waitFor(() => expect(screen.queryByText("Gas")).toBeNull());
     expect(screen.getByText("Corner Cafe")).toBeTruthy();
+  });
+
+  it("splits a line across categories and refuses parts that do not add up", async () => {
+    const invoke = mock([row]);
+    render(Transactions, { invoke });
+    await fireEvent.click(await screen.findByLabelText("Split Corner Cafe on 2026-10-06"));
+    await screen.findByTestId("split-editor");
+    expect(screen.getByTestId("split-left").textContent).toContain("$0.00");
+    await fireEvent.input(screen.getByLabelText("Part 1 amount"), { target: { value: "7.50" } });
+    await fireEvent.input(screen.getByLabelText("Part 2 category"), { target: { value: "Fun" } });
+    await fireEvent.input(screen.getByLabelText("Part 2 amount"), { target: { value: "2" } });
+    await fireEvent.click(screen.getByText("Save split"));
+    await screen.findByText("The parts must add up to the full amount.");
+    await fireEvent.input(screen.getByLabelText("Part 2 amount"), { target: { value: "3" } });
+    await fireEvent.click(screen.getByText("Save split"));
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("set_splits", { id: 7, parts: [{ category: "Food", cents: -750 }, { category: "Fun", cents: -300 }] }),
+    );
   });
 });
