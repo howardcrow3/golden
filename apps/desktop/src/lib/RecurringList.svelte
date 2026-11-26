@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { getCancelMarks, getRecurring, setCancelMark, type Invoke, type Recurring } from "./api";
   import { formatCents } from "./money";
 
-  let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
+  let { invoke, today = localToday() }: { invoke?: Invoke; today?: Date } = $props();
   let rows = $state<Recurring[]>([]);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);

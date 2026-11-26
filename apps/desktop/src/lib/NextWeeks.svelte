@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { getRecurring, type Invoke } from "./api";
   import { formatCents } from "./money";
   import { biggest, upcoming, type Upcoming } from "./upcoming";
 
-  let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
+  let { invoke, today = localToday() }: { invoke?: Invoke; today?: Date } = $props();
   let items = $state<Upcoming[]>([]);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);

@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, setNoteTags, setSplits, type Invoke, type TxnRow } from "./api";
   import CategorySuggest from "./CategorySuggest.svelte";
   import { formatCents } from "./money";
   import { splitLeftCents, splitToParts, type SplitDraft } from "./splitMath";
   import { filterTxns, groupByCategory, sumTxns } from "./txnFilter";
 
-  let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
+  let { invoke, today = localToday() }: { invoke?: Invoke; today?: Date } = $props();
   let rows = $state<TxnRow[]>([]);
   let choices = $state<string[]>([]);
   let onlyTodo = $state(false);

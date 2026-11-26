@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { budgetStatus, getRecurring, type Invoke } from "./api";
   import { formatCents } from "./money";
   import { monthEnd, safeToSpend, type SafeToSpend } from "./spendToday";
   import { upcoming } from "./upcoming";
 
-  let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
+  let { invoke, today = localToday() }: { invoke?: Invoke; today?: Date } = $props();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
 
   let result = $state<SafeToSpend | null>(null);

@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { budgetStatus, categories, categoryChoices, saveReport, setBudget, setBudgetRollover, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
   import { type Grain } from "./grain";
   import { formatCents, parseDollars } from "./money";
   import { budgetCsv } from "./report";
   import { leftToAssign } from "./budgetAssign";
 
-  let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
+  let { grain, today = localToday(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let rows = $state<BudgetRow[]>([]);
   let choices = $state<string[]>([]);
   let available = $state(false);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { localIso } from "./localDate";
   import { exportPlanFile, importPlanFile, saveReport, type Invoke } from "./api";
 
   let { invoke, onimported }: { invoke?: Invoke; onimported?: () => void } = $props();
@@ -10,7 +11,7 @@
     error = "";
     try {
       const text = await exportPlanFile(invoke);
-      const path = await saveReport(`Golden plan file ${new Date().toISOString().slice(0, 10)}`, "json", text, invoke);
+      const path = await saveReport(`Golden plan file ${localIso()}`, "json", text, invoke);
       note = `Saved to ${path}. Send that file to someone with Golden; it holds your household and holdings but no transactions.`;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

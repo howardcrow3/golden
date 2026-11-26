@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { getRecurring, type Invoke } from "./api";
   import { formatCents } from "./money";
   import { addMonths, calendarMonth, monthTitle } from "./monthGrid";
   import { upcoming, type Upcoming } from "./upcoming";
 
-  let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
+  let { invoke, today = localToday() }: { invoke?: Invoke; today?: Date } = $props();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
 
   let items = $state<Upcoming[]>([]);

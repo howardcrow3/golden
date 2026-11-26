@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { localToday } from "./localDate";
   import { getWatchLists, listTransactions, saveWatchLists, type Invoke, type TxnRow, type WatchList } from "./api";
   import { formatCents } from "./money";
   import { watchTotals } from "./watchTotals";
 
-  let { invoke, today = new Date() }: { invoke?: Invoke; today?: Date } = $props();
+  let { invoke, today = localToday() }: { invoke?: Invoke; today?: Date } = $props();
   let lists = $state<WatchList[]>([]);
   let rows = $state<TxnRow[]>([]);
   let available = $state(false);
