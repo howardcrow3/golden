@@ -54,3 +54,10 @@ tbody tr:hover td { background: var(--hover); }
 th.r, td.r { text-align: right; }
 td.num, td.r { font-variant-numeric: tabular-nums; }
 table.card { padding: 0; }
+
+/* Buttons sit at their natural width inside grid layouts instead of stretching. */
+button { justify-self: start; align-self: start; }
+nav button { align-self: auto; }
+input[type="file"] { height: auto; padding: 3px 6px; color: var(--muted); }
+input[type="file"]::file-selector-button { font: 500 12px var(--sans); color: var(--ink); background: var(--surface); border: 1px solid var(--control); border-radius: var(--r-sm); height: 22px; padding: 0 10px; margin-right: 8px; cursor: pointer; }
+input[type="file"]::file-selector-button:hover { background: var(--hover); }

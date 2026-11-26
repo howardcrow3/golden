@@ -110,7 +110,7 @@
 {#if note}<p role="status" data-testid="bank-note">{note}</p>{/if}
 
 {#if allowed === false}
-  <p class="card" data-testid="bank-locked">Bank connections are part of the Plaid add-on. Add it from the Licence page to use them.</p>
+  <p class="card" data-testid="bank-locked">Bank connections are part of the Plaid add-on. Add it in Settings, under Licence, to use them.</p>
 {:else if allowed}
   <div class="row">
     <button type="button" onclick={connect} disabled={busy}>Connect a bank</button>
