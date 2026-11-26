@@ -4,6 +4,7 @@ pub mod backtest;
 pub mod carecost;
 pub mod daf;
 pub mod debt;
+pub mod equity;
 pub mod estate;
 pub mod estimate;
 pub mod family;
