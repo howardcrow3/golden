@@ -116,6 +116,21 @@ impl App {
         to: &str,
         only_uncategorized: bool,
     ) -> Result<Vec<TxnRow>, String> {
+        self.transactions_limited(from, to, only_uncategorized, Some(MAX_ROWS))
+    }
+
+    /// Every line in the range, newest first, with no cap. For totals that must not be cut short.
+    pub fn all_transactions(&self, from: &str, to: &str) -> Result<Vec<TxnRow>, String> {
+        self.transactions_limited(from, to, false, None)
+    }
+
+    fn transactions_limited(
+        &self,
+        from: &str,
+        to: &str,
+        only_uncategorized: bool,
+        limit: Option<usize>,
+    ) -> Result<Vec<TxnRow>, String> {
         let names: HashMap<i64, String> = self
             .db
             .accounts()
@@ -133,7 +148,7 @@ impl App {
         Ok(rows
             .into_iter()
             .filter(|t| !only_uncategorized || t.category.is_none())
-            .take(MAX_ROWS)
+            .take(limit.unwrap_or(usize::MAX))
             .map(|t| {
                 let (note, tags) = extras.get(&t.id).cloned().unwrap_or_default();
                 TxnRow {

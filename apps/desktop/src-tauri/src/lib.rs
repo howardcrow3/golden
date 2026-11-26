@@ -99,6 +99,11 @@ fn transactions(state: Shared, from: String, to: String, only_uncategorized: boo
 }
 
 #[tauri::command]
+fn all_transactions(state: Shared, from: String, to: String) -> Result<Vec<TxnRow>, String> {
+    lock(&state)?.all_transactions(&from, &to)
+}
+
+#[tauri::command]
 fn category_choices(state: Shared) -> Result<Vec<String>, String> {
     lock(&state)?.category_choices()
 }
@@ -1142,6 +1147,7 @@ pub fn run() {
             save_report,
             restore_backup,
             transactions,
+            all_transactions,
             category_choices,
             budget_status,
             forecast,
