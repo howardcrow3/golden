@@ -28,7 +28,7 @@ describe("watchTotals", () => {
 
 describe("WatchLists", () => {
   it("shows each list with its totals", async () => {
-    const invoke = vi.fn(async (c: string) => (c === "watch_lists" ? [{ name: "Trip", query: "trip" }] : c === "transactions" ? rows : undefined));
+    const invoke = vi.fn(async (c: string) => (c === "watch_lists" ? [{ name: "Trip", query: "trip" }] : c === "all_transactions" ? rows : undefined));
     render(WatchLists, { invoke, today });
     const row = await screen.findByTestId("watch-row");
     expect(row.textContent).toContain("Trip");
@@ -36,7 +36,7 @@ describe("WatchLists", () => {
   });
 
   it("adds and removes lists", async () => {
-    const invoke = vi.fn(async (c: string, a?: unknown) => (c === "watch_lists" ? [] : c === "transactions" ? rows : c === "save_watch_lists" ? (a as { lists: unknown[] }).lists : undefined));
+    const invoke = vi.fn(async (c: string, a?: unknown) => (c === "watch_lists" ? [] : c === "all_transactions" ? rows : c === "save_watch_lists" ? (a as { lists: unknown[] }).lists : undefined));
     render(WatchLists, { invoke, today });
     await fireEvent.input(await screen.findByLabelText("Watch list name"), { target: { value: "Coffee" } });
     await fireEvent.input(screen.getByLabelText("Watch list search"), { target: { value: "cafe" } });
@@ -50,7 +50,7 @@ describe("WatchLists", () => {
   it("shows the reason when a list is refused", async () => {
     const invoke = async (c: string) => {
       if (c === "save_watch_lists") throw new Error("Give each watch list a name and something to look for.");
-      return c === "watch_lists" ? [] : c === "transactions" ? rows : undefined;
+      return c === "watch_lists" ? [] : c === "all_transactions" ? rows : undefined;
     };
     render(WatchLists, { invoke, today });
     await fireEvent.click(await screen.findByText("Add"));
