@@ -37,6 +37,7 @@ pub mod report;
 pub mod retire_when;
 pub mod scenarios;
 pub mod setup;
+pub mod ssa;
 pub mod suggest;
 pub mod transactions;
 pub mod transfers;
