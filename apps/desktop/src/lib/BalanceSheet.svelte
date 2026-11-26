@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getBalanceSheet, getNetWorthHistory, listAccounts, setOpeningBalance, type AccountRow, type BalanceSheet, type NetWorthPoint, type Invoke } from "./api";
+  import { addHolding, getBalanceSheet, HOLDING_KINDS, getNetWorthHistory, listAccounts, setOpeningBalance, type AccountRow, type BalanceSheet, type NetWorthPoint, type Invoke } from "./api";
   import { formatCents, parseDollars } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -33,6 +33,28 @@
     const lo = Math.min(...v);
     const span = Math.max(...v) - lo || 1;
     return v.map((x, i) => `${Math.round((i / (v.length - 1 || 1)) * 300)},${Math.round(48 - ((x - lo) / span) * 46)}`).join(" ");
+  }
+
+  let adding = $state(false);
+  let holdName = $state("");
+  let holdKind = $state<string>(HOLDING_KINDS[0]);
+  let holdValue = $state("");
+  async function saveHolding() {
+    error = "";
+    const cents = parseDollars(holdValue);
+    if (cents === null || cents < 0) {
+      error = "Enter its current value as a number, like 12000.";
+      return;
+    }
+    try {
+      await addHolding(holdName, holdKind, cents, invoke);
+      adding = false;
+      holdName = "";
+      holdValue = "";
+      await load();
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    }
   }
 
   function startEditing() {
@@ -70,7 +92,7 @@
       <div>
         <h3>You have <span class="num">{formatCents(data.assetsCents, { whole: true })}</span></h3>
         {#each data.assets as l}
-          <div class="row" data-testid="asset-row"><span>{l.name}</span><span class="num">{formatCents(l.cents, { whole: true })}</span></div>
+          <div class="row" data-testid="asset-row"><span>{l.name}{#if (HOLDING_KINDS as readonly string[]).includes(l.kind)} <span class="muted">· {l.kind}</span>{/if}</span><span class="num">{formatCents(l.cents, { whole: true })}</span></div>
         {/each}
       </div>
       <div>
@@ -81,6 +103,21 @@
         {#if !data.debts.length}<p class="muted">Nothing owed.</p>{/if}
       </div>
     </div>
+    {#if adding}
+      <div data-testid="holding-editor">
+        <p class="muted">Something you own that no statement shows. Update its value any time with "Set starting balances".</p>
+        <label class="row">Name <input aria-label="Holding name" bind:value={holdName} placeholder="2019 Honda Civic" /></label>
+        <label class="row">Kind
+          <select aria-label="Holding kind" bind:value={holdKind}>{#each HOLDING_KINDS as k}<option value={k}>{k}</option>{/each}</select>
+        </label>
+        <label class="row">Value now <input aria-label="Holding value" bind:value={holdValue} inputmode="decimal" placeholder="12000" /></label>
+        {#if error}<p class="err" role="alert">{error}</p>{/if}
+        <button onclick={saveHolding}>Add to what I own</button>
+        <button onclick={() => (adding = false)}>Cancel</button>
+      </div>
+    {:else if !editing}
+      <p class="muted"><button class="link" onclick={() => (adding = true)} data-testid="add-holding">Add a vehicle, crypto, private stock or other holding</button></p>
+    {/if}
     {#if editing}
       <div data-testid="opening-editor">
         <p class="muted">What each account held before your first imported statement (use a negative number for a card balance you owed).</p>

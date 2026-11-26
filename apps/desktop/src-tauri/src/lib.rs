@@ -600,6 +600,11 @@ fn set_cancel_mark(state: Shared, payee: String, on: bool) -> Result<Vec<String>
 }
 
 #[tauri::command]
+fn add_holding(state: Shared, name: String, kind: String, value_cents: i64) -> Result<(), String> {
+    lock(&state)?.add_holding(&name, &kind, value_cents)
+}
+
+#[tauri::command]
 fn set_budget(state: Shared, category: String, monthly_cents: i64) -> Result<(), String> {
     lock(&state)?.set_budget(&category, monthly_cents).map(|_| ())
 }
@@ -1158,6 +1163,7 @@ pub fn run() {
             suggest_allocation,
             apply_paystub,
             set_budget,
+            add_holding,
             cancel_marks,
             set_cancel_mark,
             set_budget_rollover,
