@@ -54,6 +54,21 @@ pub fn rsu_vest(
     })
 }
 
+/// Same as [`rsu_vest`] with the price in cents, for callers that only hold plain numbers.
+pub fn rsu_vest_cents(
+    shares: u64,
+    price_cents: i64,
+    federal_rate: f64,
+    other_rate: f64,
+) -> Result<VestResult, String> {
+    rsu_vest(
+        shares,
+        Money::from_cents(price_cents),
+        federal_rate,
+        other_rate,
+    )
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EsppResult {
@@ -97,6 +112,23 @@ pub fn espp_purchase(
         leftover_cents: (contributions - spent).cents(),
         discount_gain_cents: (purchase_price.mul_ratio(shares as i64, 1) - spent).cents(),
     })
+}
+
+/// Same as [`espp_purchase`] with every amount in cents.
+pub fn espp_purchase_cents(
+    contributions_cents: i64,
+    offering_cents: i64,
+    purchase_cents: i64,
+    discount: f64,
+    lookback: bool,
+) -> Result<EsppResult, String> {
+    espp_purchase(
+        Money::from_cents(contributions_cents),
+        Money::from_cents(offering_cents),
+        Money::from_cents(purchase_cents),
+        discount,
+        lookback,
+    )
 }
 
 /// A sale is a "qualifying disposition" when it is more than two years after the offering date
@@ -160,6 +192,18 @@ mod tests {
         assert!(espp_purchase(d(100), d(10), d(10), 0.2, true).is_err());
         assert!(espp_purchase(d(100), d(0), d(10), 0.1, true).is_err());
         assert!(espp_purchase(d(-1), d(10), d(10), 0.1, true).is_err());
+    }
+
+    #[test]
+    fn the_cents_versions_match() {
+        assert_eq!(
+            rsu_vest_cents(100, 5_000, 0.22, 0.1265),
+            rsu_vest(100, d(50), 0.22, 0.1265)
+        );
+        assert_eq!(
+            espp_purchase_cents(1_000_000, 4_000, 5_000, 0.15, true),
+            espp_purchase(d(10_000), d(40), d(50), 0.15, true)
+        );
     }
 
     #[test]

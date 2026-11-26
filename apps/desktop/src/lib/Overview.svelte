@@ -10,6 +10,7 @@
   import NextWeeks from "./NextWeeks.svelte";
   import Debts from "./Debts.svelte";
   import Offset from "./Offset.svelte";
+  import Equity from "./Equity.svelte";
   import Insights from "./Insights.svelte";
   import Goals from "./Goals.svelte";
   import MonthClose from "./MonthClose.svelte";
@@ -46,6 +47,7 @@
 <Goals />
 <Debts />
 <Offset />
+<Equity />
 <Forecast />
 
 <Budgets {grain} />
