@@ -667,6 +667,16 @@ export interface Recurring {
   nextExpected: string;
   yearlyCents: number;
 }
+export interface WatchList {
+  name: string;
+  query: string;
+}
+export async function getWatchLists(invoke?: Invoke): Promise<WatchList[]> {
+  return (await (await resolve(invoke))("watch_lists")) as WatchList[];
+}
+export async function saveWatchLists(lists: WatchList[], invoke?: Invoke): Promise<WatchList[]> {
+  return (await (await resolve(invoke))("save_watch_lists", { lists })) as WatchList[];
+}
 export async function getCancelMarks(invoke?: Invoke): Promise<string[]> {
   return (await (await resolve(invoke))("cancel_marks")) as string[];
 }

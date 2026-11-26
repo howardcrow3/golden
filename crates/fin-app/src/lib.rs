@@ -44,6 +44,7 @@ pub mod transactions;
 pub mod transfers;
 pub mod vault;
 pub mod watch;
+pub mod watchlists;
 pub mod withholding;
 
 use chrono::NaiveDate;
