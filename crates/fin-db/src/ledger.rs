@@ -280,6 +280,40 @@ impl Db {
         Ok(())
     }
 
+    /// Replace the split of a transaction. An empty list removes the split.
+    pub fn set_splits(&self, txn_id: i64, parts: &[(String, i64)]) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM split WHERE txn_id=?1", [txn_id])?;
+        for (cat, cents) in parts {
+            let cid = self.category_id(cat.trim())?;
+            self.conn.execute(
+                "INSERT INTO split(txn_id, category_id, cents) VALUES (?1,?2,?3)",
+                params![txn_id, cid, cents],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Every split part by transaction id, in the order saved.
+    pub fn all_splits(&self) -> Result<std::collections::HashMap<i64, Vec<(String, i64)>>> {
+        let mut st = self.conn.prepare(
+            "SELECT s.txn_id, c.name, s.cents FROM split s JOIN category c ON c.id=s.category_id ORDER BY s.id",
+        )?;
+        let rows = st.query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+            ))
+        })?;
+        let mut out: std::collections::HashMap<i64, Vec<(String, i64)>> = Default::default();
+        for r in rows {
+            let (id, n, c) = r?;
+            out.entry(id).or_default().push((n, c));
+        }
+        Ok(out)
+    }
+
     /// Notes and tags by transaction id, only for transactions that have either.
     pub fn txn_extras(&self) -> Result<std::collections::HashMap<i64, (String, String)>> {
         let mut st = self
@@ -424,8 +458,13 @@ impl Db {
             Metric::Income => (">", 1),
         };
         let sql = format!(
-            "SELECT coalesce(c.name,'Uncategorized'), sum(t.cents) FROM txn t LEFT JOIN category c ON c.id=t.category_id
-             WHERE t.{col}=?1 AND t.cents {cmp} 0 AND coalesce(c.name,'') <> 'Transfer' GROUP BY 1 ORDER BY sum(t.cents) * {sign} DESC, 1"
+            "SELECT name, sum(cents) FROM (
+               SELECT coalesce(c.name,'Uncategorized') AS name, t.cents AS cents FROM txn t LEFT JOIN category c ON c.id=t.category_id
+                WHERE t.{col}=?1 AND t.cents {cmp} 0 AND NOT EXISTS (SELECT 1 FROM split s WHERE s.txn_id=t.id)
+               UNION ALL
+               SELECT c.name, s.cents FROM split s JOIN txn t ON t.id=s.txn_id JOIN category c ON c.id=s.category_id
+                WHERE t.{col}=?1 AND t.cents {cmp} 0
+             ) WHERE name <> 'Transfer' GROUP BY 1 ORDER BY sum(cents) * {sign} DESC, 1"
         );
         let mut st = self.conn.prepare(&sql)?;
         let rows = st.query_map([period.to_string()], |r| {

@@ -469,6 +469,7 @@ export interface TxnRow {
   account: string;
   note: string;
   tags: string[];
+  splits: { category: string; cents: number }[];
 }
 export interface Recategorized {
   category: string;
@@ -485,6 +486,9 @@ export async function setCategory(id: number, category: string, remember: boolea
 }
 export async function setNoteTags(id: number, note: string, tags: string, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_note_tags", { id, note, tags });
+}
+export async function setSplits(id: number, parts: { category: string; cents: number }[], invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_splits", { id, parts });
 }
 export async function exportTransactions(from: string, to: string, invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("export_transactions", { from, to })) as string;
