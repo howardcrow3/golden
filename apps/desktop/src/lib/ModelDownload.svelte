@@ -98,7 +98,7 @@
 
 <style>
   .dl { margin: 12px 0; }
-  .bar { height: 8px; background: var(--border, #ddd); border-radius: 4px; overflow: hidden; margin: 8px 0; }
-  .bar span { display: block; height: 100%; background: var(--accent, #c9a227); }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 8px 0; }
+  .bar span { display: block; height: 100%; background: var(--accent); }
   .err { color: var(--bad); }
 </style>

@@ -24,5 +24,5 @@
   ol { margin: 0; padding-left: 18px; font-size: 13px; }
   li { margin: 2px 0; }
   .age { color: var(--muted); }
-  .warn { color: var(--danger, #b3261e); }
+  .warn { color: var(--danger); }
 </style>

@@ -87,10 +87,10 @@
 </div>
 
 <style>
-  .rb { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .rb { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 8px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  .err { color: var(--danger, #b3261e); }
+  .err { color: var(--danger); }
 </style>

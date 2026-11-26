@@ -314,6 +314,6 @@
   .big span { font-size: 14px; font-weight: 500; margin-left: 8px; }
   .good { color: var(--good); } .ok { color: var(--muted); } .bad { color: var(--bad); }
   .range, .assumptions { color: var(--muted); font-size: 13px; }
-  svg { width: 100%; height: 180px; border: 1px solid var(--line); margin: 12px 0; background: var(--ivory); }
+  svg { width: 100%; height: 180px; border: 1px solid var(--line); margin: 12px 0; background: var(--surface); border-radius: var(--r-md); }
   .err { color: var(--bad); }
 </style>

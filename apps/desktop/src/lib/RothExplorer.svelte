@@ -73,13 +73,13 @@
 </div>
 
 <style>
-  .roth { margin-top: 16px; border-top: 1px solid var(--line, #ddd); padding-top: 12px; }
+  .roth { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   h3 { margin: 0 0 4px; font-size: 15px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin-bottom: 8px; max-width: 160px; }
   table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 14px; }
-  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line, #ddd); }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); }
   th:first-child, tbody th { text-align: left; font-weight: 400; }
-  tr.best { background: var(--ivory, #faf6ea); }
-  .err { color: var(--bad, #b00020); }
+  tr.best { background: var(--accent-soft); }
+  .err { color: var(--bad); }
 </style>
