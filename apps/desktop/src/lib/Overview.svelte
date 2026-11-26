@@ -8,6 +8,7 @@
   import BalanceSheet from "./BalanceSheet.svelte";
   import RecurringList from "./RecurringList.svelte";
   import NextWeeks from "./NextWeeks.svelte";
+  import BillsCalendar from "./BillsCalendar.svelte";
   import SafeToSpend from "./SafeToSpend.svelte";
   import Debts from "./Debts.svelte";
   import Offset from "./Offset.svelte";
@@ -45,6 +46,7 @@
 <BalanceSheet />
 <SafeToSpend />
 <NextWeeks />
+<BillsCalendar />
 <RecurringList />
 <Goals />
 <Debts />
