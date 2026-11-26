@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { budgetStatus, categories, categoryChoices, saveReport, setBudget, setBudgetRollover, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
+  import { budgetStatus, categories, getRecurring, categoryChoices, saveReport, setBudget, setBudgetRollover, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
   import { type Grain } from "./grain";
   import { formatCents, parseDollars } from "./money";
   import { budgetCsv } from "./report";
-  import { leftToAssign } from "./budgetAssign";
+  import { expectedIncome, leftToAssign } from "./budgetAssign";
+  import { monthEnd } from "./spendToday";
+  import { upcoming } from "./upcoming";
 
   let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let rows = $state<BudgetRow[]>([]);
@@ -29,7 +31,19 @@
         available = true;
         try {
           const inc = g === "month" ? await categories(iso(today), "month", true, invoke) : [];
-          incomeCents = g === "month" && Array.isArray(inc) ? inc.reduce((n, c) => n + c.cents, 0) : null;
+          const received = g === "month" && Array.isArray(inc) ? inc.reduce((n, c) => n + c.cents, 0) : null;
+          let coming: ReturnType<typeof upcoming> = [];
+          if (received !== null) {
+            try {
+              const day = iso(today);
+              const from = new Date(today);
+              from.setFullYear(from.getFullYear() - 1);
+              coming = upcoming(await getRecurring(iso(from), day, invoke), day, 6);
+            } catch {
+              coming = [];
+            }
+          }
+          incomeCents = received === null ? null : expectedIncome(received, coming, monthEnd(iso(today)));
         } catch {
           incomeCents = null;
         }
@@ -93,9 +107,9 @@
     {#if assign && rows.some((r) => r.category !== "Total")}
       <p class="assign" data-testid="left-to-assign" class:over={assign.leftCents < 0}>
         {#if assign.leftCents >= 0}
-          {formatCents(assign.leftCents, { whole: true })} of this month's income ({formatCents(incomeCents ?? 0, { whole: true })}) has no job yet.
+          {formatCents(assign.leftCents, { whole: true })} of this month's expected income ({formatCents(incomeCents ?? 0, { whole: true })}) has no job yet.
         {:else}
-          Your category budgets are {formatCents(-assign.leftCents, { whole: true })} more than this month's income ({formatCents(incomeCents ?? 0, { whole: true })}).
+          Your category budgets are {formatCents(-assign.leftCents, { whole: true })} more than this month's expected income ({formatCents(incomeCents ?? 0, { whole: true })}).
         {/if}
       </p>
     {/if}

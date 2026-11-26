@@ -59,4 +59,16 @@ describe("budget export", () => {
     render(Budgets, { grain: "month", today, invoke });
     expect((await screen.findByTestId("left-to-assign")).textContent).toContain("$300 more");
   });
+
+  it("counts recurring pay still due this month as expected income", async () => {
+    // Nothing has arrived yet on the 26th, but pay of $2,000 is due on the 28th.
+    const pay = { payee: "Employer", cadence: "every two weeks", typicalCents: 200_000, timesSeen: 6, lastSeen: "2026-11-14", nextExpected: "2026-11-28", yearlyCents: 5_200_000 };
+    const invoke = vi.fn(async (cmd: string) =>
+      cmd === "budget_status" ? [food] : cmd === "categories" ? [] : cmd === "recurring" ? [pay] : cmd === "category_choices" ? ["Food"] : undefined,
+    );
+    render(Budgets, { grain: "month", today, invoke });
+    const note = await screen.findByTestId("left-to-assign");
+    expect(note.textContent).toContain("expected income ($2,000)");
+    expect(note.textContent).toContain("$1,600");
+  });
 });
