@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { budgetStatus, categoryChoices, saveReport, setBudget, setBudgetRollover, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
+  import { budgetStatus, categories, categoryChoices, saveReport, setBudget, setBudgetRollover, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
   import { type Grain } from "./grain";
   import { formatCents, parseDollars } from "./money";
   import { budgetCsv } from "./report";
+  import { leftToAssign } from "./budgetAssign";
 
   let { grain, today = new Date(), invoke }: { grain: Grain; today?: Date; invoke?: Invoke } = $props();
   let rows = $state<BudgetRow[]>([]);
@@ -13,6 +14,8 @@
   let error = $state("");
   let version = $state(0);
   let savedTo = $state("");
+  let incomeCents = $state<number | null>(null);
+  let assign = $derived(incomeCents === null ? null : leftToAssign(incomeCents, rows));
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -24,6 +27,12 @@
         rows = await budgetStatus(iso(today), g, invoke);
         choices = await categoryChoices(invoke);
         available = true;
+        try {
+          const inc = g === "month" ? await categories(iso(today), "month", true, invoke) : [];
+          incomeCents = g === "month" && Array.isArray(inc) ? inc.reduce((n, c) => n + c.cents, 0) : null;
+        } catch {
+          incomeCents = null;
+        }
       } catch {
         rows = [];
         available = false;
@@ -81,6 +90,15 @@
     {#if rows.length === 0}
       <p class="muted">No budgets yet. Set one below, per month.</p>
     {/if}
+    {#if assign && rows.some((r) => r.category !== "Total")}
+      <p class="assign" data-testid="left-to-assign" class:over={assign.leftCents < 0}>
+        {#if assign.leftCents >= 0}
+          {formatCents(assign.leftCents, { whole: true })} of this month's income ({formatCents(incomeCents ?? 0, { whole: true })}) has no job yet.
+        {:else}
+          Your category budgets are {formatCents(-assign.leftCents, { whole: true })} more than this month's income ({formatCents(incomeCents ?? 0, { whole: true })}).
+        {/if}
+      </p>
+    {/if}
     {#each rows as r}
       <div class="row" data-testid="budget-row">
         <div class="head">
@@ -136,6 +154,8 @@
 <style>
   section { margin-top: 16px; }
   .row { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .assign { margin: 4px 0 8px; color: var(--muted); }
+  .assign.over { color: var(--bad); }
   .roll { margin-left: 12px; }
   .head { display: flex; justify-content: space-between; }
   .bar { height: 8px; background: var(--line); border-radius: 4px; margin: 6px 0 2px; overflow: hidden; }

@@ -44,4 +44,19 @@ describe("budget export", () => {
     await screen.findByTestId("budget-row");
     expect(screen.queryByLabelText("Roll over Food")).toBeNull();
   });
+
+  it("shows what is left of this month's income after the category budgets", async () => {
+    const rent = { category: "Rent", budgetCents: 150_000, spentCents: 0, remainingCents: 150_000 };
+    const invoke = vi.fn(async (cmd: string) => (cmd === "budget_status" ? [food, rent] : cmd === "categories" ? [{ category: "Salary", cents: 500_000 }] : cmd === "category_choices" ? ["Food"] : undefined));
+    render(Budgets, { grain: "month", today, invoke });
+    const note = await screen.findByTestId("left-to-assign");
+    // $5,000 in, $400 + $1,500 assigned.
+    expect(note.textContent).toContain("$3,100");
+  });
+
+  it("warns when the budgets are more than the income", async () => {
+    const invoke = vi.fn(async (cmd: string) => (cmd === "budget_status" ? [food] : cmd === "categories" ? [{ category: "Salary", cents: 10_000 }] : cmd === "category_choices" ? ["Food"] : undefined));
+    render(Budgets, { grain: "month", today, invoke });
+    expect((await screen.findByTestId("left-to-assign")).textContent).toContain("$300 more");
+  });
 });
