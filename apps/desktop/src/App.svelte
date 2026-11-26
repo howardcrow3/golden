@@ -7,17 +7,15 @@
   import Transactions from "./lib/Transactions.svelte";
   import WhatIf from "./lib/WhatIf.svelte";
   import Banks from "./lib/Banks.svelte";
-  import License from "./lib/License.svelte";
-  import About from "./lib/About.svelte";
-  import Privacy from "./lib/Privacy.svelte";
+  import Settings, { type SettingsTab } from "./lib/Settings.svelte";
   import Ask from "./lib/Ask.svelte";
-  import Feedback from "./lib/Feedback.svelte";
   import PrivacyBadge from "./lib/PrivacyBadge.svelte";
   import { feedbackAvailable, licenseStatus, onLicenseLink, type LicenseStatus } from "./lib/api";
   import { setHideAmounts } from "./lib/money";
 
-  const pages = ["Overview", "Transactions", "Import", "Banks", "Documents", "Ask", "Retirement", "What if", "Tax estimate", "Licence", "Privacy", "About"] as const;
-  let page = $state<(typeof pages)[number] | "Feedback">("Overview");
+  const pages = ["Overview", "Transactions", "Import", "Banks", "Documents", "Ask", "Retirement", "What if", "Tax estimate"] as const;
+  let page = $state<(typeof pages)[number]>("Overview");
+  let settings = $state<SettingsTab | null>(null);
   let canFeedback = $state(false);
   $effect(() => {
     feedbackAvailable().then((ok) => (canFeedback = ok));
@@ -32,7 +30,7 @@
     let gone = false;
     onLicenseLink((r) => {
       linkNotice = r.message;
-      page = "Licence";
+      settings = "Licence";
       licenseStatus().then((s) => (lic = s)).catch(() => {});
     }).then((u) => (gone ? u() : (stop = u)));
     return () => {
@@ -70,17 +68,19 @@
       <button class="nav" aria-pressed={page === p} aria-current={page === p ? "true" : undefined} onclick={() => (page = p)}>{p}</button>
     {/each}
     <div class="grow"></div>
-    {#if canFeedback}<button class="nav" aria-pressed={page === "Feedback"} aria-current={page === "Feedback" ? "true" : undefined} onclick={() => (page = "Feedback")}>Send feedback</button>{/if}
     <button class="nav" aria-pressed={hide} onclick={toggleHide} title="Hide dollar amounts, for screen sharing">{hide ? "Show amounts" : "Hide amounts"}</button>
     {#if badge}<div class="badge" data-testid="badge">{badge}</div>{/if}
-    <PrivacyBadge onclick={() => (page = "Privacy")} />
+    <PrivacyBadge onclick={() => (settings = "Privacy")} />
+    <button class="nav" aria-haspopup="dialog" onclick={() => (settings = "Licence")}>Settings</button>
   </nav>
   <main>
     {#key hide}
-    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else if page === "Licence"}<License notice={linkNotice} />{:else if page === "Privacy"}<Privacy />{:else if page === "About"}<About />{:else if page === "Feedback"}<Feedback />{:else}<TaxCalculator />{/if}
+    {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
 </div>
+
+{#if settings}<Settings bind:tab={settings} {canFeedback} notice={linkNotice} onclose={() => (settings = null)} />{/if}
 
 <style>
   .shell { display: grid; grid-template-columns: 216px 1fr; height: 100vh; }
