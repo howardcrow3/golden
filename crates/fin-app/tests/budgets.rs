@@ -67,7 +67,9 @@ fn status_compares_spending_and_orders_overspent_first() {
             category: "Food".into(),
             budget_cents: 50_000,
             spent_cents: 0,
-            remaining_cents: 50_000
+            remaining_cents: 50_000,
+            rollover_cents: 0,
+            rolls: false,
         }
     );
     assert_eq!(rows[0].spent_cents, 10_648);
@@ -100,4 +102,52 @@ fn locked_after_trial_but_readable() {
     assert!(app.set_budget("Food", 200).is_err());
     assert_eq!(app.budgets().unwrap().monthly["Food"], 100);
     assert_eq!(app.budget_status("2026-10-01", "month").unwrap().len(), 1);
+}
+
+// Rollover: money left over (or overspent) in earlier months carries into this one.
+#[test]
+fn rollover_carries_unspent_and_overspent_money_forward() {
+    let mut app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 16));
+    let csv = "Date,Description,Amount\n09/05/2026,CORNER CAFE,-30.00\n10/05/2026,CORNER CAFE,-120.00\n11/05/2026,CORNER CAFE,-40.00\n";
+    app.import_statement(csv.as_bytes(), "Checking", "checking")
+        .unwrap();
+    let cat = app.transactions("2026-09-01", "2026-09-30", false).unwrap()[0].id;
+    for r in app.transactions("2026-09-01", "2026-11-30", false).unwrap() {
+        app.set_category(r.id, "Food", false).unwrap();
+    }
+    let _ = cat;
+    app.set_budget("Food", 10_000).unwrap(); // $100 a month
+    let nov = |app: &App| {
+        app.budget_status("2026-11-16", "month")
+            .unwrap()
+            .into_iter()
+            .find(|r| r.category == "Food")
+            .unwrap()
+    };
+    // Off: November is $100 - $40.
+    assert_eq!(nov(&app).remaining_cents, 6_000);
+    assert!(!nov(&app).rolls);
+    app.set_rollover("Food", true).unwrap();
+    let r = nov(&app);
+    // Sept +$70, Oct -$20 carry in: $50. Remaining = 100 + 50 - 40.
+    assert_eq!(r.rollover_cents, 5_000);
+    assert_eq!(r.remaining_cents, 11_000);
+    assert!(r.rolls);
+    // Only the monthly view rolls over.
+    let y = app.budget_status("2026-11-16", "year").unwrap();
+    assert_eq!(
+        y.iter()
+            .find(|r| r.category == "Food")
+            .unwrap()
+            .rollover_cents,
+        0
+    );
+    app.set_rollover("Food", false).unwrap();
+    assert_eq!(nov(&app).rollover_cents, 0);
+}
+
+#[test]
+fn rollover_needs_a_budget_first() {
+    let app = loaded();
+    assert!(app.set_rollover("Food", true).is_err());
 }

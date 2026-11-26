@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { budgetStatus, categoryChoices, saveReport, setBudget, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
+  import { budgetStatus, categoryChoices, saveReport, setBudget, setBudgetRollover, TOTAL_BUDGET, type BudgetRow, type Invoke } from "./api";
   import { type Grain } from "./grain";
   import { formatCents, parseDollars } from "./money";
   import { budgetCsv } from "./report";
@@ -35,6 +35,16 @@
   export function usedPercent(r: BudgetRow): number {
     if (r.budgetCents <= 0) return 0;
     return Math.min(100, Math.round((r.spentCents / r.budgetCents) * 100));
+  }
+
+  async function toggleRoll(r: BudgetRow, on: boolean) {
+    error = "";
+    try {
+      await setBudgetRollover(r.category === "Total" ? TOTAL_BUDGET : r.category, on, invoke);
+      version += 1;
+    } catch (e) {
+      error = String(e);
+    }
   }
 
   async function exportCsv() {
@@ -86,6 +96,12 @@
           {r.remainingCents < 0
             ? `${formatCents(-r.remainingCents, { whole: true })} over`
             : `${formatCents(r.remainingCents, { whole: true })} left`}
+          {#if (r.rolloverCents ?? 0) !== 0}
+            · includes {formatCents(r.rolloverCents ?? 0, { whole: true })} rolled over
+          {/if}
+          {#if grain === "month"}
+            <label class="roll"><input type="checkbox" checked={!!r.rolls} onchange={(e) => toggleRoll(r, e.currentTarget.checked)} aria-label={`Roll over ${r.category}`} /> Roll over</label>
+          {/if}
         </div>
       </div>
     {/each}
@@ -120,6 +136,7 @@
 <style>
   section { margin-top: 16px; }
   .row { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .roll { margin-left: 12px; }
   .head { display: flex; justify-content: space-between; }
   .bar { height: 8px; background: var(--line); border-radius: 4px; margin: 6px 0 2px; overflow: hidden; }
   .fill { height: 100%; background: var(--accent); }

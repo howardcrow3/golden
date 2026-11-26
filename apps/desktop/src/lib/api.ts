@@ -509,11 +509,16 @@ export interface BudgetRow {
   budgetCents: number;
   spentCents: number;
   remainingCents: number;
+  rolloverCents?: number;
+  rolls?: boolean;
 }
 /** Monthly budget in cents by category; "*" is the overall budget. */
 export const TOTAL_BUDGET = "*";
 export async function budgetStatus(day: string, grain: string, invoke?: Invoke): Promise<BudgetRow[]> {
   return (await (await resolve(invoke))("budget_status", { day, grain })) as BudgetRow[];
+}
+export async function setBudgetRollover(category: string, on: boolean, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_budget_rollover", { category, on });
 }
 export async function setBudget(category: string, monthlyCents: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_budget", { category, monthlyCents });

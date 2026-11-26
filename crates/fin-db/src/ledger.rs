@@ -384,6 +384,14 @@ impl Db {
         Ok(Money::from_cents(c))
     }
 
+    /// Day of the earliest transaction, if there are any.
+    pub fn first_txn_day(&self) -> Result<Option<NaiveDate>> {
+        let d: Option<NaiveDate> = self
+            .conn
+            .query_row("SELECT min(day) FROM txn", [], |r| r.get(0))?;
+        Ok(d)
+    }
+
     pub fn txns_between(&self, from: NaiveDate, to: NaiveDate) -> Result<Vec<Txn>> {
         let mut st = self.conn.prepare(
             "SELECT t.id, t.account_id, t.day, t.cents, t.payee, t.memo, c.name, t.stream
