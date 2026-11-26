@@ -4,6 +4,7 @@
 @import "./turtlebox/base.css";
 @import "./turtlebox/shell.css";
 @import "./turtlebox/extensions.css";
+@import "./turtlebox/charts.css";
 
 :root {
   --sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;

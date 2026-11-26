@@ -30,12 +30,12 @@
 </script>
 
 {#if latest}
-  <section class="card" data-testid="this-period">
+  <section class="tb-section" data-testid="this-period">
     <h2>{latest.period}</h2>
-    <div class="row">
-      <div><span class="label">Income</span><b class="num" data-testid="tp-income">{formatCents(latest.incomeCents, { whole: true })}</b></div>
-      <div><span class="label">Spending</span><b class="num" data-testid="tp-spending">{formatCents(latest.spendingCents, { whole: true })}</b></div>
-      <div><span class="label">Kept</span><b class="num" class:neg={latest.netCents < 0} data-testid="tp-net">{formatCents(latest.netCents, { whole: true })}</b></div>
+    <div class="kpis">
+      <div class="kpi"><span class="lab">Income</span><b class="val num" data-testid="tp-income">{formatCents(latest.incomeCents, { whole: true })}</b></div>
+      <div class="kpi"><span class="lab">Spending</span><b class="val num" data-testid="tp-spending">{formatCents(latest.spendingCents, { whole: true })}</b></div>
+      <div class="kpi"><span class="lab">Kept</span><b class="val num" class:neg={latest.netCents < 0} data-testid="tp-net">{formatCents(latest.netCents, { whole: true })}</b></div>
     </div>
     {#if rate !== null}
       <p class="rate" data-testid="tp-rate">{rate >= 0 ? `You kept ${rate}% of what came in.` : `You spent ${-rate}% more than came in.`}</p>
@@ -44,9 +44,6 @@
 {/if}
 
 <style>
-  .row { display: flex; gap: 32px; flex-wrap: wrap; }
-  .label { display: block; color: var(--muted); font-size: 12px; }
-  b { font-size: 24px; font-weight: 600; }
-  .neg { color: var(--bad); }
-  .rate { color: var(--muted); margin: 12px 0 0; }
+  .neg { color: var(--danger); }
+  .rate { color: var(--muted); margin: 0; }
 </style>
