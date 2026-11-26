@@ -86,7 +86,10 @@ pub fn verify_signature(
 #[derive(Debug, Clone)]
 pub struct PriceIds {
     pub core: String,
+    /// The monthly Plaid add-on.
     pub plaid: String,
+    /// The yearly Plaid add-on, when one is sold. Treated the same as `plaid`.
+    pub plaid_annual: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -139,6 +142,7 @@ pub fn licence_from_event(
         match id {
             Some(id) if id == prices.core => core = true,
             Some(id) if id == prices.plaid => plaid = true,
+            Some(id) if prices.plaid_annual.as_deref() == Some(id) => plaid = true,
             _ => {}
         }
     }

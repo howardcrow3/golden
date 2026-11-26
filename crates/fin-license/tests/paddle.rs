@@ -10,6 +10,7 @@ fn prices() -> PriceIds {
     PriceIds {
         core: "pri_01m7h6qqb0y4f9r6mftw05y772".into(),
         plaid: "pri_01m7h71ez1v1pen447723fmeje".into(),
+        plaid_annual: Some("pri_01m7h7annual0000000000000".into()),
     }
 }
 fn key() -> SigningKey {
@@ -203,4 +204,30 @@ fn the_pinned_service_token_verifies() {
     let p = verify(&public(), token, APP_MAJOR).unwrap();
     assert_eq!(p.buyer, "ctm_fixture");
     assert_eq!(p.plaid_until, Some(day(2026, 12, 18)));
+}
+
+#[test]
+fn a_yearly_plaid_purchase_issues_a_plaid_licence() {
+    let body = event(
+        "transaction.completed",
+        &["pri_01m7h7annual0000000000000"],
+        r#","billing_period":{"ends_at":"2027-11-20T10:11:12Z"}"#,
+    );
+    let i = licence_from_event(&body, &prices(), &key())
+        .unwrap()
+        .unwrap();
+    assert!(!i.bought_core);
+    assert_eq!(i.plaid_until, Some(day(2027, 11, 20)));
+}
+
+#[test]
+fn no_annual_price_configured_ignores_unknown_prices() {
+    let mut p = prices();
+    p.plaid_annual = None;
+    let body = event(
+        "transaction.completed",
+        &["pri_01m7h7annual0000000000000"],
+        "",
+    );
+    assert_eq!(licence_from_event(&body, &p, &key()), Ok(None));
 }
