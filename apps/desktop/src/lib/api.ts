@@ -1182,6 +1182,7 @@ export interface VaultDoc {
   added: string;
   size: number;
   fields: { label: string; cents: number }[];
+  hasText?: boolean;
 }
 export async function vaultAdd(name: string, bytes: Uint8Array, invoke?: Invoke): Promise<VaultDoc> {
   return (await (await resolve(invoke))("vault_add", { name, bytes: Array.from(bytes) })) as VaultDoc;
