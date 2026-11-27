@@ -3359,7 +3359,13 @@
    "std_joint": 1750000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled.",
+   "age_deduction": {
+    "age": 65,
+    "amount": 1200000,
+    "phase_start_single": 5000000,
+    "phase_start_joint": 7500000
+   }
   },
   "VT": {
    "name": "Vermont",
