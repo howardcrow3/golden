@@ -2490,7 +2490,7 @@
    "std_joint": 1310000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction and rate schedule match the Comptroller Tax Alert on the 2025 legislative session (rev. Dec 22, 2025): flat $3,350 single / $6,700 joint plus the $3,200 exemption per person, with new 6.25% and 6.5% top brackets. Not modelled: exemption phase-out at higher incomes; county income tax is not included.",
+   "notes": "Standard deduction and rate schedule match the Comptroller Tax Alert on the 2025 legislative session (rev. Dec 22, 2025): flat $3,350 single / $6,700 joint plus the $3,200 exemption per person, with new 6.25% and 6.5% top brackets. Not modelled: exemption phase-out at higher incomes; county income tax is not included. Pension exclusion (Worksheet 13A, 2025): up to $41,200 of employer plan pension and annuity income per person 65 or older, less the Social Security and railroad retirement benefits received. IRA withdrawals do not qualify, so only pension streams are counted; all benefits are deducted from the ceiling even when only one spouse has a pension. Disability, military and public safety exclusions are not modelled.",
    "joint_brackets": [
     [
      0,
@@ -2532,7 +2532,18 @@
      120000000,
      0.065
     ]
-   ]
+   ],
+   "retirement": {
+    "min_age": 0,
+    "pension_only": true,
+    "less_social_security": true,
+    "caps": [
+     {
+      "age": 65,
+      "cap": 4120000
+     }
+    ]
+   }
   },
   "ME": {
    "name": "Maine",
