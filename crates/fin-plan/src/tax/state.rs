@@ -79,6 +79,12 @@ pub struct RetirementExclusion {
     /// gets the cap of the highest `age` they have reached.
     #[serde(default)]
     pub caps: Vec<AgeCap>,
+    /// The caps cover pension income only, not IRA and 401(k) distributions (Maryland).
+    #[serde(default)]
+    pub pension_only: bool,
+    /// The caps are reduced by the Social Security benefits received (Maryland).
+    #[serde(default)]
+    pub less_social_security: bool,
     /// A household ceiling that depends on filing status and shrinks as income rises (New Jersey).
     #[serde(default)]
     pub household: Option<HouseholdCap>,
@@ -190,6 +196,8 @@ impl SocialSecurityRule {
 pub struct RetirementIncome {
     pub pension: Money,
     pub distributions: Money,
+    /// Gross Social Security benefits received, taxable or not.
+    pub social_security: Money,
     /// Ages of the (adult) people on the return.
     pub ages: Vec<i32>,
 }
@@ -213,7 +221,7 @@ impl RetirementExclusion {
                 left_d = zero;
             }
         }
-        let cap: Money = inc
+        let mut cap: Money = inc
             .ages
             .iter()
             .filter_map(|&a| {
@@ -224,7 +232,15 @@ impl RetirementExclusion {
                     .map(|c| c.cap)
             })
             .fold(zero, |a, b| a + b);
-        out + cap.min(left_p + left_d)
+        if self.less_social_security {
+            cap = (cap - inc.social_security.max(zero)).max(zero);
+        }
+        let pool = if self.pension_only {
+            left_p
+        } else {
+            left_p + left_d
+        };
+        out + cap.min(pool)
     }
 
     /// The household-level exclusion for a return with `income` (before the exclusion).
@@ -510,6 +526,7 @@ mod tests {
         RetirementIncome {
             pension: m(pension),
             distributions: m(dist),
+            social_security: Money::ZERO,
             ages: ages.to_vec(),
         }
     }
@@ -657,6 +674,24 @@ mod tests {
         assert_eq!(x("WI").excluded(&ret(0, 30_000, &[67])), m(24_000));
         assert_eq!(x("WI").excluded(&ret(0, 80_000, &[67, 68])), m(48_000));
         assert_eq!(x("WI").excluded(&ret(0, 30_000, &[66])), Money::ZERO);
+    }
+
+    #[test]
+    fn maryland_excludes_employer_pensions_less_social_security() {
+        let y = StateTaxYear::y2026();
+        let x = y.rules("MD").unwrap().retirement.clone().unwrap();
+        let with_ss = |pen: i64, dist: i64, ss: i64, ages: &[i32]| {
+            let mut r = ret(pen, dist, ages);
+            r.social_security = m(ss);
+            x.excluded(&r)
+        };
+        assert_eq!(with_ss(30_000, 0, 0, &[66]), m(30_000));
+        assert_eq!(with_ss(60_000, 0, 0, &[66]), m(41_200));
+        // IRA money does not count, and Social Security eats into the ceiling.
+        assert_eq!(with_ss(0, 50_000, 0, &[66]), Money::ZERO);
+        assert_eq!(with_ss(60_000, 0, 30_000, &[66]), m(11_200));
+        assert_eq!(with_ss(60_000, 0, 50_000, &[66]), Money::ZERO);
+        assert_eq!(with_ss(60_000, 0, 0, &[64]), Money::ZERO);
     }
 
     #[test]

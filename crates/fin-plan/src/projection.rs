@@ -307,6 +307,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             let ret = crate::tax::state::RetirementIncome {
                 pension,
                 distributions: rmd + (ord - earned_ordinary).max(Money::ZERO),
+                social_security: ss,
                 ages: adult_ages.clone(),
             };
             let st = states
