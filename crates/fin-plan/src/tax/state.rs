@@ -49,9 +49,78 @@ pub struct StateRules {
     /// states leave benefits out of state income.
     #[serde(default)]
     pub taxes_social_security: bool,
+    /// What the state leaves out of income for pensions and withdrawals from pre-tax accounts.
+    #[serde(default)]
+    pub retirement: Option<RetirementExclusion>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
+}
+
+/// A state's exemption for retirement income (pensions, and IRA/401(k) distributions).
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct RetirementExclusion {
+    /// Pensions are exempt in full once someone in the household reaches `min_age`.
+    #[serde(default)]
+    pub pension_full: bool,
+    /// Pre-tax account distributions are exempt in full once someone reaches `min_age`.
+    #[serde(default)]
+    pub distributions_full: bool,
+    #[serde(default)]
+    pub min_age: u8,
+    /// Per-person ceilings on the combined pension and distribution exclusion, by age: each person
+    /// gets the cap of the highest `age` they have reached.
+    #[serde(default)]
+    pub caps: Vec<AgeCap>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgeCap {
+    pub age: u8,
+    pub cap: Money,
+}
+
+/// Retirement income in a year, for the state's exclusion.
+#[derive(Debug, Clone, Default)]
+pub struct RetirementIncome {
+    pub pension: Money,
+    pub distributions: Money,
+    /// Ages of the (adult) people on the return.
+    pub ages: Vec<i32>,
+}
+
+impl RetirementExclusion {
+    /// The amount left out of state income.
+    pub fn excluded(&self, inc: &RetirementIncome) -> Money {
+        let zero = Money::ZERO;
+        let (pension, dist) = (inc.pension.max(zero), inc.distributions.max(zero));
+        let eligible = inc.ages.iter().any(|&a| a >= self.min_age as i32);
+        let mut out = zero;
+        let mut left_p = pension;
+        let mut left_d = dist;
+        if eligible {
+            if self.pension_full {
+                out += left_p;
+                left_p = zero;
+            }
+            if self.distributions_full {
+                out += left_d;
+                left_d = zero;
+            }
+        }
+        let cap: Money = inc
+            .ages
+            .iter()
+            .filter_map(|&a| {
+                self.caps
+                    .iter()
+                    .filter(|c| a >= c.age as i32)
+                    .max_by_key(|c| c.age)
+                    .map(|c| c.cap)
+            })
+            .fold(zero, |a, b| a + b);
+        out + cap.min(left_p + left_d)
+    }
 }
 
 /// The NY IT-201-I "tax computation" worksheets: above `agi_over` the lower
@@ -206,6 +275,28 @@ impl StateTaxYear {
         self.income_tax(code, fs, income)
     }
 
+    /// As `income_tax_with_ss`, also leaving out the state's pension and retirement account
+    /// exclusions.
+    pub fn income_tax_with_retirement(
+        &self,
+        code: &str,
+        fs: FilingStatus,
+        federal_agi: Money,
+        taxable_ss: Money,
+        ret: &RetirementIncome,
+    ) -> Option<Money> {
+        let r = self.rules(code)?;
+        let mut income = if r.taxes_social_security {
+            federal_agi
+        } else {
+            (federal_agi - taxable_ss.max(Money::ZERO)).max(Money::ZERO)
+        };
+        if let Some(x) = &r.retirement {
+            income = (income - x.excluded(ret)).max(Money::ZERO);
+        }
+        self.income_tax(code, fs, income)
+    }
+
     /// State income tax on `federal_agi`-like income for a resident of `code`.
     /// Returns None if the state code is unknown.
     pub fn income_tax(&self, code: &str, fs: FilingStatus, income: Money) -> Option<Money> {
@@ -272,6 +363,75 @@ mod tests {
 
     fn m(d: i64) -> Money {
         Money::from_dollars(d)
+    }
+
+    fn ret(pension: i64, dist: i64, ages: &[i32]) -> RetirementIncome {
+        RetirementIncome {
+            pension: m(pension),
+            distributions: m(dist),
+            ages: ages.to_vec(),
+        }
+    }
+
+    fn tax(c: &str, agi: i64, r: &RetirementIncome) -> Money {
+        StateTaxYear::y2026()
+            .income_tax_with_retirement(c, FilingStatus::Single, m(agi), Money::ZERO, r)
+            .unwrap()
+    }
+
+    #[test]
+    fn illinois_and_pennsylvania_do_not_tax_retirement_income() {
+        let r = ret(20_000, 30_000, &[70]);
+        for c in ["IL", "PA", "MS"] {
+            assert_eq!(tax(c, 50_000, &r), Money::ZERO, "{c}");
+        }
+        // Ordinary income of the same size is taxed.
+        assert!(tax("IL", 50_000, &ret(0, 0, &[70])) > Money::ZERO);
+    }
+
+    #[test]
+    fn age_gates_the_full_exemptions() {
+        let r = ret(0, 40_000, &[50]);
+        assert_eq!(
+            tax("IL", 40_000, &r),
+            Money::ZERO,
+            "Illinois has no age test"
+        );
+        assert!(tax("PA", 40_000, &r) > Money::ZERO, "too young for PA");
+        assert!(tax("IA", 40_000, &r) > Money::ZERO, "too young for IA");
+        assert_eq!(tax("IA", 40_000, &ret(0, 40_000, &[55])), Money::ZERO);
+    }
+
+    #[test]
+    fn capped_states_exclude_up_to_the_cap_per_person() {
+        let y = StateTaxYear::y2026();
+        let x = |c: &str| y.rules(c).unwrap().retirement.clone().unwrap();
+        // Kentucky: $31,110 each.
+        assert_eq!(x("KY").excluded(&ret(10_000, 50_000, &[66])), m(31_110));
+        assert_eq!(x("KY").excluded(&ret(10_000, 50_000, &[66, 64])), m(60_000));
+        assert_eq!(x("KY").excluded(&ret(5_000, 0, &[66])), m(5_000));
+        // New York and Delaware need 60.
+        assert_eq!(x("NY").excluded(&ret(30_000, 0, &[58])), Money::ZERO);
+        assert_eq!(x("NY").excluded(&ret(30_000, 0, &[60])), m(20_000));
+        assert_eq!(x("DE").excluded(&ret(0, 20_000, &[61])), m(12_500));
+        // Georgia steps up at 65; South Carolina starts at 65.
+        assert_eq!(x("GA").excluded(&ret(0, 100_000, &[63])), m(35_000));
+        assert_eq!(x("GA").excluded(&ret(0, 100_000, &[65])), m(65_000));
+        assert_eq!(x("SC").excluded(&ret(0, 20_000, &[64])), Money::ZERO);
+        assert_eq!(x("SC").excluded(&ret(0, 20_000, &[65])), m(10_000));
+    }
+
+    #[test]
+    fn a_state_without_a_rule_taxes_everything() {
+        let y = StateTaxYear::y2026();
+        let r = ret(20_000, 30_000, &[70]);
+        let plain = y
+            .income_tax_with_ss("CA", FilingStatus::Single, m(50_000), Money::ZERO)
+            .unwrap();
+        let with = y
+            .income_tax_with_retirement("CA", FilingStatus::Single, m(50_000), Money::ZERO, &r)
+            .unwrap();
+        assert_eq!(plain, with);
     }
 
     #[test]

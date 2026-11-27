@@ -66,9 +66,18 @@
    "std_joint": 494000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Top rate is 3.7% (H.B. 1001, retroactive to Jan 1, 2026). Bracket widths use 2025 amounts; the Department of Finance's 2026 widths are not confirmed here.",
+   "notes": "Top rate is 3.7% (H.B. 1001, retroactive to Jan 1, 2026). Bracket widths use 2025 amounts; the Department of Finance's 2026 widths are not confirmed here. Arkansas excludes up to $6,000 of pension and retirement income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
    "credit_single": 2900,
-   "credit_joint": 5800
+   "credit_joint": 5800,
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 0,
+      "cap": 600000
+     }
+    ]
+   }
   },
   "AZ": {
    "name": "Arizona",
@@ -2090,9 +2099,18 @@
    "std_joint": 650000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal credit $110 per filer.",
+   "notes": "Personal credit $110 per filer. Delaware excludes up to $12,500 of pension and retirement income per person aged 60 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
    "credit_single": 11000,
-   "credit_joint": 22000
+   "credit_joint": 22000,
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 60,
+      "cap": 1250000
+     }
+    ]
+   }
   },
   "FL": {
    "name": "Florida",
@@ -2117,7 +2135,20 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Georgia excludes up to $35,000 of retirement income per person aged 62 to 64 and $65,000 at 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 62,
+      "cap": 3500000
+     },
+     {
+      "age": 65,
+      "cap": 6500000
+     }
+    ]
+   }
   },
   "HI": {
    "name": "Hawaii",
@@ -2241,7 +2272,12 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Iowa exempts retirement income for anyone 55 or older (2023 law).",
+   "retirement": {
+    "pension_full": true,
+    "distributions_full": true,
+    "min_age": 55
+   }
   },
   "ID": {
    "name": "Idaho",
@@ -2271,7 +2307,12 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)).",
+   "retirement": {
+    "pension_full": true,
+    "distributions_full": true,
+    "min_age": 0
+   }
   },
   "IN": {
    "name": "Indiana",
@@ -2330,7 +2371,16 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 0,
+      "cap": 3111000
+     }
+    ]
+   }
   },
   "LA": {
    "name": "Louisiana",
@@ -2613,7 +2663,12 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Mississippi exempts qualified retirement income (pensions, IRA and 401(k) withdrawals) once the owner is 59 and a half or retired; modelled from age 60.",
+   "retirement": {
+    "pension_full": true,
+    "distributions_full": true,
+    "min_age": 60
+   }
   },
   "MT": {
    "name": "Montana",
@@ -2936,7 +2991,7 @@
    "std_joint": 1605000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. NYC and Yonkers taxes are not included.",
+   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. NYC and Yonkers taxes are not included. New York excludes up to $20,000 of pension and annuity income per person aged 59 and a half or more (modelled from 60). The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
    "joint_brackets": [
     [
      0,
@@ -2990,6 +3045,15 @@
      215535000,
      500000000
     ]
+   },
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 60,
+      "cap": 2000000
+     }
+    ]
    }
   },
   "OH": {
@@ -3036,7 +3100,7 @@
    "std_joint": 1470000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption combined.",
+   "notes": "Standard deduction plus personal exemption combined. Oklahoma excludes up to $10,000 of pension and retirement income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
    "joint_brackets": [
     [
      0,
@@ -3054,7 +3118,16 @@
      1440000,
      0.045
     ]
-   ]
+   ],
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 0,
+      "cap": 1000000
+     }
+    ]
+   }
   },
   "OR": {
    "name": "Oregon",
@@ -3116,7 +3189,12 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Pennsylvania does not tax retirement income (pensions, IRA and 401(k) withdrawals) once the owner has reached retirement age; modelled from age 60.",
+   "retirement": {
+    "pension_full": true,
+    "distributions_full": true,
+    "min_age": 60
+   }
   },
   "RI": {
    "name": "Rhode Island",
@@ -3163,7 +3241,16 @@
    "std_joint": 1670000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Same schedule for all filers."
+   "notes": "Same schedule for all filers. South Carolina deducts up to $10,000 of retirement income per person aged 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 65,
+      "cap": 1000000
+     }
+    ]
+   }
   },
   "SD": {
    "name": "South Dakota",

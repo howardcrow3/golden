@@ -39,6 +39,8 @@ pub struct IncomeStream {
     /// Income that pays no payroll tax: a pension, rental income, an annuity. It is still
     /// ordinary income.
     pub payroll_exempt: bool,
+    /// A pension (as opposed to rental or other income): states that exempt pensions exempt it.
+    pub pension: bool,
     /// Employer match per year while working, added to the pre-tax account (not income to you).
     pub employer_match: Money,
     /// Pre-tax HSA saving per year, kept as tax-free money for medical costs.
@@ -218,6 +220,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let mut hsa_total = Money::ZERO;
         let mut match_total = Money::ZERO;
         let mut exempt = Money::ZERO;
+        let mut pension = Money::ZERO;
         for s in &input.streams {
             if year >= s.start_year && year <= s.end_year {
                 wages += s.annual_gross;
@@ -226,6 +229,9 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 }
                 if s.payroll_exempt {
                     exempt += s.annual_gross;
+                }
+                if s.pension {
+                    pension += s.annual_gross;
                 }
                 contrib += s.traditional_contribution + s.hsa;
                 hsa_total += s.hsa;
@@ -278,6 +284,12 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             .min(2) as u8;
         // How much of Social Security is taxed depends on all other income, so it is worked
         // out again whenever withdrawals change that income.
+        let adult_ages: Vec<i32> = input
+            .people
+            .iter()
+            .filter(|p| !p.is_dependent)
+            .map(|p| p.age_on(chrono_start(year)))
+            .collect();
         let base_tax = |ord: Money, gains: Money| -> Money {
             let taxable_ss = taxable_social_security(input.filing, ss, ord + gains);
             let f = fed.income_tax(
@@ -290,8 +302,15 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     ..Default::default()
                 },
             );
+            // Pension and pre-tax account money: the RMD, and whatever withdrawals or conversions
+            // push ordinary income above the earned part.
+            let ret = crate::tax::state::RetirementIncome {
+                pension,
+                distributions: rmd + (ord - earned_ordinary).max(Money::ZERO),
+                ages: adult_ages.clone(),
+            };
             let st = states
-                .income_tax_with_ss(&input.state, input.filing, f.agi, taxable_ss)
+                .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
                 .unwrap_or(Money::ZERO);
             f.income_tax + st
         };
@@ -701,6 +720,7 @@ pub(crate) mod fixtures {
                 traditional_contribution: Money::from_dollars(23_500),
                 self_employed: false,
                 payroll_exempt: false,
+                pension: false,
                 employer_match: Money::ZERO,
                 hsa: Money::ZERO,
             }],
@@ -824,7 +844,7 @@ mod tests {
             project_constant(&i, 0.04).rows[0].clone()
         };
         let tx = plan("TX");
-        let il = plan("IL");
+        let il = plan("IN");
         let ut = plan("UT");
         // Federal tax is the same everywhere; the rest is state tax.
         let il_extra = il.income_tax - tx.income_tax;
@@ -1337,6 +1357,57 @@ mod income_kind_tests {
         assert!(p.taxes < w.taxes);
         assert_eq!(p.earned, Money::ZERO);
         assert!(w.earned > Money::ZERO);
+    }
+
+    fn retired_couple(state: &str) -> PlanInput {
+        let mut i = couple();
+        i.state = state.into();
+        i.people[0].birth_date = fin_core::NaiveDate::from_ymd_opt(1955, 6, 15).unwrap();
+        i.people[1].birth_date = fin_core::NaiveDate::from_ymd_opt(1957, 6, 15).unwrap();
+        i.streams.clear();
+        i.social_security.clear();
+        i.accounts = Accounts {
+            cash: Money::ZERO,
+            taxable: Money::ZERO,
+            taxable_gain_share: 0.0,
+            traditional: Money::from_dollars(900_000),
+            roth: Money::ZERO,
+        };
+        i.annual_spending = Money::from_dollars(60_000);
+        i
+    }
+
+    #[test]
+    fn illinois_retirees_pay_no_state_tax_on_withdrawals() {
+        let il = first_year(&retired_couple("IL"));
+        let tx = first_year(&retired_couple("TX"));
+        // Illinois taxes none of the pre-tax withdrawals, so only the federal tax remains.
+        assert_eq!(il.income_tax, tx.income_tax);
+        assert!(first_year(&retired_couple("CA")).income_tax > il.income_tax);
+    }
+
+    #[test]
+    fn a_pension_is_exempt_in_pennsylvania_but_wages_are_not() {
+        let stream = |pension: bool| IncomeStream {
+            label: "income".into(),
+            person: 0,
+            annual_gross: Money::from_dollars(50_000),
+            start_year: 2026,
+            end_year: 2060,
+            traditional_contribution: Money::ZERO,
+            self_employed: false,
+            payroll_exempt: pension,
+            pension,
+            employer_match: Money::ZERO,
+            hsa: Money::ZERO,
+        };
+        let with = |state: &str, pension: bool| {
+            let mut i = retired_couple(state);
+            i.streams = vec![stream(pension)];
+            first_year(&i).income_tax
+        };
+        assert_eq!(with("PA", true), with("TX", true));
+        assert!(with("PA", false) > with("TX", false));
     }
 
     #[test]
