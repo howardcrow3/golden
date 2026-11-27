@@ -107,6 +107,11 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX receipt_link_txn ON receipt_link(txn_id);
     "#,
+    // A purchase and the refund that cancels it: both stay in the list, neither counts in the
+    // income and spending totals.
+    r#"
+    ALTER TABLE txn ADD COLUMN netted INTEGER NOT NULL DEFAULT 0;
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
