@@ -32,6 +32,7 @@ pub mod offset;
 pub mod paystub;
 pub mod planfile;
 pub mod progress;
+pub mod receipts;
 pub mod recurring;
 pub mod report;
 pub mod retire_when;

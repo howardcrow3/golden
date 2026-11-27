@@ -447,6 +447,22 @@ fn vault_list(state: Shared, query: String) -> Result<Vec<fin_app::vault::Docume
     lock(&state)?.vault_list(&query)
 }
 
+/// Match receipts in the vault to the charges that paid for them.
+#[tauri::command]
+fn match_receipts(state: Shared) -> Result<fin_app::receipts::ReceiptReport, String> {
+    lock(&state)?.match_receipts()
+}
+
+#[tauri::command]
+fn link_receipt(state: Shared, document_id: i64, txn_id: i64) -> Result<(), String> {
+    lock(&state)?.link_receipt(document_id, txn_id)
+}
+
+#[tauri::command]
+fn unlink_receipt(state: Shared, document_id: i64) -> Result<(), String> {
+    lock(&state)?.unlink_receipt(document_id)
+}
+
 #[tauri::command]
 fn vault_delete(state: Shared, id: i64) -> Result<(), String> {
     lock(&state)?.vault_delete(id)
@@ -1201,6 +1217,9 @@ pub fn run() {
             sepp,
             vault_add,
             vault_list,
+            match_receipts,
+            link_receipt,
+            unlink_receipt,
             vault_delete,
             vault_export,
             export_plan_file,

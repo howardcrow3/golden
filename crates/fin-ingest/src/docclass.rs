@@ -15,6 +15,7 @@ pub enum Kind {
     Form1098,
     Form1040,
     Paystub,
+    Receipt,
     BankStatement,
     BrokerageStatement,
     Other,
@@ -33,6 +34,7 @@ impl Kind {
             Kind::Form1098 => "1098",
             Kind::Form1040 => "1040",
             Kind::Paystub => "Paystub",
+            Kind::Receipt => "Receipt",
             Kind::BankStatement => "Bank statement",
             Kind::BrokerageStatement => "Brokerage statement",
             Kind::Other => "Document",
@@ -96,6 +98,9 @@ pub fn classify(text: &str) -> Kind {
             return Kind::BrokerageStatement;
         }
         return Kind::BankStatement;
+    }
+    if crate::receipt::looks_like_receipt(text) {
+        return Kind::Receipt;
     }
     Kind::Other
 }
@@ -201,12 +206,20 @@ pub fn recognise(text: &str) -> Recognised {
             ("Beginning balance", &["beginning balance"]),
             ("Ending balance", &["ending balance", "closing balance"]),
         ],
-        Kind::Other => &[],
+        Kind::Receipt | Kind::Other => &[],
     };
-    let fields = wanted
+    let mut fields: Vec<Field> = wanted
         .iter()
         .filter_map(|(label, keys)| after(text, keys).map(|amount| Field { label, amount }))
         .collect();
+    if kind == Kind::Receipt {
+        if let Some(amount) = crate::receipt::parse_receipt(text).total {
+            fields.push(Field {
+                label: "Total",
+                amount,
+            });
+        }
+    }
     Recognised {
         kind,
         year: year(text),
