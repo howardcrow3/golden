@@ -4,7 +4,7 @@
 use crate::tax::{
     taxable_social_security, FederalInput, FederalTaxYear, FilingStatus, StateTaxYear,
 };
-use fin_core::{Money, Person};
+use fin_core::{Datelike, Money, Person};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Accounts {
@@ -237,9 +237,18 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             let age = input.people[b.person].age_on(chrono_start(year));
             if age >= b.claim_age {
                 let birth_year = year - age;
+                // `age` is the age reached by year end, so in the year of claiming the first
+                // payment is the month after the birthday month: part of a year, unless the plan
+                // itself begins in that year (the person is already claiming).
+                let part = if age == b.claim_age && year > input.start_year {
+                    let month = input.people[b.person].birth_date.month();
+                    (12 - month) as f64 / 12.0
+                } else {
+                    1.0
+                };
                 ss += b
                     .annual_benefit
-                    .mul_rate(crate::ss::claim_factor(birth_year, b.claim_age * 12));
+                    .mul_rate(crate::ss::claim_factor(birth_year, b.claim_age * 12) * part);
             }
         }
 
@@ -760,7 +769,10 @@ mod tests {
         let before = p.rows.iter().find(|r| r.age == 66).unwrap();
         let after = p.rows.iter().find(|r| r.age == 67).unwrap();
         assert_eq!(before.social_security, Money::ZERO);
-        assert_eq!(after.social_security, Money::from_dollars(38_000));
+        // Born in June: benefits run July to December in the year of claiming (6 of 12 months).
+        assert_eq!(after.social_security, Money::from_dollars(19_000));
+        let next = p.rows.iter().find(|r| r.age == 68).unwrap();
+        assert_eq!(next.social_security, Money::from_dollars(38_000));
     }
 
     #[test]

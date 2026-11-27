@@ -88,8 +88,11 @@ fn each_spouse_claims_social_security_at_their_own_age() {
     let p = project_constant(&household(120_000, "TX"), 0.04);
     let by_year = |y: i32| p.rows.iter().find(|r| r.year == y).unwrap().social_security;
     assert_eq!(by_year(2036), Money::ZERO);
-    assert_eq!(by_year(2037), Money::from_dollars(40_000)); // Pat turns 67 by end of 2037
-    assert_eq!(by_year(2039), Money::from_dollars(64_000)); // Sam turns 67 by end of 2039
+    // Everyone is born March 1, so the year of claiming covers April to December (9 of 12).
+    assert_eq!(by_year(2037), Money::from_dollars(30_000)); // Pat turns 67 in 2037
+    assert_eq!(by_year(2038), Money::from_dollars(40_000));
+    assert_eq!(by_year(2039), Money::from_dollars(58_000)); // Sam turns 67 in 2039
+    assert_eq!(by_year(2040), Money::from_dollars(64_000));
 }
 
 #[test]

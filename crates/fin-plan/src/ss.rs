@@ -172,10 +172,12 @@ mod tests {
         late.social_security[0].claim_age = 70;
         let e = crate::projection::project_constant(&early, 0.04);
         let l = crate::projection::project_constant(&late, 0.04);
+        // The first full year of benefits (the year of claiming is a part year).
         let first_ss = |p: &crate::projection::Projection| {
             p.rows
                 .iter()
-                .find(|r| r.social_security > Money::ZERO)
+                .filter(|r| r.social_security > Money::ZERO)
+                .nth(1)
                 .unwrap()
                 .social_security
         };

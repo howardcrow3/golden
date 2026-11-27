@@ -5,7 +5,7 @@ pub mod grain;
 pub mod money;
 pub mod person;
 
-pub use chrono::{Months, NaiveDate};
+pub use chrono::{Datelike, Months, NaiveDate};
 pub use grain::{Grain, PeriodKey};
 pub use money::{Money, MoneyError};
 pub use person::{age_on, Person};
