@@ -2411,7 +2411,16 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Louisiana exempts up to $12,000 of pension, annuity and IRA distributions for each person 65 or older (IT-540 instructions, code 06E). Federal, state and teacher retirement benefits are fully exempt in Louisiana but are not separated out here.",
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 65,
+      "cap": 1200000
+     }
+    ]
+   }
   },
   "MA": {
    "name": "Massachusetts",
@@ -2862,7 +2871,7 @@
    "std_joint": 200000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption only; no standard deduction.",
+   "notes": "Personal exemption only; no standard deduction. Pension exclusion (nj.gov Retirement Income Exclusions, 2025): age 62 or older, pension, annuity and IRA withdrawals up to $75,000 single / $100,000 joint / $50,000 separate when total income is $100,000 or less, then 37.5/18.75% (single), 50/25% (joint) of them up to $125,000 / $150,000, none above. Total income here is AGI less taxable Social Security. The separate Other Retirement Income Exclusion is not modelled.",
    "joint_brackets": [
     [
      0,
@@ -2896,7 +2905,31 @@
      100000000,
      0.1075
     ]
-   ]
+   ],
+   "retirement": {
+    "min_age": 0,
+    "household": {
+     "min_age": 62,
+     "cap_single": 7500000,
+     "cap_joint": 10000000,
+     "cap_separate": 5000000,
+     "full_to": 10000000,
+     "steps": [
+      {
+       "to": 12500000,
+       "single": 0.375,
+       "joint": 0.5,
+       "separate": 0.25
+      },
+      {
+       "to": 15000000,
+       "single": 0.1875,
+       "joint": 0.25,
+       "separate": 0.125
+      }
+     ]
+    }
+   }
   },
   "NM": {
    "name": "New Mexico",
@@ -3456,7 +3489,7 @@
    "std_joint": 2724000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Sliding-scale standard deduction is shown at its maximum.",
+   "notes": "Sliding-scale standard deduction is shown at its maximum. From 2025 each person 67 or older may subtract up to $24,000 of retirement income (Publication 126, 1/26); the smaller $5,000 subtraction at 65 for incomes under $15,000 / $30,000 is not modelled. Claiming the subtraction forgoes Wisconsin tax credits, which are not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3474,7 +3507,16 @@
      44363000,
      0.0765
     ]
-   ]
+   ],
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 67,
+      "cap": 2400000
+     }
+    ]
+   }
   },
   "WV": {
    "name": "West Virginia",
