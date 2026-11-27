@@ -195,6 +195,19 @@ impl Db {
         let tx = self.conn.transaction()?;
         let mut seen: std::collections::HashMap<String, usize> = Default::default();
         let mut summary = ImportSummary::default();
+        // Rows already in the ledger before this file, for spotting the same transaction
+        // described differently (another file format, or an overlapping statement).
+        let mut existing = Self::existing_for_fuzzy(&tx, rows)?;
+        // A row dated a day or two off only counts as a repeat inside the period that earlier
+        // imports already cover; just past its end it is the next statement's own purchase.
+        let spans: std::collections::HashMap<i64, (NaiveDate, NaiveDate)> = {
+            let mut st = tx.prepare(
+                "SELECT account_id, min(day), max(day) FROM txn WHERE external_id IS NULL
+                 GROUP BY account_id",
+            )?;
+            let it = st.query_map([], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?;
+            it.collect::<std::result::Result<_, rusqlite::Error>>()?
+        };
         for t in rows {
             let key = format!(
                 "{}|{}|{}|{}|{}",
@@ -207,6 +220,31 @@ impl Db {
             let seq = seen.entry(key.clone()).or_insert(0);
             let dedupe = format!("{key}#{seq}");
             *seq += 1;
+            let exact: Option<i64> = tx
+                .query_row("SELECT id FROM txn WHERE dedupe_key=?1", [&dedupe], |r| {
+                    r.get(0)
+                })
+                .optional()?;
+            if let Some(id) = exact {
+                existing.retain(|e| e.id != id);
+                summary.skipped += 1;
+                continue;
+            }
+            let near = existing.iter().position(|e| {
+                e.account == t.account.0
+                    && e.cents == t.amount.cents()
+                    && (e.day == t.day
+                        || ((e.day - t.day).num_days().abs() <= crate::dupes::NEAR_DAYS
+                            && spans
+                                .get(&e.account)
+                                .is_some_and(|(lo, hi)| t.day >= *lo && t.day <= *hi)))
+                    && crate::dupes::same_payee(&e.payee, &t.payee)
+            });
+            if let Some(i) = near {
+                existing.remove(i);
+                summary.skipped += 1;
+                continue;
+            }
             let cat: Option<i64> = match &t.category {
                 Some(c) => {
                     let existing: Option<i64> = tx
@@ -251,6 +289,32 @@ impl Db {
         }
         tx.commit()?;
         Ok(summary)
+    }
+
+    /// Transactions from earlier imports near the dates of `rows`, each of which may stand for
+    /// one incoming row. Bank-synced lines are left out: those are reconciled separately.
+    fn existing_for_fuzzy(tx: &rusqlite::Transaction, rows: &[NewTxn]) -> Result<Vec<Near>> {
+        let (Some(lo), Some(hi)) = (
+            rows.iter().map(|r| r.day).min(),
+            rows.iter().map(|r| r.day).max(),
+        ) else {
+            return Ok(vec![]);
+        };
+        let pad = chrono::Duration::days(crate::dupes::NEAR_DAYS);
+        let mut st = tx.prepare(
+            "SELECT id, account_id, day, cents, payee FROM txn
+             WHERE day BETWEEN ?1 AND ?2 AND external_id IS NULL ORDER BY day, id",
+        )?;
+        let it = st.query_map(params![lo - pad, hi + pad], |r| {
+            Ok(Near {
+                id: r.get(0)?,
+                account: r.get(1)?,
+                day: r.get(2)?,
+                cents: r.get(3)?,
+                payee: r.get(4)?,
+            })
+        })?;
+        Ok(it.collect::<std::result::Result<_, rusqlite::Error>>()?)
     }
 
     pub fn get_txn(&self, id: i64) -> Result<Txn> {
@@ -522,6 +586,15 @@ impl Db {
         })?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
     }
+}
+
+/// An already-stored transaction that an incoming row might duplicate.
+struct Near {
+    id: i64,
+    account: i64,
+    day: NaiveDate,
+    cents: i64,
+    payee: String,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

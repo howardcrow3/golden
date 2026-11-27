@@ -2,6 +2,7 @@
 //! instant week/month/quarter/year totals.
 pub mod bank;
 pub mod documents;
+pub mod dupes;
 pub mod ledger;
 pub mod migrations;
 pub mod settings;
