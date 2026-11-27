@@ -455,6 +455,7 @@ impl Household {
                 },
                 self_employed: s.self_employed && !exempt,
                 payroll_exempt: exempt,
+                pension: kind == "pension",
                 employer_match: if exempt {
                     Money::ZERO
                 } else {
