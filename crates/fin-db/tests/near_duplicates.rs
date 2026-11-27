@@ -1,0 +1,111 @@
+//! The same transaction arriving from two files that describe it differently is stored once.
+use chrono::NaiveDate;
+use fin_core::Money;
+use fin_db::ledger::{AccountId, NewTxn};
+use fin_db::Db;
+
+fn d(s: &str) -> NaiveDate {
+    s.parse().unwrap()
+}
+
+fn row(a: AccountId, day: &str, cents: i64, payee: &str) -> NewTxn {
+    NewTxn {
+        account: a,
+        day: d(day),
+        amount: Money::from_cents(cents),
+        payee: payee.into(),
+        memo: String::new(),
+        category: None,
+        stream: None,
+    }
+}
+
+fn setup() -> (Db, AccountId) {
+    let db = Db::open_in_memory().unwrap();
+    let a = db.add_account("Checking", "checking", None, None).unwrap();
+    (db, a)
+}
+
+fn count(db: &Db) -> i64 {
+    db.txn_count().unwrap()
+}
+
+#[test]
+fn a_csv_then_an_ofx_of_the_same_month_adds_nothing() {
+    let (mut db, a) = setup();
+    db.import_batch(&[
+        row(a, "2026-10-03", -4_500, "AMAZON MKTPLACE PMTS"),
+        row(a, "2026-10-05", -1_200, "Trader Joe's #123"),
+        row(a, "2026-10-09", 250_000, "ACME PAYROLL"),
+    ])
+    .unwrap();
+    // Same month, different descriptions, one posting a day later.
+    let s = db
+        .import_batch(&[
+            row(a, "2026-10-03", -4_500, "Amazon.com*2K4TT1"),
+            row(a, "2026-10-06", -1_200, "TRADER JOES"),
+            row(a, "2026-10-09", 250_000, "Acme Payroll Direct Dep"),
+        ])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (0, 3));
+    assert_eq!(count(&db), 3);
+}
+
+#[test]
+fn two_real_purchases_both_survive() {
+    let (mut db, a) = setup();
+    db.import_batch(&[row(a, "2026-10-03", -400, "Starbucks 55")])
+        .unwrap();
+    // Two coffees on the day: one is the old one described differently, one is new.
+    let s = db
+        .import_batch(&[
+            row(a, "2026-10-03", -400, "STARBUCKS STORE"),
+            row(a, "2026-10-03", -400, "STARBUCKS STORE"),
+        ])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (1, 1));
+    assert_eq!(count(&db), 2);
+}
+
+#[test]
+fn a_purchase_just_past_the_covered_period_is_new() {
+    let (mut db, a) = setup();
+    db.import_batch(&[
+        row(a, "2026-10-01", -100, "Other"),
+        row(a, "2026-10-31", -400, "Starbucks"),
+    ])
+    .unwrap();
+    let s = db
+        .import_batch(&[row(a, "2026-11-01", -400, "Starbucks 55")])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (1, 0));
+}
+
+#[test]
+fn different_amounts_accounts_or_merchants_are_kept() {
+    let (mut db, a) = setup();
+    let b = db.add_account("Savings", "savings", None, None).unwrap();
+    db.import_batch(&[row(a, "2026-10-03", -4_500, "Amazon")])
+        .unwrap();
+    let s = db
+        .import_batch(&[
+            row(a, "2026-10-03", -4_501, "Amazon"),
+            row(b, "2026-10-03", -4_500, "Amazon"),
+            row(a, "2026-10-03", -4_500, "Shell Oil"),
+        ])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (3, 0));
+}
+
+#[test]
+fn reimporting_the_same_file_still_adds_nothing() {
+    let (mut db, a) = setup();
+    let rows = [
+        row(a, "2026-10-03", -400, "Starbucks"),
+        row(a, "2026-10-03", -400, "Starbucks"),
+    ];
+    db.import_batch(&rows).unwrap();
+    let s = db.import_batch(&rows).unwrap();
+    assert_eq!((s.added, s.skipped), (0, 2));
+    assert_eq!(count(&db), 2);
+}
