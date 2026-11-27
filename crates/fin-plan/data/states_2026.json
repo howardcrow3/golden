@@ -158,8 +158,20 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "",
-   "taxes_social_security": true
+   "notes": "Colorado subtracts up to $20,000 of Social Security per person aged 55 to 64 and $24,000 at 65 or more. Thresholds are from secondary sources and not yet checked against the official form.",
+   "taxes_social_security": true,
+   "social_security": {
+    "caps": [
+     {
+      "age": 55,
+      "cap": 2000000
+     },
+     {
+      "age": 65,
+      "cap": 2400000
+     }
+    ]
+   }
   },
   "CT": {
    "name": "Connecticut",
@@ -198,7 +210,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears.",
+   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint); above that the federally taxable amount is used (the state caps it at 25% of benefits, so this errs high). Thresholds are from secondary sources and not yet checked against the official form.",
    "joint_brackets": [
     [
      0,
@@ -2021,7 +2033,11 @@
      0.0699
     ]
    ],
-   "taxes_social_security": true
+   "taxes_social_security": true,
+   "social_security": {
+    "exempt_agi_single": 7500000,
+    "exempt_agi_joint": 10000000
+   }
   },
   "DC": {
    "name": "District of Columbia",
@@ -2586,7 +2602,7 @@
    "std_joint": 3060000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction phase-out at higher incomes is not modelled.",
+   "notes": "Standard deduction phase-out at higher incomes is not modelled. Minnesota's Social Security subtraction is full below $84,490 (single) / $108,320 (joint) AGI and phases out above; here it is all or nothing. Thresholds are from secondary sources and not yet checked against the official form.",
    "joint_brackets": [
     [
      0,
@@ -2605,7 +2621,11 @@
      0.0985
     ]
    ],
-   "taxes_social_security": true
+   "taxes_social_security": true,
+   "social_security": {
+    "exempt_agi_single": 8449000,
+    "exempt_agi_joint": 10832000
+   }
   },
   "MO": {
    "name": "Missouri",
@@ -2687,7 +2707,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Follows the federal standard deduction.",
+   "notes": "Follows the federal standard deduction. Montana deducts $5,500 (single) / $11,000 (joint) of taxable Social Security. Thresholds are from secondary sources and not yet checked against the official form.",
    "joint_brackets": [
     [
      0,
@@ -2698,7 +2718,11 @@
      0.0565
     ]
    ],
-   "taxes_social_security": true
+   "taxes_social_security": true,
+   "social_security": {
+    "deduction_single": 550000,
+    "deduction_joint": 1100000
+   }
   },
   "NC": {
    "name": "North Carolina",
@@ -2907,7 +2931,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Follows the federal standard deduction.",
+   "notes": "Follows the federal standard deduction. New Mexico leaves Social Security out when AGI is at or below $100,000 (single) / $150,000 (joint). Thresholds are from secondary sources and not yet checked against the official form.",
    "joint_brackets": [
     [
      0,
@@ -2934,7 +2958,11 @@
      0.059
     ]
    ],
-   "taxes_social_security": true
+   "taxes_social_security": true,
+   "social_security": {
+    "exempt_agi_single": 10000000,
+    "exempt_agi_joint": 15000000
+   }
   },
   "NV": {
    "name": "Nevada",
@@ -3217,8 +3245,12 @@
    "std_joint": 3290000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled.",
-   "taxes_social_security": true
+   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled. Rhode Island leaves Social Security out for people at full retirement age with AGI at or below $107,000 (single) / $133,750 (joint). Thresholds are from secondary sources and not yet checked against the official form.",
+   "taxes_social_security": true,
+   "social_security": {
+    "exempt_agi_single": 10700000,
+    "exempt_agi_joint": 13375000
+   }
   },
   "SC": {
    "name": "South Carolina",
@@ -3295,8 +3327,12 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "",
-   "taxes_social_security": true
+   "notes": "Utah gives a credit that fully offsets tax on Social Security below $54,000 (single) / $90,000 (joint) AGI and phases out above; here it is all or nothing. Thresholds are from secondary sources and not yet checked against the official form.",
+   "taxes_social_security": true,
+   "social_security": {
+    "exempt_agi_single": 5400000,
+    "exempt_agi_joint": 9000000
+   }
   },
   "VA": {
    "name": "Virginia",
@@ -3350,7 +3386,7 @@
    "std_joint": 2590000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled).",
+   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Vermont leaves Social Security out when AGI is at or below $55,000 (single) / $70,000 (joint), and phases it in above that; the full amount is used here. Thresholds are from secondary sources and not yet checked against the official form.",
    "joint_brackets": [
     [
      0,
@@ -3373,7 +3409,11 @@
     "agi_over": 15000000,
     "rate": 0.03
    },
-   "taxes_social_security": true
+   "taxes_social_security": true,
+   "social_security": {
+    "exempt_agi_single": 5500000,
+    "exempt_agi_joint": 7000000
+   }
   },
   "WA": {
    "name": "Washington",

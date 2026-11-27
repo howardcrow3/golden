@@ -52,6 +52,9 @@ pub struct StateRules {
     /// What the state leaves out of income for pensions and withdrawals from pre-tax accounts.
     #[serde(default)]
     pub retirement: Option<RetirementExclusion>,
+    /// For states in `taxes_social_security`: when benefits are left out of state income.
+    #[serde(default)]
+    pub social_security: Option<SocialSecurityRule>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -78,6 +81,56 @@ pub struct RetirementExclusion {
 pub struct AgeCap {
     pub age: u8,
     pub cap: Money,
+}
+
+/// How a state that taxes Social Security leaves part of it out. Without a rule the whole
+/// federally taxable amount is used (which errs high).
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct SocialSecurityRule {
+    /// Benefits are left out entirely while federal AGI is at or below these amounts.
+    #[serde(default)]
+    pub exempt_agi_single: Money,
+    #[serde(default)]
+    pub exempt_agi_joint: Money,
+    /// Per-person subtraction by age (Colorado).
+    #[serde(default)]
+    pub caps: Vec<AgeCap>,
+    /// A flat deduction from the taxable benefits (Montana).
+    #[serde(default)]
+    pub deduction_single: Money,
+    #[serde(default)]
+    pub deduction_joint: Money,
+}
+
+impl SocialSecurityRule {
+    /// The part of `taxable_ss` that stays in state income.
+    pub fn taxed(&self, fs: FilingStatus, agi: Money, taxable_ss: Money, ages: &[i32]) -> Money {
+        let joint = fs == FilingStatus::MarriedJoint;
+        let limit = if joint {
+            self.exempt_agi_joint
+        } else {
+            self.exempt_agi_single
+        };
+        if limit > Money::ZERO && agi <= limit {
+            return Money::ZERO;
+        }
+        let per_person = ages
+            .iter()
+            .filter_map(|&a| {
+                self.caps
+                    .iter()
+                    .filter(|c| a >= c.age as i32)
+                    .max_by_key(|c| c.age)
+                    .map(|c| c.cap)
+            })
+            .fold(Money::ZERO, |a, b| a + b);
+        let flat = if joint {
+            self.deduction_joint
+        } else {
+            self.deduction_single
+        };
+        (taxable_ss - per_person - flat).max(Money::ZERO)
+    }
 }
 
 /// Retirement income in a year, for the state's exclusion.
@@ -286,11 +339,13 @@ impl StateTaxYear {
         ret: &RetirementIncome,
     ) -> Option<Money> {
         let r = self.rules(code)?;
-        let mut income = if r.taxes_social_security {
-            federal_agi
-        } else {
-            (federal_agi - taxable_ss.max(Money::ZERO)).max(Money::ZERO)
+        let ss = taxable_ss.max(Money::ZERO);
+        let ss_in_state = match (&r.social_security, r.taxes_social_security) {
+            (_, false) => Money::ZERO,
+            (Some(rule), true) => rule.taxed(fs, federal_agi, ss, &ret.ages),
+            (None, true) => ss,
         };
+        let mut income = (federal_agi - ss + ss_in_state).max(Money::ZERO);
         if let Some(x) = &r.retirement {
             income = (income - x.excluded(ret)).max(Money::ZERO);
         }
@@ -419,6 +474,49 @@ mod tests {
         assert_eq!(x("GA").excluded(&ret(0, 100_000, &[65])), m(65_000));
         assert_eq!(x("SC").excluded(&ret(0, 20_000, &[64])), Money::ZERO);
         assert_eq!(x("SC").excluded(&ret(0, 20_000, &[65])), m(10_000));
+    }
+
+    #[test]
+    fn social_security_states_leave_benefits_out_below_their_thresholds() {
+        let y = StateTaxYear::y2026();
+        let ss = |c: &str, fs, agi: i64, ben: i64, ages: &[i32]| {
+            y.income_tax_with_retirement(c, fs, m(agi), m(ben), &ret(0, 0, ages))
+                .unwrap()
+        };
+        let single = FilingStatus::Single;
+        // Connecticut: $70,000 of AGI of which $20,000 is benefits is under the $75,000 line.
+        let ct_without = y.income_tax("CT", single, m(50_000)).unwrap();
+        assert_eq!(ss("CT", single, 70_000, 20_000, &[70]), ct_without);
+        // Over the line the benefits are taxed again.
+        assert!(
+            ss("CT", single, 80_000, 20_000, &[70])
+                > y.income_tax("CT", single, m(60_000)).unwrap()
+        );
+        // Joint thresholds are higher.
+        assert!(
+            ss("NM", FilingStatus::MarriedJoint, 120_000, 30_000, &[70, 68])
+                == y.income_tax("NM", FilingStatus::MarriedJoint, m(90_000))
+                    .unwrap()
+        );
+    }
+
+    #[test]
+    fn colorado_and_montana_subtract_part_of_the_benefits() {
+        let y = StateTaxYear::y2026();
+        let t = |c: &str, fs, ben: i64, ages: &[i32]| {
+            y.income_tax_with_retirement(c, fs, m(100_000), m(ben), &ret(0, 0, ages))
+                .unwrap()
+        };
+        // Colorado: $30,000 of benefits at 66 is cut by $24,000.
+        let co = y
+            .income_tax("CO", FilingStatus::Single, m(100_000 - 24_000))
+            .unwrap();
+        assert_eq!(t("CO", FilingStatus::Single, 30_000, &[66]), co);
+        // Montana: $5,500 deduction for a single filer.
+        let mt = y
+            .income_tax("MT", FilingStatus::Single, m(100_000 - 5_500))
+            .unwrap();
+        assert_eq!(t("MT", FilingStatus::Single, 30_000, &[66]), mt);
     }
 
     #[test]
