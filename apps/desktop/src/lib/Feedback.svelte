@@ -1,7 +1,12 @@
 <script lang="ts">
-  // "Send feedback": stars, a category, the person's words and an optional reply address.
+  // "Send feedback": stars, a category, the person's words, an optional reply address and "Send anonymously".
+  // Golden has no account email, so the address last used here is remembered on this computer and filled in.
   // The desktop shell signs it and sends it to the High Turtle feedback service.
-  import { sendFeedback, type FeedbackInput, type Invoke } from "./api";
+  import { feedbackEmailOk, sendFeedback, type FeedbackInput, type Invoke } from "./api";
+
+  const EMAIL_KEY = "golden.feedback.email";
+  const remembered = () => { try { return localStorage.getItem(EMAIL_KEY) ?? ""; } catch { return ""; } };
+  const remember = (e: string) => { try { if (e) localStorage.setItem(EMAIL_KEY, e); } catch { /* storage off: fine */ } };
 
   let { invoke }: { invoke?: Invoke } = $props();
 
@@ -16,7 +21,8 @@
   let rating = $state(0);
   let category = $state<FeedbackInput["category"]>("feature");
   let message = $state("");
-  let email = $state("");
+  let email = $state(remembered());
+  let anonymous = $state(false);
   let busy = $state(false);
   let error = $state("");
   let sent = $state(false);
@@ -24,14 +30,20 @@
   let left = $derived(MAX - message.length);
 
   async function send() {
-    busy = true;
     error = "";
+    if (!anonymous && !feedbackEmailOk(email)) {
+      error = "That email address doesn’t look right. Fix it, clear it, or tick Send anonymously.";
+      return;
+    }
+    busy = true;
     try {
-      await sendFeedback({ rating: rating || null, category, message: message.trim(), email: email.trim() || null }, invoke);
+      const reply = anonymous ? null : email.trim() || null;
+      await sendFeedback({ rating: rating || null, category, message: message.trim(), email: reply, anonymous }, invoke);
+      if (reply) remember(reply);
       sent = true;
       rating = 0;
       message = "";
-      email = "";
+      anonymous = false;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -67,8 +79,9 @@
     <textarea id="fb-msg" rows="7" maxlength={MAX} bind:value={message} placeholder="A feature you'd like, a problem you hit, or anything else"></textarea>
     {#if left <= 500}<span class="muted" data-testid="feedback-left">{left} characters left</span>{/if}
 
-    <label class="lbl" for="fb-email">Email (optional, only if you'd like a reply)</label>
-    <input id="fb-email" type="email" autocomplete="email" bind:value={email} />
+    <label class="lbl" for="fb-email">Email (optional, so we can reply)</label>
+    <input id="fb-email" type="email" autocomplete="email" bind:value={email} disabled={anonymous} />
+    <label class="anon"><input type="checkbox" bind:checked={anonymous} /> Send anonymously (your email isn't sent)</label>
 
     {#if error}<p class="err" role="alert">{error}</p>{/if}
     <div><button type="button" class="send" onclick={send} disabled={busy || !ready}>{busy ? "Sending…" : "Send"}</button></div>
@@ -86,6 +99,9 @@
   .cats label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .cats input { accent-color: var(--charcoal); }
   textarea { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--paper); padding: 8px 12px; resize: vertical; }
+  .anon { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .anon input { accent-color: var(--charcoal); }
+  input[type="email"]:disabled { opacity: 0.5; }
   .err { color: var(--bad); }
   .send { border-color: var(--charcoal); background: var(--charcoal); color: var(--paper); }
   .send:disabled { opacity: 0.5; cursor: default; }

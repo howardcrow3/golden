@@ -1321,6 +1321,15 @@ export interface FeedbackInput {
   category: "feature" | "issue" | "praise" | "other";
   message: string;
   email: string | null;
+  /** "Send anonymously": no email is sent, and the service keeps none. */
+  anonymous: boolean;
+}
+
+const EMAIL_RE = /^[^\s@"<>()[\],;:\\]+@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+/** Blank, or an address in the shape the feedback service accepts (it checks again). */
+export function feedbackEmailOk(email: string): boolean {
+  const e = email.trim();
+  return !e || (e.length <= 254 && EMAIL_RE.test(e) && !/^\.|\.\.|\.@/.test(e));
 }
 
 /** True when this build can send feedback (it carries a feedback key). */

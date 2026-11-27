@@ -12,6 +12,9 @@ pub struct FeedbackInput {
     message: String,
     category: Option<String>,
     email: Option<String>,
+    /// "Send anonymously": no email is sent, and the service keeps none.
+    #[serde(default)]
+    anonymous: bool,
 }
 
 #[tauri::command]
@@ -24,7 +27,7 @@ pub async fn send_feedback(app: tauri::AppHandle, input: FeedbackInput) -> Resul
     let key = KEY.filter(|k| !k.trim().is_empty()).ok_or("Feedback isn't set up in this build of Golden.")?;
     let platform = if cfg!(target_os = "windows") { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" };
     let version = app.package_info().version.to_string();
-    let payload = body(input.rating, &input.message, input.category.as_deref(), input.email.as_deref(), &version, platform)?;
+    let payload = body(input.rating, &input.message, input.category.as_deref(), input.email.as_deref(), input.anonymous, &version, platform)?;
     tauri::async_runtime::spawn_blocking(move || {
         let ts = chrono::Utc::now().timestamp();
         let sig = sign(key, ts, &payload).ok_or("Feedback isn't set up correctly in this build of Golden.")?;
