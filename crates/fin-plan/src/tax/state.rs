@@ -79,6 +79,31 @@ pub struct RetirementExclusion {
     /// gets the cap of the highest `age` they have reached.
     #[serde(default)]
     pub caps: Vec<AgeCap>,
+    /// A household ceiling that depends on filing status and shrinks as income rises (New Jersey).
+    #[serde(default)]
+    pub household: Option<HouseholdCap>,
+}
+
+/// New Jersey style: once someone in the household is `min_age`, pension and IRA income up to the
+/// filing-status ceiling is left out while income is at or under `full_to`; above it only a
+/// share (by filing status) is, down to nothing over the last step.
+#[derive(Debug, Clone, Deserialize)]
+pub struct HouseholdCap {
+    pub min_age: u8,
+    pub cap_single: Money,
+    pub cap_joint: Money,
+    pub cap_separate: Money,
+    pub full_to: Money,
+    pub steps: Vec<IncomeStep>,
+}
+
+/// Income up to `to` leaves out these shares of the pension and withdrawals.
+#[derive(Debug, Clone, Deserialize)]
+pub struct IncomeStep {
+    pub to: Money,
+    pub single: f64,
+    pub joint: f64,
+    pub separate: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -200,6 +225,34 @@ impl RetirementExclusion {
             })
             .fold(zero, |a, b| a + b);
         out + cap.min(left_p + left_d)
+    }
+
+    /// The household-level exclusion for a return with `income` (before the exclusion).
+    pub fn household_excluded(
+        &self,
+        fs: FilingStatus,
+        income: Money,
+        inc: &RetirementIncome,
+    ) -> Money {
+        let Some(h) = &self.household else {
+            return Money::ZERO;
+        };
+        if !inc.ages.iter().any(|&a| a >= h.min_age as i32) {
+            return Money::ZERO;
+        }
+        let (cap, pick): (Money, fn(&IncomeStep) -> f64) = match fs {
+            FilingStatus::MarriedJoint => (h.cap_joint, |s| s.joint),
+            FilingStatus::MarriedSeparate => (h.cap_separate, |s| s.separate),
+            _ => (h.cap_single, |s| s.single),
+        };
+        let base = (inc.pension.max(Money::ZERO) + inc.distributions.max(Money::ZERO)).min(cap);
+        if income <= h.full_to {
+            return base;
+        }
+        match h.steps.iter().find(|s| income <= s.to) {
+            Some(step) => base.mul_rate(pick(step)),
+            None => Money::ZERO,
+        }
     }
 }
 
@@ -378,7 +431,9 @@ impl StateTaxYear {
             income = (income - a.total(fs, afagi, &ret.ages)).max(Money::ZERO);
         }
         if let Some(x) = &r.retirement {
-            income = (income - x.excluded(ret)).max(Money::ZERO);
+            let before = (federal_agi - ss).max(Money::ZERO);
+            income =
+                (income - x.excluded(ret) - x.household_excluded(fs, before, ret)).max(Money::ZERO);
         }
         self.income_tax(code, fs, income)
     }
@@ -570,6 +625,38 @@ mod tests {
         // $5,000 over the line cuts it to $7,000; $12,000 over removes it.
         assert_eq!(t(55_000, &[66]), base(48_000));
         assert_eq!(t(62_000, &[66]), base(62_000));
+    }
+
+    #[test]
+    fn new_jersey_pension_exclusion_shrinks_with_income() {
+        let y = StateTaxYear::y2026();
+        let x = y.rules("NJ").unwrap().retirement.clone().unwrap();
+        let ex = |fs, income: i64, pen: i64, ages: &[i32]| {
+            x.household_excluded(fs, m(income), &ret(pen, 0, ages))
+        };
+        let single = FilingStatus::Single;
+        let joint = FilingStatus::MarriedJoint;
+        assert_eq!(ex(single, 90_000, 60_000, &[63]), m(60_000));
+        assert_eq!(ex(single, 90_000, 90_000, &[63]), m(75_000));
+        assert_eq!(ex(joint, 90_000, 150_000, &[63, 50]), m(100_000));
+        // Too young, or over the limit.
+        assert_eq!(ex(single, 90_000, 60_000, &[61]), Money::ZERO);
+        assert_eq!(ex(single, 160_000, 60_000, &[63]), Money::ZERO);
+        // Steps: 37.5% of single, 50% of joint between $100,000 and $125,000.
+        assert_eq!(ex(single, 110_000, 40_000, &[63]), m(15_000));
+        assert_eq!(ex(joint, 110_000, 40_000, &[63]), m(20_000));
+        assert_eq!(ex(single, 140_000, 40_000, &[63]), m(7_500));
+    }
+
+    #[test]
+    fn louisiana_and_wisconsin_cap_retirement_income_by_age() {
+        let y = StateTaxYear::y2026();
+        let x = |c: &str| y.rules(c).unwrap().retirement.clone().unwrap();
+        assert_eq!(x("LA").excluded(&ret(0, 30_000, &[65])), m(12_000));
+        assert_eq!(x("LA").excluded(&ret(0, 30_000, &[64])), Money::ZERO);
+        assert_eq!(x("WI").excluded(&ret(0, 30_000, &[67])), m(24_000));
+        assert_eq!(x("WI").excluded(&ret(0, 80_000, &[67, 68])), m(48_000));
+        assert_eq!(x("WI").excluded(&ret(0, 30_000, &[66])), Money::ZERO);
     }
 
     #[test]
