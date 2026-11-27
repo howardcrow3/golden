@@ -90,6 +90,43 @@ impl Db {
             .optional()?)
     }
 
+    /// The text read from a document (empty when none could be read).
+    pub fn document_text(&self, id: i64) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row("SELECT body FROM document WHERE id = ?1", [id], |r| {
+                r.get(0)
+            })
+            .optional()?)
+    }
+
+    /// Match a receipt to the transaction it paid for, replacing any earlier match.
+    pub fn link_receipt(&self, document: i64, txn: i64) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO receipt_link(document_id, txn_id) VALUES (?1, ?2)",
+            [document, txn],
+        )?;
+        Ok(())
+    }
+
+    pub fn unlink_receipt(&self, document: i64) -> Result<bool> {
+        Ok(self.conn.execute(
+            "DELETE FROM receipt_link WHERE document_id = ?1",
+            [document],
+        )? > 0)
+    }
+
+    /// Every (document id, transaction id) match.
+    pub fn receipt_links(&self) -> Result<Vec<(i64, i64)>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT document_id, txn_id FROM receipt_link ORDER BY document_id")?;
+        let rows = st
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
     /// Whether a document was removed.
     pub fn delete_document(&self, id: i64) -> Result<bool> {
         Ok(self

@@ -8,6 +8,7 @@ pub mod ocr;
 pub mod ofx;
 pub mod paystub;
 pub mod pdf;
+pub mod receipt;
 pub mod ssa;
 
 use fin_core::{Money, NaiveDate};

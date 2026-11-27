@@ -1225,6 +1225,42 @@ export interface VaultDoc {
 export async function vaultAdd(name: string, bytes: Uint8Array, invoke?: Invoke): Promise<VaultDoc> {
   return (await (await resolve(invoke))("vault_add", { name, bytes: Array.from(bytes) })) as VaultDoc;
 }
+export interface ReceiptTxn {
+  id: number;
+  day: string;
+  payee: string;
+  cents: number;
+}
+
+export interface ReceiptItem {
+  documentId: number;
+  name: string;
+  merchant: string;
+  totalCents: number | null;
+  day: string | null;
+  /** linked, suggested, duplicate or unmatched */
+  status: string;
+  linked: ReceiptTxn | null;
+  candidates: ReceiptTxn[];
+}
+
+export interface ReceiptReport {
+  autoLinked: number;
+  items: ReceiptItem[];
+}
+
+export async function matchReceipts(invoke?: Invoke): Promise<ReceiptReport> {
+  return (await (await resolve(invoke))("match_receipts")) as ReceiptReport;
+}
+
+export async function linkReceipt(documentId: number, txnId: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("link_receipt", { documentId, txnId });
+}
+
+export async function unlinkReceipt(documentId: number, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("unlink_receipt", { documentId });
+}
+
 export async function vaultList(query: string, invoke?: Invoke): Promise<VaultDoc[]> {
   return (await (await resolve(invoke))("vault_list", { query })) as VaultDoc[];
 }

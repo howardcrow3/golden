@@ -99,6 +99,14 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX split_txn ON split(txn_id);
     "#,
+    // A receipt in the vault matched to the transaction it paid for.
+    r#"
+    CREATE TABLE receipt_link (
+        document_id INTEGER PRIMARY KEY REFERENCES document(id) ON DELETE CASCADE,
+        txn_id      INTEGER NOT NULL REFERENCES txn(id) ON DELETE CASCADE
+    );
+    CREATE INDEX receipt_link_txn ON receipt_link(txn_id);
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
