@@ -52,6 +52,10 @@ pub struct StateRules {
     /// What the state leaves out of income for pensions and withdrawals from pre-tax accounts.
     #[serde(default)]
     pub retirement: Option<RetirementExclusion>,
+    /// An age-based deduction on all income, reduced dollar for dollar above an income line
+    /// (Virginia).
+    #[serde(default)]
+    pub age_deduction: Option<AgeDeduction>,
     /// For states in `taxes_social_security`: when benefits are left out of state income.
     #[serde(default)]
     pub social_security: Option<SocialSecurityRule>,
@@ -81,6 +85,29 @@ pub struct RetirementExclusion {
 pub struct AgeCap {
     pub age: u8,
     pub cap: Money,
+}
+
+/// A deduction each person of `age` or older may take, cut by $1 for every $1 that income
+/// (federal AGI less taxable Social Security) is over the line.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgeDeduction {
+    pub age: u8,
+    pub amount: Money,
+    pub phase_start_single: Money,
+    pub phase_start_joint: Money,
+}
+
+impl AgeDeduction {
+    pub fn total(&self, fs: FilingStatus, income: Money, ages: &[i32]) -> Money {
+        let start = if fs == FilingStatus::MarriedJoint {
+            self.phase_start_joint
+        } else {
+            self.phase_start_single
+        };
+        let each = (self.amount - (income - start).max(Money::ZERO)).max(Money::ZERO);
+        let n = ages.iter().filter(|&&a| a >= self.age as i32).count() as i64;
+        Money::from_cents(each.cents() * n)
+    }
 }
 
 /// How a state that taxes Social Security leaves part of it out. Without a rule the whole
@@ -346,6 +373,10 @@ impl StateTaxYear {
             (None, true) => ss,
         };
         let mut income = (federal_agi - ss + ss_in_state).max(Money::ZERO);
+        if let Some(a) = &r.age_deduction {
+            let afagi = (federal_agi - ss).max(Money::ZERO);
+            income = (income - a.total(fs, afagi, &ret.ages)).max(Money::ZERO);
+        }
         if let Some(x) = &r.retirement {
             income = (income - x.excluded(ret)).max(Money::ZERO);
         }
@@ -517,6 +548,28 @@ mod tests {
             .income_tax("MT", FilingStatus::Single, m(100_000 - 5_500))
             .unwrap();
         assert_eq!(t("MT", FilingStatus::Single, 30_000, &[66]), mt);
+    }
+
+    #[test]
+    fn virginia_age_deduction_phases_out_by_income() {
+        let y = StateTaxYear::y2026();
+        let t = |agi: i64, ages: &[i32]| {
+            y.income_tax_with_retirement(
+                "VA",
+                FilingStatus::Single,
+                m(agi),
+                Money::ZERO,
+                &ret(0, 0, ages),
+            )
+            .unwrap()
+        };
+        let base = |agi: i64| y.income_tax("VA", FilingStatus::Single, m(agi)).unwrap();
+        // Under $50,000 the full $12,000 comes off at 65 and over, nothing at 64.
+        assert_eq!(t(40_000, &[66]), base(28_000));
+        assert_eq!(t(40_000, &[64]), base(40_000));
+        // $5,000 over the line cuts it to $7,000; $12,000 over removes it.
+        assert_eq!(t(55_000, &[66]), base(48_000));
+        assert_eq!(t(62_000, &[66]), base(62_000));
     }
 
     #[test]
