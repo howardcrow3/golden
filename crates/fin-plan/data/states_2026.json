@@ -33,7 +33,7 @@
    "std_joint": 1150000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 Form 40 booklet. Pensions from defined benefit plans (federal, state, military and employer plans under IRC 414(j)) are left out; IRA and 401(k) distributions are taxed. Social Security is not taxed. The standard deduction here is the amount for lower incomes combined with the personal exemption ($3,000 + $1,500 single; $8,500 + $3,000 joint). The booklet's table cuts it from AGI $26,000 to $35,500 (to $2,500 single and $5,000 joint); the data follows that as a straight line (std_phase_down).",
+   "notes": "Checked against the 2025 Form 40 booklet. Pensions from defined benefit plans (federal, state, military and employer plans under IRC 414(j)) are left out; IRA and 401(k) distributions are taxed. Social Security is not taxed. The standard deduction here is the amount for lower incomes combined with the personal exemption ($3,000 + $1,500 single; $8,500 + $3,000 joint). The booklet's table cuts it from AGI $26,000 to $35,500 (to $2,500 single and $5,000 joint); the data follows that as a straight line (std_phase_down). Federal income tax (after credits) is deducted in full.",
    "joint_brackets": [
     [
      0,
@@ -60,7 +60,8 @@
     "end_joint": 3550000,
     "floor_joint": 800000
    },
-   "military": {}
+   "military": {},
+   "federal_tax_deduction": {}
   },
   "AR": {
    "name": "Arkansas",
@@ -2821,7 +2822,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Government pensions (federal, state, local) are exempt up to $47,633 a person (the top Social Security benefit), less the Social Security exemption, with no income limit (MO-A Part 3 Section A); enter them as a government pension. The per-person limits and the joint line are applied to the household.",
+   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Government pensions (federal, state, local) are exempt up to $47,633 a person (the top Social Security benefit), less the Social Security exemption, with no income limit (MO-A Part 3 Section A); enter them as a government pension. The per-person limits and the joint line are applied to the household. Federal income tax is deducted at 35% to 5% of it by Missouri AGI (none over $125,000), up to $5,000 ($10,000 joint).",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2839,7 +2840,43 @@
     "public_pension_cap": 4763300,
     "public_less_ss_subtracted": true
    },
-   "military": {}
+   "military": {},
+   "federal_tax_deduction": {
+    "shares": [
+     [
+      0,
+      0.35
+     ],
+     [
+      2500001,
+      0.25
+     ],
+     [
+      5000001,
+      0.15
+     ],
+     [
+      10000001,
+      0.05
+     ],
+     [
+      12500001,
+      0.0
+     ]
+    ],
+    "limits_single": [
+     [
+      0,
+      500000
+     ]
+    ],
+    "limits_joint": [
+     [
+      0,
+      1000000
+     ]
+    ]
+   }
   },
   "MS": {
    "name": "Mississippi",
@@ -3426,7 +3463,7 @@
    "std_joint": 582000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption credit $256 per filer; the federal-tax subtraction is not modelled. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled.",
+   "notes": "Personal exemption credit $256 per filer; federal income tax is subtracted up to $8,500, a limit that steps down over federal AGI of $125,000 ($250,000 joint) to nothing at $145,000 ($290,000); 2025 Table 4 figures. Head of household filers use the single limits here. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3456,6 +3493,60 @@
     "income_limit_single": 2250000,
     "income_limit_joint": 4500000,
     "rate": 0.09
+   },
+   "federal_tax_deduction": {
+    "limits_single": [
+     [
+      0,
+      850000
+     ],
+     [
+      12500000,
+      680000
+     ],
+     [
+      13000000,
+      510000
+     ],
+     [
+      13500000,
+      340000
+     ],
+     [
+      14000000,
+      170000
+     ],
+     [
+      14500000,
+      0
+     ]
+    ],
+    "limits_joint": [
+     [
+      0,
+      850000
+     ],
+     [
+      25000000,
+      680000
+     ],
+     [
+      26000000,
+      510000
+     ],
+     [
+      27000000,
+      340000
+     ],
+     [
+      28000000,
+      170000
+     ],
+     [
+      29000000,
+      0
+     ]
+    ]
    }
   },
   "PA": {

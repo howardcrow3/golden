@@ -405,6 +405,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     .filter(|(p, _)| !p.is_dependent)
                     .map(|(_, (w, se))| *w + *se)
                     .collect(),
+                federal_tax: f.income_tax,
             };
             let st = states
                 .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
