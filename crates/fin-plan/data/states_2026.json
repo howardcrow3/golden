@@ -3537,10 +3537,14 @@
    "std_joint": 1670000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Same schedule for all filers. South Carolina deducts up to $10,000 of retirement income per person aged 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Military retirement income is deductible in full and reduces the retirement deduction.",
+   "notes": "Same schedule for all filers. South Carolina deducts up to $10,000 of retirement income per person aged 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Military retirement income is deductible in full and reduces the retirement deduction. Retirement deduction $3,000 a person, $10,000 from 65. From 65 each person also has a $15,000 deduction against any income, reduced by their retirement and military deductions (SC1040 lines p and q); applied for the household as a whole.",
    "retirement": {
     "min_age": 0,
     "caps": [
+     {
+      "age": 0,
+      "cap": 300000
+     },
      {
       "age": 65,
       "cap": 1000000
@@ -3549,6 +3553,10 @@
    },
    "military": {
     "reduces_retirement_caps": true
+   },
+   "age_floor": {
+    "age": 65,
+    "amount": 1500000
    }
   },
   "SD": {
