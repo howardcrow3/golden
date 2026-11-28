@@ -227,7 +227,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint); above that the federally taxable amount is used (the state caps it at 25% of benefits, so this errs high). Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint); above that the federally taxable amount is used (the state caps it at 25% of benefits, so this errs high). The $75,000 / $100,000 thresholds are checked against the 2025 CT-1040 instructions (Line 41, Rev. 12/25). The partial exemption above the line (Social Security Benefit Adjustment Worksheet) was not read.",
    "joint_brackets": [
     [
      0,
@@ -2669,7 +2669,7 @@
    "std_joint": 3060000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction phase-out at higher incomes is not modelled. Minnesota's Social Security subtraction is full below $84,490 (single) / $108,320 (joint) AGI and phases out above; here it is all or nothing. Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Standard deduction phase-out at higher incomes is not modelled. The $84,490 / $108,320 thresholds are checked against the Minnesota Department of Revenue's Social Security subtraction page (updated 2025-12-17), which also says the subtraction falls 10% for each $4,000 of AGI over them (modelled as a straight line over $40,000). A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law.",
    "joint_brackets": [
     [
      0,
@@ -2691,7 +2691,8 @@
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 8449000,
-    "exempt_agi_joint": 10832000
+    "exempt_agi_joint": 10832000,
+    "phaseout_width": 4000000
    }
   },
   "MO": {
@@ -2789,7 +2790,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Follows the federal standard deduction. Montana deducts $5,500 (single) / $11,000 (joint) of taxable Social Security. Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Follows the federal standard deduction. Checked against the 2025 Form 2 instructions and Schedule I: Montana has no Social Security subtraction (only Tier I railroad benefits, which are not taxed), so the federally taxable amount stays in income. Earlier data assumed a $5,500 / $11,000 deduction.",
    "joint_brackets": [
     [
      0,
@@ -2800,11 +2801,7 @@
      0.0565
     ]
    ],
-   "taxes_social_security": true,
-   "social_security": {
-    "deduction_single": 550000,
-    "deduction_joint": 1100000
-   }
+   "taxes_social_security": true
   },
   "NC": {
    "name": "North Carolina",
@@ -3557,7 +3554,7 @@
    "std_joint": 2590000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Vermont leaves Social Security out when AGI is at or below $55,000 (single) / $70,000 (joint), and phases it in above that; the full amount is used here. Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Checked against the 2025 Vermont income booklet (Retirement Income Exemption Worksheet): Social Security is fully exempt under $55,000 (single, head of household, separate) / $70,000 (joint) of Vermont AGI, and the exemption falls in a straight line to nothing at $65,000 / $80,000. The exemption is an either-or with the exemption for some government pensions, which is not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3583,7 +3580,8 @@
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 5500000,
-    "exempt_agi_joint": 7000000
+    "exempt_agi_joint": 7000000,
+    "phaseout_width": 1000000
    }
   },
   "WA": {
