@@ -141,13 +141,16 @@ impl App {
                                 .unwrap_or(true)
                     })
             });
-            if dup {
+            // A copy with no charge left for it is a duplicate. With an unclaimed charge that
+            // fits it may be a second identical purchase (two coffees), so it is offered to
+            // confirm rather than flagged or linked on a guess.
+            if dup && cands.is_empty() {
                 item.status = "duplicate".into();
                 items.push(item);
                 continue;
             }
             item.candidates = cands.iter().map(|t| tref(t)).collect();
-            if let [only] = cands.as_slice() {
+            if let (false, [only]) = (dup, cands.as_slice()) {
                 let certain = r.day == Some(only.day) || same_payee(&r.merchant, &only.payee);
                 if certain && r.day.is_some() {
                     db.link_receipt(d.id, only.id).map_err(|e| e.to_string())?;

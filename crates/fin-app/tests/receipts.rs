@@ -147,3 +147,32 @@ fn wrong_amount_or_date_is_not_matched() {
     let r = a.match_receipts().unwrap();
     assert!(r.items.iter().all(|i| i.status == "unmatched"));
 }
+
+#[test]
+fn a_second_receipt_for_a_second_identical_purchase_is_not_a_duplicate() {
+    let mut a = app();
+    // Two real coffees on the same day, and a receipt for each.
+    a.import_statement(
+        b"Date,Description,Amount\n10/17/2026,CORNER CAFE,-4.50\n10/17/2026,CORNER CAFE,-4.50\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    let morning = receipt("Corner Cafe", "10/17/2026", "4.50");
+    let afternoon = morning.replace("4:32 PM", "3:05 PM");
+    let one = a.vault_add("am.txt", morning.as_bytes()).unwrap();
+    a.vault_add("pm.txt", afternoon.as_bytes()).unwrap();
+    let first = a.match_receipts().unwrap();
+    let pick = first.items[0].candidates[0].id;
+    a.link_receipt(one.id, pick).unwrap();
+    let r = a.match_receipts().unwrap();
+    let second = &r.items[1];
+    // The other charge is still unclaimed, so the second receipt is offered it.
+    assert_ne!(second.status, "duplicate");
+    let other: Vec<i64> = second.candidates.iter().map(|c| c.id).collect();
+    let linked = second.linked.as_ref().map(|t| t.id);
+    assert!(
+        linked.is_some_and(|id| id != pick) || (other.len() == 1 && other[0] != pick),
+        "{second:?}"
+    );
+}
