@@ -120,7 +120,7 @@ export const TERMS: TermsSection[] = [
   {
     heading: "15. Governing law",
     paragraphs: [
-      "Golden is sold only in the United States. These terms are governed by the laws of the State of [STATE], without regard to its conflict of law rules, and any dispute will be decided in the state or federal courts located in [STATE], unless the law where you live requires otherwise.",
+      "Golden is sold only in the United States. These terms are governed by the laws of the State of Washington, without regard to its conflict of law rules, and any dispute will be decided in the state or federal courts located in the State of Washington, unless the law where you live requires otherwise.",
     ],
   },
   {
