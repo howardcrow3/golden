@@ -535,11 +535,13 @@ impl Interpreter for RuleInterpreter {
             }
         }
 
-        if t.contains("move to ") || t.contains("moving to ") || t.contains("relocate to ") {
-            let after = t
-                .split("to ")
-                .nth(1)
-                .unwrap_or("")
+        // Read the words right after the moving phrase, not after the first "to " in the
+        // sentence ("I want to move to Florida").
+        if let Some(after) = ["move to ", "moving to ", "relocate to "]
+            .iter()
+            .find_map(|m| t.find(m).map(|i| &t[i + m.len()..]))
+        {
+            let after = after
                 .trim_matches(|c: char| !c.is_alphanumeric() && c != ' ')
                 .to_string();
             let named = STATES

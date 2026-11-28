@@ -236,3 +236,21 @@ fn absurdly_large_amounts_are_not_understood() {
     assert_eq!(parse_amount("$1e30"), None);
     assert!(interpret("spend $1e30 a year").is_empty());
 }
+
+#[test]
+fn moving_is_understood_when_to_appears_earlier_in_the_sentence() {
+    for t in [
+        "I want to move to Florida",
+        "what if we decide to relocate to Texas",
+    ] {
+        assert!(
+            matches!(interpret(t).as_slice(), [Change::MoveTo { .. }]),
+            "{t}: {:?}",
+            interpret(t)
+        );
+    }
+    assert_eq!(
+        interpret("I want to move to Florida"),
+        vec![Change::MoveTo { state: "FL".into() }]
+    );
+}
