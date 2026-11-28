@@ -79,7 +79,7 @@
    "std_joint": 494000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Top rate is 3.7% (H.B. 1001, retroactive to Jan 1, 2026). Bracket widths use 2025 amounts; the Department of Finance's 2026 widths are not confirmed here. Arkansas excludes up to $6,000 of pension and retirement income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Top rate is 3.7% (H.B. 1001, retroactive to Jan 1, 2026). Bracket widths use 2025 amounts; the Department of Finance's 2026 widths are not confirmed here. Arkansas excludes up to $6,000 of pension and retirement income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Military retired pay is exempt (Act 141 of 2017) and uses up the $6,000 retirement exemption.",
    "credit_single": 2900,
    "credit_joint": 5800,
    "retirement": {
@@ -90,6 +90,9 @@
       "cap": 600000
      }
     ]
+   },
+   "military": {
+    "reduces_retirement_caps": true
    }
   },
   "AZ": {
@@ -105,7 +108,8 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read."
+   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read.",
+   "military": {}
   },
   "CA": {
    "name": "California",
@@ -2147,7 +2151,7 @@
    "std_joint": 650000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal credit $110 per filer. Delaware excludes up to $12,500 of pension and retirement income per person aged 60 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Personal credit $110 per filer. Delaware excludes up to $12,500 of pension and retirement income per person aged 60 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Under 60, a military pension exclusion of up to $12,500; from 60 it falls under the pension exclusion.",
    "credit_single": 11000,
    "credit_joint": 22000,
    "retirement": {
@@ -2158,6 +2162,10 @@
       "cap": 1250000
      }
     ]
+   },
+   "military": {
+    "max_age": 59,
+    "per_person_cap": 1250000
    }
   },
   "FL": {
@@ -2183,7 +2191,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Georgia excludes up to $35,000 of retirement income per person aged 62 to 64 and $65,000 at 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Georgia excludes up to $35,000 of retirement income per person aged 62 to 64 and $65,000 at 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Retirees under 62 exclude up to $17,500 of military retirement income (the extra $17,500 for those with Georgia earned income is not modelled); from 62 it falls under the retirement exclusion.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2196,6 +2204,10 @@
       "cap": 6500000
      }
     ]
+   },
+   "military": {
+    "max_age": 61,
+    "per_person_cap": 1750000
    }
   },
   "HI": {
@@ -2385,7 +2397,8 @@
    "std_joint": 200000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "",
+   "military": {}
   },
   "KS": {
    "name": "Kansas",
@@ -2539,7 +2552,7 @@
    "std_joint": 1310000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction and rate schedule match the Comptroller Tax Alert on the 2025 legislative session (rev. Dec 22, 2025): flat $3,350 single / $6,700 joint plus the $3,200 exemption per person, with new 6.25% and 6.5% top brackets. Not modelled: exemption phase-out at higher incomes; county income tax is not included. Pension exclusion (Worksheet 13A, 2025): up to $41,200 of employer plan pension and annuity income per person 65 or older, less the Social Security and railroad retirement benefits received. IRA withdrawals do not qualify, so only pension streams are counted; all benefits are deducted from the ceiling even when only one spouse has a pension. Disability, military and public safety exclusions are not modelled.",
+   "notes": "Standard deduction and rate schedule match the Comptroller Tax Alert on the 2025 legislative session (rev. Dec 22, 2025): flat $3,350 single / $6,700 joint plus the $3,200 exemption per person, with new 6.25% and 6.5% top brackets. Not modelled: exemption phase-out at higher incomes; county income tax is not included. Pension exclusion (Worksheet 13A, 2025): up to $41,200 of employer plan pension and annuity income per person 65 or older, less the Social Security and railroad retirement benefits received. IRA withdrawals do not qualify, so only pension streams are counted; all benefits are deducted from the ceiling even when only one spouse has a pension. Disability, military and public safety exclusions are not modelled. Military retirement income: up to $12,500 under 55 and $20,000 from 55, each.",
    "joint_brackets": [
     [
      0,
@@ -2590,6 +2603,18 @@
      {
       "age": 65,
       "cap": 4120000
+     }
+    ]
+   },
+   "military": {
+    "age_caps": [
+     {
+      "age": 0,
+      "cap": 1250000
+     },
+     {
+      "age": 55,
+      "cap": 2000000
      }
     ]
    }
@@ -2742,7 +2767,8 @@
     "exempt_agi_joint": 10832000,
     "phaseout_width": 4000000,
     "phaseout_step": 400000
-   }
+   },
+   "military": {}
   },
   "MO": {
    "name": "Missouri",
@@ -2868,7 +2894,8 @@
    "std_joint": 2550000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Uniformed services retirement pay is deducted in full (Schedule S line 21; needs 20 years of service or a medical retirement).",
+   "military": {}
   },
   "ND": {
    "name": "North Dakota",
@@ -2905,7 +2932,8 @@
      29807500,
      0.025
     ]
-   ]
+   ],
+   "military": {}
   },
   "NE": {
    "name": "Nebraska",
@@ -2944,7 +2972,8 @@
     ]
    ],
    "credit_single": 17600,
-   "credit_joint": 35200
+   "credit_joint": 35200,
+   "military": {}
   },
   "NH": {
    "name": "New Hampshire",
@@ -3051,7 +3080,8 @@
       }
      ]
     }
-   }
+   },
+   "military": {}
   },
   "NM": {
    "name": "New Mexico",
@@ -3358,7 +3388,8 @@
       "cap": 1000000
      }
     ]
-   }
+   },
+   "military": {}
   },
   "OR": {
    "name": "Oregon",
@@ -3501,7 +3532,7 @@
    "std_joint": 1670000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Same schedule for all filers. South Carolina deducts up to $10,000 of retirement income per person aged 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Same schedule for all filers. South Carolina deducts up to $10,000 of retirement income per person aged 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Military retirement income is deductible in full and reduces the retirement deduction.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -3510,6 +3541,9 @@
       "cap": 1000000
      }
     ]
+   },
+   "military": {
+    "reduces_retirement_caps": true
    }
   },
   "SD": {
@@ -3599,12 +3633,15 @@
    "std_joint": 1750000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled.",
+   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled. Military benefits subtraction of up to $40,000 each.",
    "age_deduction": {
     "age": 65,
     "amount": 1200000,
     "phase_start_single": 5000000,
     "phase_start_joint": 7500000
+   },
+   "military": {
+    "per_person_cap": 4000000
    }
   },
   "VT": {
@@ -3731,7 +3768,8 @@
       "cap": 2400000
      }
     ]
-   }
+   },
+   "military": {}
   },
   "WV": {
    "name": "West Virginia",
