@@ -167,7 +167,7 @@
    "std_joint": 1180000,
    "joint_multiplier": 2.0,
    "approximate": false,
-   "notes": "2026 rate schedules, standard deduction ($5,900 single, $11,800 joint and head of household) and personal exemption credits ($158 / $316) from FTB Tax News, October 2026. Includes the 1% mental health surcharge on taxable income over $1 million for every filing status. Not modelled: the extra $158 senior exemption credit at 65 and the exemption credit phase-out at high incomes.",
+   "notes": "2026 rate schedules, standard deduction ($5,900 single, $11,800 joint and head of household) and personal exemption credits ($158 / $316) from FTB Tax News, October 2026. Includes the 1% mental health surcharge on taxable income over $1 million for every filing status. Each person 65 or older gets a further $158 senior exemption credit. Not modelled: the exemption credit phase-out at high incomes.",
    "joint_brackets": [
     [
      0,
@@ -254,7 +254,8 @@
    ],
    "std_head": 1180000,
    "credit_single": 15800,
-   "credit_joint": 31600
+   "credit_joint": 31600,
+   "aged_credit": 15800
   },
   "CO": {
    "name": "Colorado",
@@ -2592,7 +2593,7 @@
    "std_joint": 336000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,360 for 2026 (Tax Foundation 2026 table; $3,270 in 2025). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check.",
+   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,360 for 2026 (Tax Foundation 2026 table; $3,270 in 2025). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check. Each person 65 or older gets a $40 personal tax credit (Schedule ITC).",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2601,7 +2602,8 @@
       "cap": 3111000
      }
     ]
-   }
+   },
+   "aged_credit": 4000
   },
   "LA": {
    "name": "Louisiana",

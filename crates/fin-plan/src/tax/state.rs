@@ -187,6 +187,10 @@ pub struct StateRules {
     pub aged_extra_single: Money,
     #[serde(default)]
     pub aged_extra_joint: Money,
+    /// A tax credit for each person 65 or older (California's senior exemption credit,
+    /// Kentucky's personal tax credit).
+    #[serde(default)]
+    pub aged_credit: Money,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -1218,6 +1222,7 @@ impl StateTaxYear {
         // Utah allows the Social Security and military credits together, or the birth-year
         // retirement credit instead of both.
         credit += military_credit;
+        credit += Money::from_cents(r.aged_credit.cents() * aged_n);
         if let Some(c) = &r.birth_year_credit {
             // One or the other: the household takes whichever is larger.
             credit = credit.max(c.total(fs, federal_agi, &ret.birth_years));
@@ -1794,6 +1799,22 @@ mod tests {
     }
 
     #[test]
+    fn california_and_kentucky_give_a_credit_at_65() {
+        let y = StateTaxYear::y2026();
+        let go = |c: &str, fs, ages: &[i32]| {
+            y.income_tax_with_retirement(c, fs, m(80_000), Money::ZERO, &ret(0, 0, ages))
+                .unwrap()
+        };
+        let joint = FilingStatus::MarriedJoint;
+        for (c, each) in [("CA", 158), ("KY", 40)] {
+            let plain = y.income_tax(c, joint, m(80_000)).unwrap();
+            assert_eq!(go(c, joint, &[60, 62]), plain, "{c}");
+            assert_eq!(go(c, joint, &[66, 62]), plain - m(each), "{c}");
+            assert_eq!(go(c, joint, &[66, 70]), plain - m(2 * each), "{c}");
+        }
+    }
+
+    #[test]
     fn states_add_an_extra_deduction_at_65() {
         let y = StateTaxYear::y2026();
         let go = |c: &str, fs: FilingStatus, agi: i64, ages: &[i32]| {
@@ -1833,8 +1854,8 @@ mod tests {
         );
         // Other states do not add it.
         assert_eq!(
-            go("CA", single, 80_000, &[70]),
-            y.income_tax("CA", single, m(80_000)).unwrap()
+            go("NC", single, 80_000, &[70]),
+            y.income_tax("NC", single, m(80_000)).unwrap()
         );
     }
 
@@ -2046,7 +2067,7 @@ mod tests {
         // Kansas: government pensions out, everything else taxed.
         assert_eq!(go("KS", 80_000, 40_000, 30_000, 0, 66), plain("KS", 50_000));
         // A state without the rule treats it like any pension.
-        assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 66), plain("CA", 80_000));
+        assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 64), plain("CA", 80_000));
     }
 
     #[test]
@@ -2087,7 +2108,7 @@ mod tests {
         );
         // California has no such rule.
         assert_eq!(
-            go("CA", single, 80_000, 0, 30_000, &[30_000], &[66]),
+            go("CA", single, 80_000, 0, 30_000, &[30_000], &[64]),
             plain("CA", single, 80_000)
         );
         // Idaho: nothing before 62.
@@ -2579,7 +2600,8 @@ mod tests {
     #[test]
     fn a_state_without_a_rule_taxes_everything() {
         let y = StateTaxYear::y2026();
-        let r = ret(20_000, 30_000, &[70]);
+        // Age 64, so California's senior credit stays out of it.
+        let r = ret(20_000, 30_000, &[64]);
         let plain = y
             .income_tax_with_ss("CA", FilingStatus::Single, m(50_000), Money::ZERO)
             .unwrap();
