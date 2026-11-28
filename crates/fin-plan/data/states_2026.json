@@ -2155,12 +2155,16 @@
    "std_joint": 650000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal credit $110 per filer. Delaware excludes up to $12,500 of pension and retirement income per person aged 60 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Under 60, a military pension exclusion of up to $12,500; from 60 it falls under the pension exclusion.",
+   "notes": "Personal credit $110 per filer. Delaware excludes up to $12,500 of pension and retirement income per person aged 60 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Under 60, a military pension exclusion of up to $12,500; from 60 it falls under the pension exclusion. Under 60 the pension exclusion is $2,000 (or $12,500 for a military pension, not both); the $2,000 is applied to any retirement income, though IRA money taken early does not qualify.",
    "credit_single": 11000,
    "credit_joint": 22000,
    "retirement": {
     "min_age": 0,
     "caps": [
+     {
+      "age": 0,
+      "cap": 200000
+     },
      {
       "age": 60,
       "cap": 1250000
@@ -2169,7 +2173,8 @@
    },
    "military": {
     "max_age": 59,
-    "per_person_cap": 1250000
+    "per_person_cap": 1250000,
+    "reduces_retirement_caps": true
    }
   },
   "FL": {

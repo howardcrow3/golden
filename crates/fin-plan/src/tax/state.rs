@@ -1311,6 +1311,7 @@ mod tests {
         assert_eq!(x("NY").excluded(&ret(30_000, 0, &[58])), Money::ZERO);
         assert_eq!(x("NY").excluded(&ret(30_000, 0, &[60])), m(20_000));
         assert_eq!(x("DE").excluded(&ret(0, 20_000, &[61])), m(12_500));
+        assert_eq!(x("DE").excluded(&ret(20_000, 0, &[50])), m(2_000));
         // Georgia steps up at 65; South Carolina from $3,000 to $10,000 at 65.
         assert_eq!(x("GA").excluded(&ret(0, 100_000, &[63])), m(35_000));
         assert_eq!(x("GA").excluded(&ret(0, 100_000, &[65])), m(65_000));
