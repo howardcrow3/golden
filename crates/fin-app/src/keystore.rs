@@ -51,13 +51,14 @@ mod private {
     /// missing (and the file is already encrypted) this fails rather than starting empty.
     pub fn open_private(path: &Path, store: &dyn KeyStore) -> Result<Db, String> {
         let existing = path.exists();
-        let (key, created) = key_or_create(store)?;
-        if existing {
-            if Db::is_plain_file(path) {
-                Db::encrypt_plain_file(path, &key).map_err(|e| e.to_string())?;
-            } else if created {
-                return Err("The encryption key for your data is missing from the system keychain, so the existing database cannot be opened. Restore the key or move the file aside to start fresh.".into());
-            }
+        // Check before creating a key: a fresh key can never open an encrypted file, and saving
+        // it would leave a wrong key where the real one belongs.
+        if existing && !Db::is_plain_file(path) && store.get()?.is_none() {
+            return Err("The encryption key for your data is missing from the system keychain, so the existing database cannot be opened. Restore the key or move the file aside to start fresh.".into());
+        }
+        let (key, _) = key_or_create(store)?;
+        if existing && Db::is_plain_file(path) {
+            Db::encrypt_plain_file(path, &key).map_err(|e| e.to_string())?;
         }
         Db::open_encrypted(path, &key).map_err(|e| e.to_string())
     }
