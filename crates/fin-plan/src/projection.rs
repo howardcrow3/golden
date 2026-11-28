@@ -318,7 +318,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         };
 
         // Money needed after tax; withdrawals are grossed up by iterating (tax depends on withdrawals).
-        let retired = wages == Money::ZERO;
+        // A pension, an annuity or rental income is not a wage: its owner is still retired.
+        let retired = wages - exempt == Money::ZERO;
         let portfolio = acc.total();
         if retired {
             match input.spending_rule {
@@ -1446,5 +1447,32 @@ mod review_tests {
             p.final_accounts.traditional,
             Money::from_dollars(600_000 + 23_500)
         );
+    }
+
+    #[test]
+    fn a_pension_does_not_stop_retirement_spending_rules() {
+        let mut i = couple();
+        i.streams[0].start_year = 2000;
+        i.streams[0].end_year = 2000;
+        i.streams.push(IncomeStream {
+            label: "pension".into(),
+            person: 0,
+            annual_gross: Money::from_dollars(10_000),
+            start_year: 2026,
+            end_year: 2100,
+            traditional_contribution: Money::ZERO,
+            self_employed: false,
+            payroll_exempt: true,
+            pension: true,
+            employer_match: Money::ZERO,
+            hsa: Money::ZERO,
+        });
+        i.spending_rule = SpendingRule::PercentOfPortfolio {
+            rate: 0.04,
+            floor: Money::ZERO,
+        };
+        let p = project(&i, &|_| 0.0);
+        // 4% of the $900,000 portfolio, not the fixed $110,000.
+        assert_eq!(p.rows[0].spending, Money::from_dollars(36_000));
     }
 }
