@@ -121,9 +121,17 @@ const MIGRATIONS: &[&str] = &[
     "#,
 ];
 
-pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
-    let current: usize =
-        conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? as usize;
+pub fn run(conn: &mut Connection) -> crate::Result<()> {
+    let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    // A newer build changed the schema in ways this one doesn't know; writing to it could
+    // damage the data, so stop before touching anything.
+    if version > latest_version() {
+        return Err(crate::DbError::Invalid(format!(
+            "This data was saved by a newer version of Golden (database version {version}; this copy reads up to {}). Update Golden to open it.",
+            latest_version()
+        )));
+    }
+    let current = version.max(0) as usize;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
         let tx = conn.transaction()?;
         tx.execute_batch(sql)?;
@@ -149,6 +157,20 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(v, latest_version());
+    }
+
+    #[test]
+    fn a_database_from_a_newer_golden_is_refused() {
+        let mut c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "user_version", latest_version() + 1)
+            .unwrap();
+        let err = run(&mut c).unwrap_err().to_string();
+        assert!(err.contains("newer version of Golden"), "{err}");
+        // Nothing was changed.
+        let v: i64 = c
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, latest_version() + 1);
     }
 
     #[test]
