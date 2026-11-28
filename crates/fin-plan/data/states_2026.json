@@ -108,8 +108,12 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read.",
-   "military": {}
+   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read. Up to $2,500 of government pension each is subtracted (Form 140 line 29a); only federal and Arizona public plans qualify, which is not told apart here.",
+   "military": {},
+   "retirement": {
+    "min_age": 0,
+    "public_pension_cap": 250000
+   }
   },
   "CA": {
    "name": "California",
