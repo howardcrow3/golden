@@ -25,6 +25,7 @@ fn bank(
         pending,
         replaces: None,
         category: None,
+        item: String::new(),
     }
 }
 
@@ -255,4 +256,41 @@ fn a_posted_line_replaces_its_pending_one_and_keeps_the_chosen_category() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].category.as_deref(), Some("Gas"));
     assert_eq!(rows[0].day, d("2026-11-03"));
+}
+
+#[test]
+fn lines_saved_before_connections_were_recorded_still_match_a_second_connection() {
+    let (mut db, a) = setup();
+    db.link_bank_account("pa1", "item-1", a).unwrap();
+    db.apply_bank_changes(&[bank("t1", a, "2026-11-02", -1250, false)], &[])
+        .unwrap();
+    // Only one connection feeds the account, so the old line is known to be item-1's.
+    assert_eq!(db.tag_bank_lines().unwrap(), 1);
+    db.link_bank_account("pb1", "item-2", a).unwrap();
+    let mut copy = bank("n1", a, "2026-11-02", -1250, false);
+    copy.item = "item-2".into();
+    let s = db.apply_bank_changes(&[copy], &[]).unwrap();
+    assert_eq!((s.added, s.updated), (0, 1));
+    assert_eq!(db.txn_count().unwrap(), 1);
+    // Unlinking the first connection keeps the line the second one now reports.
+    db.unlink_bank_item("item-1").unwrap();
+    assert_eq!(db.txn_count().unwrap(), 1);
+}
+
+#[test]
+fn an_untraceable_old_line_is_never_taken_as_a_copy() {
+    let (mut db, a) = setup();
+    db.link_bank_account("pa1", "item-1", a).unwrap();
+    db.link_bank_account("pb1", "item-2", a).unwrap();
+    db.apply_bank_changes(&[bank("t1", a, "2026-11-02", -1250, false)], &[])
+        .unwrap();
+    assert_eq!(
+        db.tag_bank_lines().unwrap(),
+        0,
+        "two connections: origin unknown"
+    );
+    let mut other = bank("n1", a, "2026-11-02", -1250, false);
+    other.item = "item-2".into();
+    db.apply_bank_changes(&[other], &[]).unwrap();
+    assert_eq!(db.txn_count().unwrap(), 2);
 }

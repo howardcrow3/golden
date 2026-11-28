@@ -24,6 +24,20 @@ pub struct BankTxn {
     /// category you chose for it carries over.
     pub replaces: Option<String>,
     pub category: Option<String>,
+    /// The bank connection (Plaid item) that sent the line; empty when unknown. A second
+    /// connection to the same bank sends the same history under new ids, and this is how
+    /// those copies are told apart from genuine repeats.
+    pub item: String,
+}
+
+/// The stored key of a bank line: `bank|<item>|<id>`, or `bank|<id>` for lines saved before
+/// the connection was recorded.
+fn bank_key(item: &str, external_id: &str) -> String {
+    if item.is_empty() {
+        format!("bank|{external_id}")
+    } else {
+        format!("bank|{item}|{external_id}")
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -61,18 +75,46 @@ impl Db {
             .map(AccountId))
     }
 
+    /// The Golden accounts a bank item feeds.
+    pub fn bank_item_accounts(&self, item_id: &str) -> Result<Vec<AccountId>> {
+        let mut st = self.conn.prepare(
+            "SELECT DISTINCT account_id FROM bank_account WHERE item_id=?1 ORDER BY account_id",
+        )?;
+        let it = st.query_map([item_id], |r| r.get::<_, i64>(0).map(AccountId))?;
+        Ok(it.collect::<std::result::Result<_, rusqlite::Error>>()?)
+    }
+
     /// Forget a bank item's account links and delete the lines it synced (unlinking a bank).
     pub fn unlink_bank_item(&self, item_id: &str) -> Result<usize> {
         // All or nothing: a still-linked bank with its lines gone would sync them back in.
+        self.tag_bank_lines()?;
         let tx = self.conn.unchecked_transaction()?;
+        // This connection's own lines, and older lines of unknown origin in its accounts. Lines
+        // another connection to the same bank now reports stay.
         let n = tx.execute(
-            "DELETE FROM txn WHERE external_id IS NOT NULL AND account_id IN
-               (SELECT account_id FROM bank_account WHERE item_id=?1)",
-            [item_id],
+            "DELETE FROM txn WHERE external_id IS NOT NULL AND (
+               substr(dedupe_key, 1, length(?2)) = ?2
+               OR (dedupe_key = 'bank|' || external_id AND account_id IN
+                    (SELECT account_id FROM bank_account WHERE item_id=?1)))",
+            params![item_id, format!("bank|{item_id}|")],
         )?;
         tx.execute("DELETE FROM bank_account WHERE item_id=?1", [item_id])?;
         tx.commit()?;
         Ok(n)
+    }
+
+    /// Record which connection older bank lines came from, where that is certain: the line's
+    /// account is fed by exactly one connection.
+    pub fn tag_bank_lines(&self) -> Result<usize> {
+        Ok(self.conn.execute(
+            "UPDATE txn SET dedupe_key = 'bank|' ||
+                 (SELECT min(item_id) FROM bank_account b WHERE b.account_id = txn.account_id)
+                 || '|' || external_id
+             WHERE external_id IS NOT NULL AND dedupe_key = 'bank|' || external_id
+               AND (SELECT count(DISTINCT item_id) FROM bank_account b
+                    WHERE b.account_id = txn.account_id) = 1",
+            [],
+        )?)
     }
 
     /// Apply one sync's changes atomically. An id seen before is updated (its category, which the
@@ -131,6 +173,44 @@ impl Db {
                 )?;
                 continue;
             }
+            // The same line already came in through another connection to this bank (the bank
+            // was connected twice): take that copy over instead of counting it again. Each copy
+            // is taken once, and lines from the same connection never match, so genuine repeats
+            // (two identical coffees) all stay.
+            let replaces_present = match &t.replaces {
+                Some(old) => tx
+                    .query_row("SELECT 1 FROM txn WHERE external_id=?1", [old], |_| Ok(()))
+                    .optional()?
+                    .is_some(),
+                None => false,
+            };
+            if !t.item.is_empty() && !replaces_present {
+                let own = format!("bank|{}|", t.item);
+                let copy: Option<i64> = tx
+                    .query_row(
+                        "SELECT id FROM txn WHERE account_id=?1 AND day=?2 AND cents=?3 AND payee=?4
+                           AND external_id IS NOT NULL AND dedupe_key LIKE 'bank|%|%'
+                           AND substr(dedupe_key, 1, length(?5)) != ?5
+                         ORDER BY id LIMIT 1",
+                        params![t.account.0, t.day, t.amount.cents(), t.payee, own],
+                        |r| r.get(0),
+                    )
+                    .optional()?;
+                if let Some(id) = copy {
+                    tx.execute(
+                        "UPDATE txn SET external_id=?2, dedupe_key=?3, memo=?4, pending=?5 WHERE id=?1",
+                        params![
+                            id,
+                            t.external_id,
+                            bank_key(&t.item, &t.external_id),
+                            t.memo,
+                            t.pending
+                        ],
+                    )?;
+                    sum.updated += 1;
+                    continue;
+                }
+            }
             // A pending line that has posted: take over its category, then drop it.
             let inherited: Option<i64> = match &t.replaces {
                 Some(old) => {
@@ -181,7 +261,7 @@ impl Db {
                     t.payee,
                     t.memo,
                     cat,
-                    format!("bank|{}", t.external_id),
+                    bank_key(&t.item, &t.external_id),
                     t.external_id,
                     t.pending
                 ],

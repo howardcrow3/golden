@@ -153,7 +153,38 @@ impl App {
             status: "active".into(),
         });
         self.save_bank_items(&items)?;
-        self.bank_sync(t, secrets, &ex.item_id)
+        let report = self.bank_sync(t, secrets, &ex.item_id)?;
+        self.pause_replaced_items(&ex.item_id)?;
+        Ok(report)
+    }
+
+    /// The bank was connected again without unlinking the old connection: every account the
+    /// old one feeds is now fed by `new_item` too. Pause the old one, so the two don't keep
+    /// trading the same lines; it can still be unlinked (which keeps the lines the new one has).
+    fn pause_replaced_items(&self, new_item: &str) -> Result<(), String> {
+        let new_accounts = self
+            .db
+            .bank_item_accounts(new_item)
+            .map_err(|e| e.to_string())?;
+        let mut items = self.bank_items()?;
+        let mut changed = false;
+        for i in items
+            .iter_mut()
+            .filter(|i| i.item_id != new_item && i.status == "active")
+        {
+            let old = self
+                .db
+                .bank_item_accounts(&i.item_id)
+                .map_err(|e| e.to_string())?;
+            if !old.is_empty() && old.iter().all(|a| new_accounts.contains(a)) {
+                i.status = "paused".into();
+                changed = true;
+            }
+        }
+        if changed {
+            self.save_bank_items(&items)?;
+        }
+        Ok(())
     }
 
     /// Pull what changed at one bank since the last sync.
@@ -195,6 +226,9 @@ impl App {
         };
 
         let institution = items[at].institution.clone();
+        // Before this item's accounts are linked (which may share a Golden account with another
+        // connection to the same bank), note which connection older lines came from.
+        self.db.tag_bank_lines().map_err(|e| e.to_string())?;
         for a in &changes.accounts {
             let mask = a
                 .mask
@@ -209,6 +243,30 @@ impl App {
             self.db
                 .link_bank_account(&a.account_id, item_id, id)
                 .map_err(|e| e.to_string())?;
+        }
+
+        // A line for an account Plaid did not describe still gets a home: the cursor moves past
+        // every line in this sync, so a line left out now would never be sent again.
+        for m in changes.added.iter().chain(changes.modified.iter()) {
+            if self
+                .db
+                .bank_account(&m.account_id)
+                .map_err(|e| e.to_string())?
+                .is_none()
+            {
+                let tail: String = {
+                    let chars: Vec<char> = m.account_id.chars().collect();
+                    chars[chars.len().saturating_sub(4)..].iter().collect()
+                };
+                let name = format!("{institution} account {tail}").trim().to_string();
+                let id = self
+                    .db
+                    .find_or_add_account(&name, "other")
+                    .map_err(|e| e.to_string())?;
+                self.db
+                    .link_bank_account(&m.account_id, item_id, id)
+                    .map_err(|e| e.to_string())?;
+            }
         }
 
         let mut report = BankSyncReport::default();
@@ -234,6 +292,7 @@ impl App {
                         pending: m.pending,
                         replaces: m.replaces.clone(),
                         category: None,
+                        item: item_id.to_string(),
                     });
                 }
                 None => report.skipped += 1,
