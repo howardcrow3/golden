@@ -27,6 +27,14 @@ fn a_full_refund_cancels_the_purchase_in_the_totals() {
     assert_eq!(a.balance_sheet().unwrap().net_worth_cents, 300_000 - 4_000);
     let rows = a.transactions("2026-11-01", "2026-11-30", false).unwrap();
     assert_eq!(rows.len(), 4);
+    // The purchase and its return are marked so the list can say why neither counts.
+    let refunded: Vec<&str> = rows
+        .iter()
+        .filter(|r| r.refunded)
+        .map(|r| r.payee.as_str())
+        .collect();
+    assert_eq!(refunded.len(), 2);
+    assert!(refunded.iter().all(|p| p.starts_with("TARGET")));
 }
 
 #[test]

@@ -257,7 +257,7 @@
         <tr class:sel={selected.has(r.id)}>
           <td class="sel"><input type="checkbox" aria-label={`Select ${r.payee} on ${r.day}`} checked={selected.has(r.id)} onclick={(e) => toggle(i, e.currentTarget.checked, e.shiftKey)} /></td>
           <td class="num">{r.day}</td>
-          <td>{r.payee}</td>
+          <td>{r.payee}{#if r.refunded} <span class="badge" title="This purchase and its refund cancel out, so neither counts in spending or income.">Refunded</span>{/if}</td>
           <td class="muted">{r.account}</td>
           <td class="r num" class:neg={r.amountCents < 0}>{formatCents(r.amountCents)}</td>
           <td>
@@ -299,6 +299,7 @@
 {/if}
 
 <style>
+  .badge { font-size: 11px; color: var(--muted); border: 1px solid var(--border, currentColor); border-radius: var(--r-sm); padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
   .sub { color: var(--muted); margin: 0 0 16px; }
   .bar { display: flex; gap: 24px; margin-bottom: 12px; flex-wrap: wrap; }
   .check { display: flex; gap: 6px; align-items: center; font-size: 13px; }

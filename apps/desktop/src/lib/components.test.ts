@@ -518,6 +518,16 @@ describe("Transactions", () => {
     expect(screen.getByText("-$10.00")).toBeTruthy();
     expect((screen.getByLabelText("Category for ACME PAYROLL on 2026-10-01") as HTMLInputElement).value).toBe("Salary");
   });
+  it("marks a purchase and its refund so it is clear why they don't count", async () => {
+    const rows = [
+      { id: 4, day: "2026-10-10", payee: "TARGET RETURN", memo: "", amountCents: 8000, category: null, account: "Checking", refunded: true },
+      { id: 3, day: "2026-10-03", payee: "TARGET #1234", memo: "", amountCents: -8000, category: null, account: "Checking", refunded: true },
+      { id: 1, day: "2026-10-01", payee: "ACME PAYROLL", memo: "", amountCents: 500000, category: "Salary", account: "Checking" },
+    ];
+    render(Transactions, { invoke: async (cmd: string) => (cmd === "transactions" ? rows : cmd === "category_choices" ? [] : {}) });
+    await screen.findByText("ACME PAYROLL");
+    expect(screen.getAllByText("Refunded").length).toBe(2);
+  });
   it("sends a recategorization with the remember choice and reports the extra lines", async () => {
     const log: [string, Record<string, unknown> | undefined][] = [];
     render(Transactions, { invoke: fake(log, 2) });
