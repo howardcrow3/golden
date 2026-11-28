@@ -3527,7 +3527,7 @@
    "std_joint": 430000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 IT 1040 booklet. Social Security is left out. Personal exemptions are $2,150 each here (the 2025 amount for income of $40,001 to $80,000; it is $2,400 below and $1,900 above). Retirement income credit (up to $200) and the $50 senior credit apply when income less exemptions is under $100,000; the test here uses income less taxable Social Security. The 2025 top rate of 3.125% over $100,000 and the 2026 flat rate are as in the table.",
+   "notes": "Checked against the 2025 IT 1040 booklet. Social Security is left out. Personal exemptions follow the 2025 income bands: $2,400 each up to $40,000, $2,150 to $80,000, $1,900 to $749,999 and none from $750,000. Retirement income credit (up to $200) and the $50 senior credit apply when income less exemptions is under $100,000; the test here uses income less taxable Social Security. The 2025 top rate of 3.125% over $100,000 and the 2026 flat rate are as in the table.",
    "retirement_credit": {
     "income_limit": 10000000,
     "steps": [
@@ -3559,7 +3559,21 @@
     "senior_age": 65,
     "senior_credit": 5000
    },
-   "military": {}
+   "military": {},
+   "exemption_steps": [
+    [
+     4000000,
+     240000
+    ],
+    [
+     8000000,
+     215000
+    ],
+    [
+     74999900,
+     190000
+    ]
+   ]
   },
   "OK": {
    "name": "Oklahoma",

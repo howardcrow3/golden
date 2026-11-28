@@ -107,6 +107,10 @@ pub struct StateRules {
     /// Without it heads of household use `std_single`.
     #[serde(default)]
     pub std_head: Option<Money>,
+    /// Personal exemption per filer by income band (Ohio): `(income up to, amount)` in
+    /// ascending order; over the last band there is none. Replaces `std_single` / `std_joint`.
+    #[serde(default)]
+    pub exemption_steps: Option<Vec<(Money, Money)>>,
     /// The standard deduction shrinks as income rises (Alabama).
     #[serde(default)]
     pub std_phase_down: Option<StdPhaseDown>,
@@ -1293,6 +1297,20 @@ impl StateTaxYear {
             (false, true, Some(h)) => h,
             _ => r.std_single,
         };
+        let std = match &r.exemption_steps {
+            Some(steps) => {
+                let each = steps
+                    .iter()
+                    .find(|(upto, _)| income <= *upto)
+                    .map_or(Money::ZERO, |(_, a)| *a);
+                if joint {
+                    each + each
+                } else {
+                    each
+                }
+            }
+            None => std,
+        };
         let std = match &r.std_phase_down {
             Some(p) => p.apply(joint, std, income),
             None => std,
@@ -1796,6 +1814,26 @@ mod tests {
         // Each spouse of that age.
         assert_eq!(go(joint, 35_000, &[66, 67]), plain(joint, 32_000));
         assert_eq!(go(joint, 90_000, &[66, 60]), plain(joint, 89_000));
+    }
+
+    #[test]
+    fn ohio_exemption_steps_down_with_income() {
+        let y = StateTaxYear::y2026();
+        let r = y.rules("OH").unwrap();
+        let rate = r.brackets.0[1].rate;
+        let floor = r.brackets.0[1].floor;
+        let tax = |fs, inc: i64| y.income_tax("OH", fs, m(inc)).unwrap();
+        let want = |taxable: i64| (m(taxable) - floor).max(Money::ZERO).mul_rate(rate);
+        let single = FilingStatus::Single;
+        assert_eq!(tax(single, 40_000), want(40_000 - 2_400));
+        assert_eq!(tax(single, 40_001), want(40_001 - 2_150));
+        assert_eq!(tax(single, 80_001), want(80_001 - 1_900));
+        assert_eq!(tax(single, 750_000), want(750_000));
+        // Joint: two exemptions, on the same income bands.
+        assert_eq!(
+            tax(FilingStatus::MarriedJoint, 60_000),
+            want(60_000 - 4_300)
+        );
     }
 
     #[test]
