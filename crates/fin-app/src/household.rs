@@ -43,7 +43,8 @@ pub struct StreamRow {
     pub contribution_cents: i64,
     /// What kind of income this is: empty or "wages" for a job, "pension" for a pension or
     /// annuity (starts when the person retires, lasts for life, no payroll tax) or "other" for
-    /// rent and similar taxable income (starts now, no payroll tax).
+    /// rent and similar taxable income (starts now, no payroll tax). "public_pension" is a
+    /// pension from government work (federal, state or local), which some states exempt.
     #[serde(default)]
     pub kind: Option<String>,
     /// Employer match per year, added to the pre-tax account while working.
@@ -436,14 +437,14 @@ impl Household {
             let kind = s.kind.as_deref().unwrap_or("").trim().to_ascii_lowercase();
             let exempt = match kind.as_str() {
                 "" | "wages" => false,
-                "pension" | "other" => true,
+                "pension" | "public_pension" | "other" => true,
                 other => return Err(format!("Unknown income type \"{other}\".")),
             };
             if s.employer_match_cents < 0 || s.hsa_cents < 0 || s.contribution_cents < 0 {
                 return Err("Savings and match amounts cannot be negative.".into());
             }
             let (default_start, default_end) = match kind.as_str() {
-                "pension" => (retire_year[s.person], year + 100),
+                "pension" | "public_pension" => (retire_year[s.person], year + 100),
                 "other" => (year, year + 100),
                 _ => (year, retire_year[s.person]),
             };
@@ -465,7 +466,8 @@ impl Household {
                 },
                 self_employed: s.self_employed && !exempt,
                 payroll_exempt: exempt,
-                pension: kind == "pension",
+                pension: kind == "pension" || kind == "public_pension",
+                public_pension: kind == "public_pension",
                 employer_match: if exempt {
                     Money::ZERO
                 } else {

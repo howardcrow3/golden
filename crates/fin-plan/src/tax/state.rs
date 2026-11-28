@@ -124,6 +124,10 @@ pub struct RetirementExclusion {
     /// Pensions are exempt in full once someone in the household reaches `min_age`.
     #[serde(default)]
     pub pension_full: bool,
+    /// Government pensions are exempt in full at any age; caps then cover what is left
+    /// (New York, Louisiana, Kansas).
+    #[serde(default)]
+    pub public_pension_full: bool,
     /// Pre-tax account distributions are exempt in full once someone reaches `min_age`.
     #[serde(default)]
     pub distributions_full: bool,
@@ -600,6 +604,8 @@ impl BirthYearCredit {
 #[derive(Debug, Clone, Default)]
 pub struct RetirementIncome {
     pub pension: Money,
+    /// The part of `pension` that is a government pension.
+    pub public_pension: Money,
     pub distributions: Money,
     /// Gross Social Security benefits received, taxable or not.
     pub social_security: Money,
@@ -622,6 +628,11 @@ impl RetirementExclusion {
         let mut out = zero;
         let mut left_p = pension;
         let mut left_d = dist;
+        if self.public_pension_full {
+            let public = inc.public_pension.max(zero).min(left_p);
+            out += public;
+            left_p -= public;
+        }
         if eligible {
             if self.pension_full {
                 out += left_p;
@@ -1027,6 +1038,7 @@ mod tests {
     fn ret(pension: i64, dist: i64, ages: &[i32]) -> RetirementIncome {
         RetirementIncome {
             pension: m(pension),
+            public_pension: Money::ZERO,
             distributions: m(dist),
             social_security: Money::ZERO,
             ss_subtracted: Money::ZERO,
@@ -1436,6 +1448,34 @@ mod tests {
         assert_eq!(go(90_000, 30_000, 0, 0, &[68]), plain(60_000));
         // At 62 they are not.
         assert_eq!(go(90_000, 30_000, 0, 0, &[62]), plain(90_000));
+    }
+
+    #[test]
+    fn government_pensions_are_fully_exempt_where_the_state_says_so() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |c: &str, agi: i64, pension: i64, public: i64, dist: i64, age: i32| {
+            let r = RetirementIncome {
+                public_pension: m(public),
+                ..ret(pension, dist, &[age])
+            };
+            y.income_tax_with_retirement(c, single, m(agi), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |c: &str, inc: i64| y.income_tax(c, single, m(inc)).unwrap();
+        // New York: a $50,000 state pension is all out, and the $20,000 cap still covers IRA money.
+        assert_eq!(
+            go("NY", 90_000, 50_000, 50_000, 30_000, 62),
+            plain("NY", 20_000)
+        );
+        // The same pension from a private employer: only the $20,000 cap.
+        assert_eq!(go("NY", 90_000, 50_000, 0, 30_000, 62), plain("NY", 70_000));
+        // Even before 59 and a half.
+        assert_eq!(go("NY", 90_000, 50_000, 50_000, 0, 55), plain("NY", 40_000));
+        // Kansas: government pensions out, everything else taxed.
+        assert_eq!(go("KS", 80_000, 40_000, 30_000, 0, 66), plain("KS", 50_000));
+        // A state without the rule treats it like any pension.
+        assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 66), plain("CA", 80_000));
     }
 
     #[test]

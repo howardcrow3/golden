@@ -41,6 +41,8 @@ pub struct IncomeStream {
     pub payroll_exempt: bool,
     /// A pension (as opposed to rental or other income): states that exempt pensions exempt it.
     pub pension: bool,
+    /// A government pension (federal, state or local). Some states exempt these in full.
+    pub public_pension: bool,
     /// Employer match per year while working, added to the pre-tax account (not income to you).
     pub employer_match: Money,
     /// Pre-tax HSA saving per year, kept as tax-free money for medical costs.
@@ -258,6 +260,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let mut match_total = Money::ZERO;
         let mut exempt = Money::ZERO;
         let mut pension = Money::ZERO;
+        let mut public_pension = Money::ZERO;
         // Each person has their own Social Security wage base.
         let mut person_wages = vec![Money::ZERO; input.people.len()];
         let mut person_se = vec![Money::ZERO; input.people.len()];
@@ -276,6 +279,9 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 }
                 if s.pension {
                     pension += s.annual_gross;
+                    if s.public_pension {
+                        public_pension += s.annual_gross;
+                    }
                 }
                 contrib += s.traditional_contribution + s.hsa;
                 hsa_total += s.hsa;
@@ -363,6 +369,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
             // push ordinary income above the earned part.
             let ret = crate::tax::state::RetirementIncome {
                 pension,
+                public_pension,
                 distributions: rmd + (ord - earned_ordinary).max(Money::ZERO),
                 social_security: ss,
                 ss_subtracted: Money::ZERO,
@@ -791,6 +798,7 @@ pub(crate) mod fixtures {
                 self_employed: false,
                 payroll_exempt: false,
                 pension: false,
+                public_pension: false,
                 employer_match: Money::ZERO,
                 hsa: Money::ZERO,
             }],
@@ -1554,6 +1562,7 @@ mod income_kind_tests {
             self_employed: false,
             payroll_exempt: pension,
             pension,
+            public_pension: false,
             employer_match: Money::ZERO,
             hsa: Money::ZERO,
         };
@@ -1619,6 +1628,7 @@ mod review_tests {
             self_employed: false,
             payroll_exempt: true,
             pension: true,
+            public_pension: false,
             employer_match: Money::ZERO,
             hsa: Money::ZERO,
         });

@@ -242,7 +242,7 @@ export interface StreamRow {
   contributionCents: number;
   /** Business income: self-employment tax instead of FICA, and the QBI deduction. */
   selfEmployed?: boolean;
-  /** "pension" or "other" for income without payroll tax; empty for a job. */
+  /** "pension", "public_pension" (government work) or "other" for income without payroll tax; empty for a job. */
   kind?: string;
   employerMatchCents?: number;
   hsaCents?: number;

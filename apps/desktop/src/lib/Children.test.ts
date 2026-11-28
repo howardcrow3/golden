@@ -67,6 +67,7 @@ describe("income types in the household form", () => {
 
   it("round-trips a pension, a match and an HSA, and omits them when unset", () => {
     expect(fromForm(toForm(withStream({ kind: "pension" }))).streams[0].kind).toBe("pension");
+    expect(fromForm(toForm(withStream({ kind: "public_pension" }))).streams[0].kind).toBe("public_pension");
     const j = fromForm(toForm(withStream({ employerMatchCents: 300_000, hsaCents: 400_000 }))).streams[0];
     expect(j.employerMatchCents).toBe(300_000);
     expect(j.hsaCents).toBe(400_000);
