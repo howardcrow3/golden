@@ -194,6 +194,11 @@ pub struct RetirementExclusion {
     /// The public cap is reduced by the Social Security the state left out (Missouri).
     #[serde(default)]
     pub public_less_ss_subtracted: bool,
+    /// With `pension_full`, pensions are exempt at any age, since a pension paid on retiring
+    /// counts as retirement income (Pennsylvania, Mississippi); `min_age` then only gates
+    /// account distributions.
+    #[serde(default)]
+    pub pension_any_age: bool,
     /// Pre-tax account distributions are exempt in full once someone reaches `min_age`.
     #[serde(default)]
     pub distributions_full: bool,
@@ -807,15 +812,13 @@ impl RetirementExclusion {
             // caps below.
             left_p -= inc.public_pension.max(zero).min(left_p);
         }
-        if eligible {
-            if self.pension_full {
-                out += left_p;
-                left_p = zero;
-            }
-            if self.distributions_full {
-                out += left_d;
-                left_d = zero;
-            }
+        if self.pension_full && (eligible || self.pension_any_age) {
+            out += left_p;
+            left_p = zero;
+        }
+        if eligible && self.distributions_full {
+            out += left_d;
+            left_d = zero;
         }
         let mut cap: Money = inc
             .ages
@@ -1616,6 +1619,21 @@ mod tests {
         );
         // States without the rule ignore it.
         assert_eq!(go("CA", single, 80_000, 9_000), plain("CA", single, 80_000));
+    }
+
+    #[test]
+    fn pennsylvania_and_mississippi_exempt_pensions_at_any_age() {
+        for c in ["PA", "MS"] {
+            // A pension at 52 is left out; an IRA withdrawal at 52 is taxed.
+            assert_eq!(tax(c, 40_000, &ret(40_000, 0, &[52])), Money::ZERO, "{c}");
+            assert_eq!(
+                tax(c, 40_000, &ret(0, 40_000, &[52])),
+                tax(c, 40_000, &ret(0, 0, &[52])),
+                "{c}"
+            );
+            // From 60 both are.
+            assert_eq!(tax(c, 40_000, &ret(0, 40_000, &[60])), Money::ZERO, "{c}");
+        }
     }
 
     #[test]
