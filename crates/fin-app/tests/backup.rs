@@ -189,3 +189,30 @@ fn restore_keeps_a_refund_cancelling_its_purchase() {
     fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
     assert_eq!(nov(&fresh), (300_000, 0));
 }
+
+#[test]
+fn backup_carries_every_setting_the_person_made() {
+    let src = loaded();
+    src.save_watch_lists(vec![fin_app::watchlists::WatchList {
+        name: "Coffee".into(),
+        query: "coffee".into(),
+    }])
+    .unwrap();
+    src.save_holdings(&[fin_plan::investments::Holding {
+        name: "Total market".into(),
+        value_cents: 5_000_000,
+        class: fin_plan::investments::Class::Stock,
+        expense_bp: 3,
+        single_stock: false,
+    }])
+    .unwrap();
+    src.close_month("2026-10").unwrap();
+    // Tracking that was stopped is stored as an empty value.
+    src.stop_progress_tracking().unwrap();
+    let mut fresh = blank();
+    fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert_eq!(fresh.watch_lists().unwrap(), src.watch_lists().unwrap());
+    assert_eq!(fresh.holdings().unwrap(), src.holdings().unwrap());
+    assert_eq!(fresh.closed_months().unwrap(), vec!["2026-10".to_string()]);
+    assert_eq!(fresh.progress().unwrap(), None);
+}

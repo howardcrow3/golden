@@ -7,13 +7,22 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
-const INCLUDED_SETTINGS: [&str; 6] = [
+/// Everything the person entered. Left out: the licence and trial, bank sign-in tokens, and
+/// things that belong to one computer (folder paths, the local model, files already imported).
+const INCLUDED_SETTINGS: [&str; 13] = [
     "household",
     "budgets",
     "user_rules",
     "goals",
     "debt_terms",
     "withholding",
+    "scenarios",
+    "investments.holdings",
+    "watch_lists",
+    "closed_months",
+    "progress.baseline",
+    "progress.journal",
+    "cancel_marks",
 ];
 
 impl App {
@@ -161,9 +170,13 @@ impl App {
         for key in INCLUDED_SETTINGS {
             let have = self.db.get_setting(key).map_err(|e| e.to_string())?;
             if let (None, Some(saved)) = (have, v["settings"].get(key)) {
-                self.db
-                    .set_setting(key, &saved.to_string())
-                    .map_err(|e| e.to_string())?;
+                // A value that wasn't JSON (such as the empty value of a cleared setting) was
+                // backed up as a string; put back the text itself, not a quoted copy.
+                let text = match saved {
+                    Value::String(s) => s.clone(),
+                    other => other.to_string(),
+                };
+                self.db.set_setting(key, &text).map_err(|e| e.to_string())?;
                 restored.push(key.to_string());
             }
         }
