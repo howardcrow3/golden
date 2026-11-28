@@ -24,6 +24,8 @@ pub struct TxnRow {
     pub tags: Vec<String>,
     /// Empty unless the line is split across categories.
     pub splits: Vec<SplitPart>,
+    /// A purchase and its full refund are paired and both left out of spending and income.
+    pub refunded: bool,
 }
 
 #[derive(Debug, Serialize, serde::Deserialize, Clone, PartialEq, Eq)]
@@ -140,6 +142,12 @@ impl App {
             .collect();
         let all_splits = self.db.all_splits().map_err(|e| e.to_string())?;
         let extras = self.db.txn_extras().map_err(|e| e.to_string())?;
+        let netted: std::collections::HashSet<i64> = self
+            .db
+            .netted_ids()
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .collect();
         let mut rows = self
             .db
             .txns_between(parse_day(from)?, parse_day(to)?)
@@ -152,6 +160,7 @@ impl App {
             .map(|t| {
                 let (note, tags) = extras.get(&t.id).cloned().unwrap_or_default();
                 TxnRow {
+                    refunded: netted.contains(&t.id),
                     id: t.id,
                     day: t.day.format("%Y-%m-%d").to_string(),
                     payee: t.payee,

@@ -472,6 +472,8 @@ export interface TxnRow {
   note: string;
   tags: string[];
   splits: { category: string; cents: number }[];
+  /** A purchase and its full refund are paired and both left out of spending and income. */
+  refunded?: boolean;
 }
 export interface Recategorized {
   category: string;
