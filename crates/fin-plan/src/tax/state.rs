@@ -95,6 +95,10 @@ pub struct StateRules {
     /// Allowance for people of an age, cut by the Social Security left out (West Virginia).
     #[serde(default)]
     pub age_allowance: Option<AgeAllowance>,
+    /// From `age`, a deduction against any income that tops the retirement and military
+    /// deductions up to `amount` a person (South Carolina's $15,000 at 65).
+    #[serde(default)]
+    pub age_floor: Option<AgeAllowance>,
     /// Credits against tax for retirement income and age (Ohio).
     #[serde(default)]
     pub retirement_credit: Option<RetirementCredit>,
@@ -1097,6 +1101,16 @@ impl StateTaxYear {
             }
             ret_cut = ret_cut.max(alt);
         }
+        if let Some(f) = &r.age_floor {
+            // Applied for the household as a whole: the retirement and military amounts left
+            // out are not split by person.
+            let n = ret.ages.iter().filter(|&&a| a >= f.age as i32).count() as i64;
+            let floor = Money::from_cents(f.amount.cents() * n);
+            let used = ret_cut + military_cut;
+            if floor > used {
+                ret_cut += floor - used;
+            }
+        }
         income = (income - ret_cut).max(Money::ZERO);
         let tax = self.income_tax(code, fs, income)?;
         let mut credit = match (&r.social_security, r.taxes_social_security) {
@@ -1297,10 +1311,10 @@ mod tests {
         assert_eq!(x("NY").excluded(&ret(30_000, 0, &[58])), Money::ZERO);
         assert_eq!(x("NY").excluded(&ret(30_000, 0, &[60])), m(20_000));
         assert_eq!(x("DE").excluded(&ret(0, 20_000, &[61])), m(12_500));
-        // Georgia steps up at 65; South Carolina starts at 65.
+        // Georgia steps up at 65; South Carolina from $3,000 to $10,000 at 65.
         assert_eq!(x("GA").excluded(&ret(0, 100_000, &[63])), m(35_000));
         assert_eq!(x("GA").excluded(&ret(0, 100_000, &[65])), m(65_000));
-        assert_eq!(x("SC").excluded(&ret(0, 20_000, &[64])), Money::ZERO);
+        assert_eq!(x("SC").excluded(&ret(0, 20_000, &[64])), m(3_000));
         assert_eq!(x("SC").excluded(&ret(0, 20_000, &[65])), m(10_000));
     }
 
@@ -1792,10 +1806,11 @@ mod tests {
             go("AR", single, 90_000, 4_000, 10_000, &[4_000], &[50]),
             plain("AR", single, 84_000)
         );
-        // South Carolina: likewise with its $10,000 retirement deduction at 65.
+        // South Carolina: likewise with its $3,000 retirement deduction under 65, which
+        // $8,000 of military pay uses up.
         assert_eq!(
-            go("SC", single, 90_000, 30_000, 20_000, &[8_000], &[66]),
-            plain("SC", single, 80_000)
+            go("SC", single, 90_000, 30_000, 20_000, &[8_000], &[60]),
+            plain("SC", single, 82_000)
         );
         // Georgia: $17,500 under 62; from 62 the general exclusion covers it.
         assert_eq!(
@@ -1849,6 +1864,29 @@ mod tests {
         assert_eq!(go(0), plain(82_500));
         assert_eq!(go(17_500), plain(82_500));
         assert_eq!(go(60_000), plain(65_000));
+    }
+
+    #[test]
+    fn south_carolina_tops_retirement_deductions_up_to_15000_at_65() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |pension: i64, mil: i64, age: i32| {
+            let r = RetirementIncome {
+                military: if mil > 0 { vec![m(mil)] } else { vec![] },
+                ..ret(pension, 0, &[age])
+            };
+            y.income_tax_with_retirement("SC", single, m(80_000), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("SC", single, m(inc)).unwrap();
+        // Under 65: $3,000 of retirement income.
+        assert_eq!(go(20_000, 0, 60), plain(77_000));
+        // At 65 with no retirement income: $15,000 against wages.
+        assert_eq!(go(0, 0, 66), plain(65_000));
+        // $10,000 retirement deduction, topped up to $15,000.
+        assert_eq!(go(20_000, 0, 66), plain(65_000));
+        // Military pay of $30,000 is out in full and leaves no top-up.
+        assert_eq!(go(30_000, 30_000, 66), plain(50_000));
     }
 
     #[test]
