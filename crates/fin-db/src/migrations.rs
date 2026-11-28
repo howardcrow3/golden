@@ -134,6 +134,11 @@ const MIGRATIONS: &[&str] = &[
         SELECT account_id, min(day), max(day) FROM txn WHERE external_id IS NULL
         GROUP BY account_id;
     "#,
+    // Whether an account's CSV files print charges as positive amounts: NULL means detect it
+    // from each file, 1 always turn them round, 0 never.
+    r#"
+    ALTER TABLE account ADD COLUMN amounts_reversed INTEGER;
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> crate::Result<()> {
@@ -206,7 +211,10 @@ mod tests {
     #[test]
     fn import_spans_are_backfilled_from_existing_rows() {
         let mut c = Connection::open_in_memory().unwrap();
-        let before = MIGRATIONS.len() - 1;
+        let before = MIGRATIONS
+            .iter()
+            .position(|m| m.contains("CREATE TABLE import_span"))
+            .unwrap();
         for (i, sql) in MIGRATIONS[..before].iter().enumerate() {
             c.execute_batch(sql).unwrap();
             c.pragma_update(None, "user_version", (i + 1) as i64)

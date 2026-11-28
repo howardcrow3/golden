@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { addHolding, getBalanceSheet, HOLDING_KINDS, getNetWorthHistory, listAccounts, setOpeningBalance, type AccountRow, type BalanceSheet, type NetWorthPoint, type Invoke } from "./api";
+  import { addHolding, getBalanceSheet, HOLDING_KINDS, getNetWorthHistory, listAccounts, setAmountsReversed, setOpeningBalance, type AccountRow, type BalanceSheet, type NetWorthPoint, type Invoke } from "./api";
   import { formatCents, parseDollars } from "./money";
 
   let { invoke }: { invoke?: Invoke } = $props();
@@ -10,6 +10,9 @@
   let history = $state<NetWorthPoint[]>([]);
   let editing = $state(false);
   let drafts = $state<Record<number, string>>({});
+  /** "auto", "reversed" or "normal": how each account's CSV files sign their amounts. */
+  let signDrafts = $state<Record<number, string>>({});
+  const signOf = (r: boolean | null | undefined) => (r == null ? "auto" : r ? "reversed" : "normal");
   let error = $state("");
 
   async function load() {
@@ -59,6 +62,7 @@
 
   function startEditing() {
     drafts = Object.fromEntries(accounts.map((a) => [a.id, (a.openingCents / 100).toFixed(2)]));
+    signDrafts = Object.fromEntries(accounts.map((a) => [a.id, signOf(a.amountsReversed)]));
     error = "";
     editing = true;
   }
@@ -70,6 +74,10 @@
         const cents = parseDollars(drafts[a.id] ?? "");
         if (cents === null) throw new Error(`Enter ${a.name}'s starting balance as a number, like 1250.00.`);
         if (cents !== a.openingCents) await setOpeningBalance(a.id, cents, invoke);
+        const sign = signDrafts[a.id] ?? "auto";
+        if (sign !== signOf(a.amountsReversed)) {
+          await setAmountsReversed(a.id, sign === "auto" ? null : sign === "reversed", invoke);
+        }
       }
       editing = false;
       await load();
@@ -123,6 +131,15 @@
         <p class="muted">What each account held before your first imported statement (use a negative number for a card balance you owed).</p>
         {#each accounts as a}
           <label class="row">{a.name} <input aria-label={`Starting balance for ${a.name}`} bind:value={drafts[a.id]} inputmode="decimal" /></label>
+          {#if a.kind !== "checking" && a.kind !== "savings"}
+            <label class="row muted">CSV amounts for {a.name}
+              <select aria-label={`CSV amounts for ${a.name}`} bind:value={signDrafts[a.id]}>
+                <option value="auto">Detect from each file</option>
+                <option value="reversed">Charges are positive (Amex, Discover)</option>
+                <option value="normal">Charges are negative</option>
+              </select>
+            </label>
+          {/if}
         {/each}
         {#if error}<p class="err" role="alert">{error}</p>{/if}
         <button onclick={save}>Save starting balances</button>

@@ -153,6 +153,8 @@ export interface AccountRow {
   kind: string;
   balanceCents: number;
   openingCents: number;
+  /** CSV files print charges as positive amounts: null detects it per file. */
+  amountsReversed: boolean | null;
 }
 export interface PeriodRow {
   period: string;
@@ -660,6 +662,11 @@ export async function suggestAllocation(yearlySavingsCents: number, invoke?: Inv
 
 export async function setOpeningBalance(accountId: number, cents: number, invoke?: Invoke): Promise<void> {
   await (await resolve(invoke))("set_opening_balance", { accountId, cents });
+}
+
+/** Whether an account's CSV files print charges as positive amounts (null: detect per file). */
+export async function setAmountsReversed(accountId: number, reversed: boolean | null, invoke?: Invoke): Promise<void> {
+  await (await resolve(invoke))("set_amounts_reversed", { accountId, reversed });
 }
 
 export interface Recurring {

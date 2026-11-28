@@ -130,3 +130,52 @@ fn reimporting_a_flipped_file_adds_nothing() {
     let r = a.import_statement(AMEX, "Amex Gold", "credit").unwrap();
     assert_eq!(r.added, 0);
 }
+
+fn account_id(a: &App, name: &str) -> i64 {
+    a.accounts()
+        .unwrap()
+        .into_iter()
+        .find(|x| x.name == name)
+        .unwrap()
+        .id
+}
+
+#[test]
+fn an_account_marked_reversed_is_always_flipped() {
+    let mut a = app();
+    let plain = b"Date,Description,Amount\n10/05/2026,BLUE BOTTLE COFFEE,4.50\n";
+    a.import_statement(plain, "Amex", "credit").unwrap();
+    assert_eq!(cents(&a, "BLUE BOTTLE COFFEE"), 450);
+    let id = account_id(&a, "Amex");
+    assert_eq!(a.accounts().unwrap()[0].amounts_reversed, None);
+    a.set_amounts_reversed(id, Some(true)).unwrap();
+    assert_eq!(a.accounts().unwrap()[0].amounts_reversed, Some(true));
+    // No payment line to go on, but the person said so.
+    a.import_statement(
+        b"Date,Description,Amount\n10/09/2026,DELTA AIR LINES,320.40\n",
+        "Amex",
+        "credit",
+    )
+    .unwrap();
+    assert_eq!(cents(&a, "DELTA AIR LINES"), -32_040);
+}
+
+#[test]
+fn an_account_marked_normal_is_never_flipped() {
+    let mut a = app();
+    a.import_statement(
+        b"Date,Description,Amount\n10/01/2026,OPENING,1.00\n",
+        "Discover It",
+        "other",
+    )
+    .unwrap();
+    a.set_amounts_reversed(account_id(&a, "Discover It"), Some(false))
+        .unwrap();
+    a.import_statement(DISCOVER, "Discover It", "other")
+        .unwrap();
+    assert_eq!(cents(&a, "SHELL OIL 57444"), 4_100);
+    // Back to detecting.
+    a.set_amounts_reversed(account_id(&a, "Discover It"), None)
+        .unwrap();
+    assert!(a.set_amounts_reversed(999, Some(true)).is_err());
+}

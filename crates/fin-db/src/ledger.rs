@@ -127,6 +127,41 @@ impl Db {
         Ok(rows.collect::<std::result::Result<_, _>>()?)
     }
 
+    /// Whether the account's CSV files print charges as positive amounts: None to detect it
+    /// from each file, Some(true) to always turn them round, Some(false) never.
+    pub fn set_amounts_reversed(&self, id: AccountId, reversed: Option<bool>) -> Result<()> {
+        let n = self.conn.execute(
+            "UPDATE account SET amounts_reversed=?1 WHERE id=?2",
+            params![reversed, id.0],
+        )?;
+        if n == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows.into());
+        }
+        Ok(())
+    }
+
+    /// The setting `set_amounts_reversed` stores, per open account.
+    pub fn amounts_reversed(&self) -> Result<Vec<(AccountId, Option<bool>)>> {
+        let mut st = self
+            .conn
+            .prepare("SELECT id, amounts_reversed FROM account WHERE closed=0 ORDER BY id")?;
+        let rows = st.query_map([], |r| Ok((AccountId(r.get(0)?), r.get(1)?)))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// The setting for one account (open or closed); None when unset or no such account.
+    pub fn account_amounts_reversed(&self, id: AccountId) -> Result<Option<bool>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT amounts_reversed FROM account WHERE id=?1",
+                [id.0],
+                |r| r.get::<_, Option<bool>>(0),
+            )
+            .optional()?
+            .flatten())
+    }
+
     /// All open accounts with their current balance, oldest first.
     pub fn accounts(&self) -> Result<Vec<(AccountId, String, String, Money)>> {
         let mut st = self.conn.prepare(
