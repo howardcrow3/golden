@@ -12,8 +12,8 @@ const sheet = {
 };
 
 const accountsRows = [
-  { id: 1, name: "Checking", kind: "checking", balanceCents: 200000, openingCents: 0 },
-  { id: 2, name: "Visa", kind: "credit", balanceCents: -30000, openingCents: 0 },
+  { id: 1, name: "Checking", kind: "checking", balanceCents: 200000, openingCents: 0, amountsReversed: null },
+  { id: 2, name: "Visa", kind: "credit", balanceCents: -30000, openingCents: 0, amountsReversed: null },
 ];
 
 const history = [
@@ -26,7 +26,7 @@ function fake(calls: [string, unknown][]) {
   return async (cmd: string, args?: unknown) => {
     calls.push([cmd, args]);
     if (cmd === "accounts") return accountsRows;
-    if (cmd === "set_opening_balance") return null;
+    if (cmd === "set_opening_balance" || cmd === "set_amounts_reversed") return null;
     if (cmd === "net_worth_history") return history;
     return sheet;
   };
@@ -69,6 +69,21 @@ describe("BalanceSheet", () => {
     await waitFor(() => expect(screen.queryByTestId("opening-editor")).toBeNull());
     const sets = calls.filter(([c]) => c === "set_opening_balance");
     expect(sets).toEqual([["set_opening_balance", { accountId: 1, cents: 1000000 }]]);
+  });
+
+  it("lets a card account say its CSV charges are positive", async () => {
+    const calls: [string, unknown][] = [];
+    render(BalanceSheet, { invoke: fake(calls) });
+    await waitFor(() => screen.getByText("Set starting balances"));
+    await fireEvent.click(screen.getByText("Set starting balances"));
+    // Only the card account has the choice.
+    expect(screen.queryByLabelText("CSV amounts for Checking")).toBeNull();
+    await fireEvent.change(screen.getByLabelText("CSV amounts for Visa"), { target: { value: "reversed" } });
+    await fireEvent.click(screen.getByText("Save starting balances"));
+    await waitFor(() => expect(screen.queryByTestId("opening-editor")).toBeNull());
+    const sets = calls.filter(([c]) => c === "set_amounts_reversed");
+    expect(sets).toEqual([["set_amounts_reversed", { accountId: 2, reversed: true }]]);
+    expect(calls.some(([c]) => c === "set_opening_balance")).toBe(false);
   });
 
   it("explains a bad starting balance and keeps the editor open", async () => {

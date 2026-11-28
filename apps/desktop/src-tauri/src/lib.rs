@@ -693,6 +693,15 @@ fn set_opening_balance(state: Shared, account_id: i64, cents: i64) -> Result<(),
 }
 
 #[tauri::command]
+fn set_amounts_reversed(
+    state: Shared,
+    account_id: i64,
+    reversed: Option<bool>,
+) -> Result<(), String> {
+    lock(&state)?.set_amounts_reversed(account_id, reversed)
+}
+
+#[tauri::command]
 fn recurring(
     state: Shared,
     from: String,
@@ -1189,6 +1198,7 @@ pub fn run() {
             set_debt_terms,
             recurring,
             set_opening_balance,
+            set_amounts_reversed,
             read_paystub,
             read_ssa_statement,
             apply_ssa_statement,

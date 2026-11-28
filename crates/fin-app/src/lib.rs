@@ -9,6 +9,7 @@ pub mod backup;
 pub mod balance;
 pub mod bank;
 pub mod budget;
+mod card_signs;
 pub mod chat;
 pub mod close;
 pub mod connections;
@@ -89,6 +90,9 @@ pub struct AccountRow {
     pub balance_cents: i64,
     /// What the account held before its first imported statement (included in the balance).
     pub opening_cents: i64,
+    /// Whether this account's CSV files print charges as positive amounts: None (detect from
+    /// each file), true (always turn them round) or false (never).
+    pub amounts_reversed: Option<bool>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -208,7 +212,7 @@ impl App {
         if account.is_empty() {
             return Err("Give the account a name.".into());
         }
-        let parsed = fin_ingest::read_statement(bytes).map_err(|e| e.to_string())?;
+        let mut parsed = fin_ingest::read_statement(bytes).map_err(|e| e.to_string())?;
         for t in &parsed {
             self.ensure_open(t.day)?;
         }
@@ -216,6 +220,11 @@ impl App {
             .db
             .find_or_add_account(account, kind)
             .map_err(|e| e.to_string())?;
+        if self.card_csv_reversed(bytes, acct, &parsed)? {
+            for t in &mut parsed {
+                t.amount = -t.amount;
+            }
+        }
         let mut uncategorized = 0;
         let rows: Vec<NewTxn> = parsed
             .iter()
@@ -326,6 +335,13 @@ impl App {
             .into_iter()
             .map(|(id, c)| (id.0, c))
             .collect();
+        let reversed: std::collections::HashMap<i64, Option<bool>> = self
+            .db
+            .amounts_reversed()
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .map(|(id, r)| (id.0, r))
+            .collect();
         Ok(self
             .db
             .accounts()
@@ -337,6 +353,7 @@ impl App {
                 kind,
                 balance_cents: bal.cents(),
                 opening_cents: openings.get(&id.0).copied().unwrap_or(0),
+                amounts_reversed: reversed.get(&id.0).copied().flatten(),
             })
             .collect())
     }

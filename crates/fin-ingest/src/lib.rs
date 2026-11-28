@@ -57,6 +57,20 @@ pub fn read_statement(bytes: &[u8]) -> Result<Vec<ParsedTxn>, IngestError> {
 }
 pub mod library;
 
+/// For a CSV statement, what its header says about how amounts are signed. None for PDF and
+/// OFX/QFX files, whose signs follow their own rules.
+pub fn csv_sign_layout(bytes: &[u8]) -> Option<csv_reader::SignLayout> {
+    if bytes.starts_with(b"%PDF") {
+        return None;
+    }
+    let text = String::from_utf8_lossy(bytes);
+    let head = text.trim_start();
+    if head.starts_with("OFXHEADER") || head.contains("<OFX>") || head.contains("<ofx>") {
+        return None;
+    }
+    csv_reader::sign_layout(&text)
+}
+
 /// The closing balance a statement prints, when the format carries one (OFX/QFX do; CSV does not).
 pub fn statement_balance(bytes: &[u8]) -> Option<(NaiveDate, Money)> {
     if bytes.starts_with(b"%PDF") {
