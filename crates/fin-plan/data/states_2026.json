@@ -3499,7 +3499,7 @@
    "std_joint": 3290000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 RI-1040 instructions, Schedule M and the Social Security worksheet. Taxable Social Security is left out for people born on or before March 1, 1959 (age 67 or more in 2026) when federal AGI is under $107,000 (single) / $133,750 (joint); the share of a younger spouse stays in. Up to $50,000 of pension income (not IRA withdrawals) per person born on or before that date is left out under the same AGI limits; the joint figure here assumes both spouses qualify. Standard deduction and exemption phase-outs are not modelled.",
+   "notes": "Checked against the 2025 RI-1040 instructions, Schedule M and the Social Security worksheet. Taxable Social Security is left out for people born on or before March 1, 1959 (age 67 or more in 2026) when federal AGI is under $107,000 (single) / $133,750 (joint); the share of a younger spouse stays in. Up to $50,000 of pension income (not IRA withdrawals) per person born on or before that date is left out under the same AGI limits; the joint figure here assumes both spouses qualify. Standard deduction and exemption phase-outs are not modelled. Military retired pay is left out in full at any age (line 1v), before the pension exclusion.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 10700000,
@@ -3519,7 +3519,8 @@
      "agi_limit_single": 10700000,
      "agi_limit_joint": 13375000
     }
-   }
+   },
+   "military": {}
   },
   "SC": {
    "name": "South Carolina",
@@ -3759,7 +3760,7 @@
    "std_joint": 2724000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Sliding-scale standard deduction is shown at its maximum. From 2025 each person 67 or older may subtract up to $24,000 of retirement income (Publication 126, 1/26); the smaller $5,000 subtraction at 65 for incomes under $15,000 / $30,000 is not modelled. Claiming the subtraction forgoes Wisconsin tax credits, which are not modelled.",
+   "notes": "The sliding-scale standard deduction falls by 12% (single) / 19.778% (joint) of income over the line, to nothing; the lines come from the 2025 Standard Deduction Table scaled to the 2026 maximum. From 2025 each person 67 or older may subtract up to $24,000 of retirement income (Publication 126, 1/26); the smaller $5,000 subtraction at 65 for incomes under $15,000 / $30,000 is not modelled. Claiming the subtraction forgoes Wisconsin tax credits, which are not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3787,7 +3788,15 @@
      }
     ]
    },
-   "military": {}
+   "military": {},
+   "std_phase_down": {
+    "start_single": 2113600,
+    "end_single": 14330300,
+    "floor_single": 0,
+    "start_joint": 3060300,
+    "end_joint": 16833200,
+    "floor_joint": 0
+   }
   },
   "WV": {
    "name": "West Virginia",
