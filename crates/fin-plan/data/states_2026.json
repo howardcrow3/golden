@@ -109,12 +109,14 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read. Up to $2,500 of government pension each is subtracted (Form 140 line 29a); only federal and Arizona public plans qualify, which is not told apart here.",
+   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read. Up to $2,500 of government pension each is subtracted (Form 140 line 29a); only federal and Arizona public plans qualify, which is not told apart here. Each person 65 or older gets a $2,100 exemption (Form 140 instructions, box 8).",
    "military": {},
    "retirement": {
     "min_age": 0,
     "public_pension_cap": 250000
-   }
+   },
+   "aged_extra_single": 210000,
+   "aged_extra_joint": 210000
   },
   "CA": {
    "name": "California",
@@ -180,7 +182,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 DR 0104 booklet and DR 0104AD. Social Security: a person 65 or older leaves all of it out; at 55 to 64 all of it if federal AGI is $75,000 or less (single) / $95,000 or less (joint), otherwise up to $20,000. Pension, annuity and IRA income: up to $24,000 a person at 65 or older and $20,000 at 55 to 64, less the Social Security subtracted. Benefits are split evenly between spouses, and the pension caps are pooled across the household, which can differ slightly from the form. Retirees 54 or younger subtract up to $15,000 of military retirement pay each; from 55 it falls under the pension subtraction.",
+   "notes": "Checked against the 2025 DR 0104 booklet and DR 0104AD. Social Security: a person 65 or older leaves all of it out; at 55 to 64 all of it if federal AGI is $75,000 or less (single) / $95,000 or less (joint), otherwise up to $20,000. Pension, annuity and IRA income: up to $24,000 a person at 65 or older and $20,000 at 55 to 64, less the Social Security subtracted. Benefits are split evenly between spouses, and the pension caps are pooled across the household, which can differ slightly from the form. Retirees 54 or younger subtract up to $15,000 of military retirement pay each; from 55 it falls under the pension subtraction. Starting from federal taxable income, the additional standard deduction at 65 ($2,050 single, $1,650 each married in 2026) carries over.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 7500000,
@@ -210,7 +212,9 @@
    "military": {
     "max_age": 54,
     "per_person_cap": 1500000
-   }
+   },
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "CT": {
    "name": "Connecticut",
@@ -2117,7 +2121,9 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 D-40 booklet: the rate schedule matches, Social Security is subtracted, and there is no general pension exclusion (only government survivor benefits at 62 and a disability exclusion)."
+   "notes": "Checked against the 2025 D-40 booklet: the rate schedule matches, Social Security is subtracted, and there is no general pension exclusion (only government survivor benefits at 62 and a disability exclusion). DC adds the federal additional standard deduction at 65 (Schedule S Calculation G-1: $2,000 single, $1,600 each married in 2025), here the 2026 federal $2,050 / $1,650.",
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "DE": {
    "name": "Delaware",
@@ -2367,13 +2373,15 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The 2025 rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), which is not modelled; the zero bracket is close to the amount the standard deduction replaces. The enhanced senior deduction is not modelled. Military retired pay is deducted from age 62 up to $48,216 (single) / $72,324 (joint), less Social Security received (Form 39R line 8); the CSRS, Idaho police and firefighter pensions that share the deduction, and the disability route at any age, are not modelled.",
+   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The 2025 rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), which is not modelled; the zero bracket is close to the amount the standard deduction replaces. The enhanced senior deduction is not modelled. Military retired pay is deducted from age 62 up to $48,216 (single) / $72,324 (joint), less Social Security received (Form 39R line 8); the CSRS, Idaho police and firefighter pensions that share the deduction, and the disability route at any age, are not modelled. Following the federal standard deduction, the additional amount at 65 ($2,050 single, $1,650 each married in 2026) carries over.",
    "military": {
     "min_age": 62,
     "cap_single": 4821600,
     "cap_joint": 7232400,
     "less_social_security": true
-   }
+   },
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "IL": {
    "name": "Illinois",
@@ -2833,7 +2841,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Government pensions (federal, state, local) are exempt up to $47,633 a person (the top Social Security benefit), less the Social Security exemption, with no income limit (MO-A Part 3 Section A); enter them as a government pension. The per-person limits and the joint line are applied to the household. Federal income tax is deducted at 35% to 5% of it by Missouri AGI (none over $125,000), up to $5,000 ($10,000 joint).",
+   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Government pensions (federal, state, local) are exempt up to $47,633 a person (the top Social Security benefit), less the Social Security exemption, with no income limit (MO-A Part 3 Section A); enter them as a government pension. The per-person limits and the joint line are applied to the household. Federal income tax is deducted at 35% to 5% of it by Missouri AGI (none over $125,000), up to $5,000 ($10,000 joint). Missouri adds the federal additional standard deduction at 65 (MO-1040 line 14: $2,000 single, $1,600 each married in 2025), here the 2026 federal $2,050 / $1,650.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2887,7 +2895,9 @@
       1000000
      ]
     ]
-   }
+   },
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "MS": {
    "name": "Mississippi",
@@ -2927,7 +2937,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Follows the federal standard deduction. Checked against the 2025 Form 2 instructions and Schedule I: Montana has no Social Security subtraction (only Tier I railroad benefits, which are not taxed), so the federally taxable amount stays in income. Earlier data assumed a $5,500 / $11,000 deduction.",
+   "notes": "Follows the federal standard deduction. Checked against the 2025 Form 2 instructions and Schedule I: Montana has no Social Security subtraction (only Tier I railroad benefits, which are not taxed), so the federally taxable amount stays in income. Earlier data assumed a $5,500 / $11,000 deduction. The federal standard deduction includes the additional amount at 65 ($2,050 single, $1,650 each married in 2026).",
    "joint_brackets": [
     [
      0,
@@ -2938,7 +2948,9 @@
      0.0565
     ]
    ],
-   "taxes_social_security": true
+   "taxes_social_security": true,
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "NC": {
    "name": "North Carolina",
@@ -2977,7 +2989,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Follows the federal standard deduction.",
+   "notes": "Follows the federal standard deduction. Starting from federal taxable income, the additional standard deduction at 65 ($2,050 single, $1,650 each married in 2026) carries over.",
    "joint_brackets": [
     [
      0,
@@ -2992,7 +3004,9 @@
      0.025
     ]
    ],
-   "military": {}
+   "military": {},
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "NE": {
    "name": "Nebraska",
@@ -3175,7 +3189,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 PIT-1 and PIT-ADJ instructions. Follows the federal standard deduction. Social Security is left out when AGI is $100,000 or less (single) / $150,000 or less (joint, head of household). Each person 65 or older takes an exemption of $8,000 that falls by $1,000 for each step of income (Table 1); the blind exemption, the $30,000 armed forces retirement exemption and the medical expense exemption are not modelled. Up to $30,000 of armed forces retirement pay per retiree is exempt (PIT-ADJ line 24).",
+   "notes": "Checked against the 2025 PIT-1 and PIT-ADJ instructions. Follows the federal standard deduction. Social Security is left out when AGI is $100,000 or less (single) / $150,000 or less (joint, head of household). Each person 65 or older takes an exemption of $8,000 that falls by $1,000 for each step of income (Table 1); the blind exemption, the $30,000 armed forces retirement exemption and the medical expense exemption are not modelled. Up to $30,000 of armed forces retirement pay per retiree is exempt (PIT-ADJ line 24). The federal standard deduction includes the additional amount at 65 ($2,050 single, $1,650 each married in 2026).",
    "joint_brackets": [
     [
      0,
@@ -3220,7 +3234,9 @@
    },
    "military": {
     "per_person_cap": 3000000
-   }
+   },
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "NV": {
    "name": "Nevada",
