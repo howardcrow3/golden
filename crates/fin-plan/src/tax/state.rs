@@ -176,6 +176,13 @@ pub struct StateRules {
     /// Federal income tax deducted from state income (Alabama, Missouri, Oregon).
     #[serde(default)]
     pub federal_tax_deduction: Option<FederalTaxDeduction>,
+    /// Extra deduction for each person 65 or older: the federal additional standard deduction
+    /// in states that follow it, or a state's own age exemption (Arizona). `_joint` is for
+    /// married filers; single and head of household use `_single`.
+    #[serde(default)]
+    pub aged_extra_single: Money,
+    #[serde(default)]
+    pub aged_extra_joint: Money,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -1189,9 +1196,16 @@ impl StateTaxYear {
         income = (income - ret_cut).max(Money::ZERO);
         // Federal tax comes off after the state's income is worked out, so the deductions that
         // depend on that income (Alabama's sliding standard deduction) still see all of it.
-        let fed_cut = r.federal_tax_deduction.as_ref().map_or(Money::ZERO, |d| {
+        let mut fed_cut = r.federal_tax_deduction.as_ref().map_or(Money::ZERO, |d| {
             d.amount(fs, income, federal_agi, ret.federal_tax)
         });
+        // The extra deduction at 65 also comes off taxable income only.
+        let aged_each = match fs {
+            FilingStatus::MarriedJoint | FilingStatus::MarriedSeparate => r.aged_extra_joint,
+            _ => r.aged_extra_single,
+        };
+        let aged_n = ret.ages.iter().filter(|&&a| a >= 65).count() as i64;
+        fed_cut += Money::from_cents(aged_each.cents() * aged_n);
         let (tax, taxable) = self.tax_and_taxable(code, fs, income, fed_cut)?;
         let mut credit = match (&r.social_security, r.taxes_social_security) {
             (Some(rule), true) => rule.credit(fs, income, ss),
@@ -1439,7 +1453,7 @@ mod tests {
         // Joint thresholds are higher.
         assert!(
             ss("NM", FilingStatus::MarriedJoint, 120_000, 30_000, &[70, 68])
-                == y.income_tax("NM", FilingStatus::MarriedJoint, m(90_000))
+                == y.income_tax("NM", FilingStatus::MarriedJoint, m(90_000 - 3_300))
                     .unwrap()
         );
     }
@@ -1476,13 +1490,13 @@ mod tests {
         };
         // Colorado: at 65 or older all of the benefits are left out.
         let co = y
-            .income_tax("CO", FilingStatus::Single, m(100_000 - 30_000))
+            .income_tax("CO", FilingStatus::Single, m(100_000 - 30_000 - 2_050))
             .unwrap();
         assert_eq!(t("CO", FilingStatus::Single, 30_000, &[66]), co);
         // Montana's 2025 Form 2 has no Social Security subtraction (only Tier I railroad
         // benefits), so the federally taxable amount stays in.
         let mt = y
-            .income_tax("MT", FilingStatus::Single, m(100_000))
+            .income_tax("MT", FilingStatus::Single, m(100_000 - 2_050))
             .unwrap();
         assert_eq!(t("MT", FilingStatus::Single, 30_000, &[66]), mt);
     }
@@ -1503,18 +1517,21 @@ mod tests {
         let joint = FilingStatus::MarriedJoint;
         assert_eq!(t(joint, 95_000, 30_000, 0, &[60, 58]), plain(joint, 65_000));
         // A pension at 66 with no benefits: $24,000 comes out.
-        assert_eq!(t(single, 100_000, 0, 50_000, &[66]), plain(single, 76_000));
+        assert_eq!(
+            t(single, 100_000, 0, 50_000, &[66]),
+            plain(single, 76_000 - 2_050)
+        );
         // At 60: $20,000.
         assert_eq!(t(single, 100_000, 0, 50_000, &[60]), plain(single, 80_000));
         // Benefits subtracted use up the pension cap: $10,000 of benefits at 66 leaves $14,000.
         assert_eq!(
             t(single, 100_000, 10_000, 50_000, &[66]),
-            plain(single, 100_000 - 10_000 - 14_000)
+            plain(single, 100_000 - 10_000 - 14_000 - 2_050)
         );
         // Benefits of $24,000 or more leave no pension subtraction.
         assert_eq!(
             t(single, 100_000, 30_000, 50_000, &[66]),
-            plain(single, 70_000)
+            plain(single, 70_000 - 2_050)
         );
     }
 
@@ -1547,15 +1564,15 @@ mod tests {
         };
         let plain = |fs, inc: i64| y.income_tax("NM", fs, m(inc)).unwrap();
         // Single at 70: $8,000 up to $18,000, $7,000 to $19,500, nothing past $28,500.
-        assert_eq!(go(single, 18_000, &[70]), plain(single, 10_000));
-        assert_eq!(go(single, 19_500, &[70]), plain(single, 12_500));
-        assert_eq!(go(single, 28_500, &[70]), plain(single, 27_500));
-        assert_eq!(go(single, 28_501, &[70]), plain(single, 28_501));
+        assert_eq!(go(single, 18_000, &[70]), plain(single, 10_000 - 2_050));
+        assert_eq!(go(single, 19_500, &[70]), plain(single, 12_500 - 2_050));
+        assert_eq!(go(single, 28_500, &[70]), plain(single, 27_500 - 2_050));
+        assert_eq!(go(single, 28_501, &[70]), plain(single, 28_501 - 2_050));
         // Joint, both 65 or older, AGI $35,000: $6,000 each (the form's example is $12,000).
         let joint = FilingStatus::MarriedJoint;
-        assert_eq!(go(joint, 35_000, &[66, 68]), plain(joint, 23_000));
+        assert_eq!(go(joint, 35_000, &[66, 68]), plain(joint, 23_000 - 3_300));
         // Only the person at 65 gets it.
-        assert_eq!(go(joint, 28_000, &[66, 60]), plain(joint, 20_000));
+        assert_eq!(go(joint, 28_000, &[66, 60]), plain(joint, 20_000 - 1_650));
     }
 
     #[test]
@@ -1692,6 +1709,48 @@ mod tests {
     }
 
     #[test]
+    fn states_add_an_extra_deduction_at_65() {
+        let y = StateTaxYear::y2026();
+        let go = |c: &str, fs: FilingStatus, agi: i64, ages: &[i32]| {
+            y.income_tax_with_retirement(c, fs, m(agi), Money::ZERO, &ret(0, 0, ages))
+                .unwrap()
+        };
+        let (single, joint) = (FilingStatus::Single, FilingStatus::MarriedJoint);
+        for c in ["MO", "DC", "MT", "NM", "ND", "CO", "ID", "AZ"] {
+            let r = y.rules(c).unwrap();
+            assert!(r.aged_extra_single > Money::ZERO, "{c}");
+            // Younger people get nothing extra; each person 65 or older lowers the tax.
+            assert_eq!(
+                go(c, single, 80_000, &[64]),
+                y.income_tax(c, single, m(80_000)).unwrap()
+            );
+            assert!(
+                go(c, single, 80_000, &[65]) < go(c, single, 80_000, &[64]),
+                "{c}"
+            );
+            assert!(
+                go(c, joint, 120_000, &[66, 67]) < go(c, joint, 120_000, &[66, 60]),
+                "{c}"
+            );
+        }
+        // Missouri: the federal $2,050 single and $1,650 each married. At $80,000 the rate is
+        // the top 4.7%, so the cut is 4.7% of the extra deduction.
+        let cut = go("MO", single, 80_000, &[64]) - go("MO", single, 80_000, &[65]);
+        assert_eq!(cut, m(2_050).mul_rate(0.047));
+        // Arizona: its own $2,100 a person.
+        let cut = go("AZ", joint, 120_000, &[66, 60]) - go("AZ", joint, 120_000, &[66, 67]);
+        assert_eq!(
+            cut,
+            m(2_100).mul_rate(y.rules("AZ").unwrap().brackets.0[0].rate)
+        );
+        // Other states do not add it.
+        assert_eq!(
+            go("CA", single, 80_000, &[70]),
+            y.income_tax("CA", single, m(80_000)).unwrap()
+        );
+    }
+
+    #[test]
     fn wisconsin_slides_its_standard_deduction_down_to_nothing() {
         let y = StateTaxYear::y2026();
         let p = y.rules("WI").unwrap().std_phase_down.clone().unwrap();
@@ -1768,15 +1827,15 @@ mod tests {
         };
         let plain = |inc: i64| y.income_tax("MO", single, m(inc)).unwrap();
         // Under $25,000 of other income: the full $6,000.
-        assert_eq!(go(25_000, 0, 20_000, &[66]), plain(25_000 - 6_000));
+        assert_eq!(go(25_000, 0, 20_000, &[64]), plain(25_000 - 6_000));
         // Each dollar over the line takes a dollar of the exemption: $3,000 over, $3,000 left.
-        assert_eq!(go(28_000, 0, 20_000, &[66]), plain(28_000 - 3_000));
+        assert_eq!(go(28_000, 0, 20_000, &[64]), plain(28_000 - 3_000));
         // $6,000 or more over: nothing.
-        assert_eq!(go(40_000, 0, 20_000, &[66]), plain(40_000));
+        assert_eq!(go(40_000, 0, 20_000, &[64]), plain(40_000));
         // Taxable Social Security does not count towards the line.
-        assert_eq!(go(35_000, 10_000, 20_000, &[66]), plain(25_000 - 6_000));
+        assert_eq!(go(35_000, 10_000, 20_000, &[64]), plain(25_000 - 6_000));
         // A smaller pension comes out in full.
-        assert_eq!(go(20_000, 0, 4_000, &[66]), plain(16_000));
+        assert_eq!(go(20_000, 0, 4_000, &[64]), plain(16_000));
     }
 
     #[test]
@@ -1964,7 +2023,7 @@ mod tests {
         );
         // The military pay cannot be more than the pension it is part of.
         assert_eq!(
-            go("MO", single, 80_000, 0, 10_000, &[30_000], &[66]),
+            go("MO", single, 80_000, 0, 10_000, &[30_000], &[64]),
             plain("MO", single, 70_000)
         );
     }
@@ -2136,20 +2195,20 @@ mod tests {
         let plain = |c: &str, inc: i64| y.income_tax(c, single, m(inc)).unwrap();
         // Missouri: a $60,000 state pension, no benefits: $47,633 out, and no income limit.
         assert_eq!(
-            go("MO", 100_000, 0, 60_000, 60_000, 66),
+            go("MO", 100_000, 0, 60_000, 60_000, 64),
             plain("MO", 100_000 - 47_633)
         );
         // Arizona: $2,500 of a government pension each, nothing for a private one.
-        assert_eq!(go("AZ", 80_000, 0, 30_000, 30_000, 66), plain("AZ", 77_500));
-        assert_eq!(go("AZ", 80_000, 0, 30_000, 0, 66), plain("AZ", 80_000));
+        assert_eq!(go("AZ", 80_000, 0, 30_000, 30_000, 64), plain("AZ", 77_500));
+        assert_eq!(go("AZ", 80_000, 0, 30_000, 0, 64), plain("AZ", 80_000));
         // Taxable benefits of $10,000 come out on their own and cut the public cap by as much.
         assert_eq!(
-            go("MO", 110_000, 10_000, 60_000, 60_000, 66),
+            go("MO", 110_000, 10_000, 60_000, 60_000, 64),
             plain("MO", 100_000 - 37_633)
         );
         // The same pension from a private employer gets only the $6,000 private cap, which has
         // phased out at this income.
-        assert_eq!(go("MO", 100_000, 0, 60_000, 0, 66), plain("MO", 100_000));
+        assert_eq!(go("MO", 100_000, 0, 60_000, 0, 64), plain("MO", 100_000));
         // West Virginia: $2,000 of a government pension at 60, and at 66 the $8,000 senior
         // allowance is cut by that $2,000, so $8,000 in all.
         assert_eq!(go("WV", 50_000, 0, 20_000, 20_000, 60), plain("WV", 48_000));
