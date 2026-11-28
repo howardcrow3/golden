@@ -112,6 +112,13 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE txn ADD COLUMN netted INTEGER NOT NULL DEFAULT 0;
     "#,
+    // Bank lines a statement has replaced, so a later sync of the same line can't add it again.
+    r#"
+    CREATE TABLE bank_reconciled (
+        external_id TEXT PRIMARY KEY,
+        account_id  INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE
+    );
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

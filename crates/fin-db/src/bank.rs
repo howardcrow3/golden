@@ -110,6 +110,25 @@ impl Db {
                 sum.updated += 1;
                 continue;
             }
+            // A statement already covers this line (or the pending line it posts as): adding it
+            // again would count it twice.
+            let reconciled = |id: &str| -> Result<bool> {
+                Ok(tx
+                    .query_row(
+                        "SELECT 1 FROM bank_reconciled WHERE external_id=?1",
+                        [id],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some())
+            };
+            if reconciled(&t.external_id)? || t.replaces.as_deref().map_or(Ok(false), reconciled)? {
+                tx.execute(
+                    "INSERT OR IGNORE INTO bank_reconciled(external_id, account_id) VALUES (?1,?2)",
+                    params![t.external_id, t.account.0],
+                )?;
+                continue;
+            }
             // A pending line that has posted: take over its category, then drop it.
             let inherited: Option<i64> = match &t.replaces {
                 Some(old) => {
@@ -179,17 +198,17 @@ impl Db {
     /// bank lines were dropped.
     pub fn reconcile_bank(&mut self, account: AccountId) -> Result<usize> {
         let tx = self.conn.transaction()?;
-        let rows: Vec<(i64, NaiveDate, i64, bool)> = {
+        let rows: Vec<(i64, NaiveDate, i64, bool, Option<String>)> = {
             let mut st = tx.prepare(
-                "SELECT id, day, cents, external_id IS NOT NULL FROM txn WHERE account_id=?1
-                 ORDER BY day, id",
+                "SELECT id, day, cents, external_id IS NOT NULL, external_id FROM txn
+                 WHERE account_id=?1 ORDER BY day, id",
             )?;
             let it = st.query_map([account.0], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
             })?;
             it.collect::<std::result::Result<_, rusqlite::Error>>()?
         };
-        let statement: Vec<&(i64, NaiveDate, i64, bool)> = rows.iter().filter(|r| !r.3).collect();
+        let statement: Vec<_> = rows.iter().filter(|r| !r.3).collect();
         let mut used = vec![false; statement.len()];
         let mut drop_ids = vec![];
         for b in rows.iter().filter(|r| r.3) {
@@ -198,11 +217,15 @@ impl Db {
             });
             if let Some((i, _)) = hit {
                 used[i] = true;
-                drop_ids.push(b.0);
+                drop_ids.push((b.0, b.4.clone()));
             }
         }
-        for id in &drop_ids {
+        for (id, external) in &drop_ids {
             tx.execute("DELETE FROM txn WHERE id=?1", [id])?;
+            tx.execute(
+                "INSERT OR IGNORE INTO bank_reconciled(external_id, account_id) VALUES (?1,?2)",
+                params![external, account.0],
+            )?;
         }
         tx.commit()?;
         Ok(drop_ids.len())

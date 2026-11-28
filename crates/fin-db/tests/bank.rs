@@ -129,6 +129,40 @@ fn a_statement_replaces_the_bank_lines_it_covers() {
 }
 
 #[test]
+fn a_later_sync_does_not_bring_back_a_line_the_statement_covers() {
+    let (mut db, a) = setup();
+    db.apply_bank_changes(
+        &[
+            bank("t1", a, "2026-11-02", -1250, false),
+            bank("p1", a, "2026-11-04", -700, true),
+        ],
+        &[],
+    )
+    .unwrap();
+    for (day, cents) in [("2026-11-03", -1250), ("2026-11-05", -700)] {
+        db.add_txn(&NewTxn {
+            account: a,
+            day: d(day),
+            amount: Money::from_cents(cents),
+            payee: "SHELL OIL".into(),
+            memo: String::new(),
+            category: None,
+            stream: None,
+        })
+        .unwrap();
+    }
+    assert_eq!(db.reconcile_bank(a).unwrap(), 2);
+    // The bank later reports t1 as modified, and the pending line as posted under a new id.
+    let mut posted = bank("p1-posted", a, "2026-11-05", -700, false);
+    posted.replaces = Some("p1".into());
+    db.apply_bank_changes(&[bank("t1", a, "2026-11-02", -1250, false), posted], &[])
+        .unwrap();
+    // Only the two statement lines: nothing is counted twice.
+    assert_eq!(db.txn_count().unwrap(), 2);
+    assert_eq!(db.accounts().unwrap()[0].3, Money::from_cents(-1950));
+}
+
+#[test]
 fn one_statement_line_covers_only_one_bank_line() {
     let (mut db, a) = setup();
     db.apply_bank_changes(
