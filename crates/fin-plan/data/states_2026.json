@@ -2891,11 +2891,12 @@
    "std_joint": 1660000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Mississippi exempts qualified retirement income (pensions, IRA and 401(k) withdrawals) once the owner is 59 and a half or retired; modelled from age 60.",
+   "notes": "Checked against the 2025 Form 80-100 instructions: Social Security and retirement income from federal, state, military and private retirement systems are exempt in total, so pensions are left out at any age; withdrawals taxed as early distributions are not, so IRA and 401(k) withdrawals are left out from age 60 (59 and a half).",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
-    "min_age": 60
+    "min_age": 60,
+    "pension_any_age": true
    }
   },
   "MT": {
@@ -3562,11 +3563,12 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Pennsylvania does not tax retirement income (pensions, IRA and 401(k) withdrawals) once the owner has reached retirement age; modelled from age 60.",
+   "notes": "Checked against the 2025 PA-40 instructions: pensions paid after becoming eligible to retire and retiring, military pensions and Social Security are not taxed, so pensions are left out at any age; IRA and 401(k) withdrawals are left out from age 60 (59 and a half), when they are no longer early distributions.",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
-    "min_age": 60
+    "min_age": 60,
+    "pension_any_age": true
    }
   },
   "RI": {
