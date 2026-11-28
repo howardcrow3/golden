@@ -76,6 +76,7 @@ fn household(spending: i64, state: &str) -> PlanInput {
         medicare: false,
         charity: Money::ZERO,
         traditional_split: vec![],
+        locality: None,
     }
 }
 
