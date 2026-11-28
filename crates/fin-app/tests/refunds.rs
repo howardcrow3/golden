@@ -103,3 +103,16 @@ fn a_paycheck_is_never_taken_for_a_refund() {
     let m = month(&a);
     assert_eq!((m.income_cents, m.spending_cents), (250_000, 250_000));
 }
+
+#[test]
+fn money_from_one_person_does_not_cancel_money_sent_to_another() {
+    let mut a = app();
+    a.import_statement(
+        b"Date,Description,Amount\n11/02/2026,ZELLE TO JOHN SMITH,-50.00\n11/09/2026,ZELLE FROM MARY JONES,50.00\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    let m = month(&a);
+    assert_eq!((m.income_cents, m.spending_cents), (5_000, 5_000));
+}
