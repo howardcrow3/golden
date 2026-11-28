@@ -183,3 +183,12 @@ fn a_raise_helps_the_plan() {
         r.descriptions
     );
 }
+
+#[test]
+fn a_dashed_span_of_years_is_read_like_from_to() {
+    let a = app();
+    assert_eq!(
+        costs(&changes(&a, "college costs $30k a year 2036-2038")),
+        vec![(2036, 3_000_000), (2037, 3_000_000), (2038, 3_000_000)]
+    );
+}

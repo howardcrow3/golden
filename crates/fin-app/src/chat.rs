@@ -336,8 +336,9 @@ fn money_tokens(text: &str) -> Vec<i64> {
 /// a year from 2036 to 2040", "an inheritance of $200k in 2032", "sell the house in 2035 for
 /// $500k".
 fn planned_costs(t: &str, today: NaiveDate) -> Vec<Change> {
+    // "2036-2040" is a span too, so a dash separates years like a space does.
     let years: Vec<i32> = t
-        .split_whitespace()
+        .split(|c: char| c.is_whitespace() || c == '-' || c == '\u{2013}')
         .filter_map(|w| {
             w.trim_matches(|c: char| !c.is_ascii_digit())
                 .parse::<i32>()
