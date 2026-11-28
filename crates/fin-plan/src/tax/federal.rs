@@ -141,20 +141,30 @@ impl FederalTaxYear {
         &self.brackets[&fs]
     }
 
-    pub fn income_tax(&self, fs: FilingStatus, i: FederalInput) -> FederalResult {
-        let agi = (i.ordinary_income + i.long_term_gains - i.adjustments).max(Money::ZERO);
+    /// How many of `seniors` the return can count: two on a joint return, otherwise one.
+    fn seniors_on_return(fs: FilingStatus, seniors: u8) -> u8 {
+        seniors.min(if fs == FilingStatus::MarriedJoint {
+            2
+        } else {
+            1
+        })
+    }
+
+    /// The standard deduction including the extra amount for each filer 65 or older.
+    fn standard_with_aged(&self, fs: FilingStatus, seniors: u8) -> Money {
         let aged = self
             .aged_extra_deduction
             .get(&fs)
             .copied()
             .unwrap_or(Money::ZERO);
-        let seniors = i.seniors.min(if fs == FilingStatus::MarriedJoint {
-            2
-        } else {
-            1
-        });
-        let standard =
-            self.standard_deduction(fs) + Money::from_cents(aged.cents() * seniors as i64);
+        let seniors = Self::seniors_on_return(fs, seniors);
+        self.standard_deduction(fs) + Money::from_cents(aged.cents() * seniors as i64)
+    }
+
+    pub fn income_tax(&self, fs: FilingStatus, i: FederalInput) -> FederalResult {
+        let agi = (i.ordinary_income + i.long_term_gains - i.adjustments).max(Money::ZERO);
+        let seniors = Self::seniors_on_return(fs, i.seniors);
+        let standard = self.standard_with_aged(fs, seniors);
         let mut deduction = standard.max(i.itemized);
         if i.senior_bonus {
             deduction += senior_bonus_deduction(fs, seniors, agi);

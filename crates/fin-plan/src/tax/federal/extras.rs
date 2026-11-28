@@ -59,7 +59,7 @@ impl FederalTaxYear {
         r: &FederalResult,
         preferences: Money,
     ) -> Money {
-        let standard_used = i.itemized <= self.standard_deduction(fs);
+        let standard_used = i.itemized <= self.standard_with_aged(fs, i.seniors);
         let addback = if standard_used {
             r.deduction
         } else {
@@ -165,6 +165,30 @@ mod tests {
         assert_eq!(y.amt(fs, &input, &r, Money::ZERO), Money::ZERO);
         // A large incentive-stock-option spread tips it over.
         assert!(y.amt(fs, &input, &r, Money::from_dollars(600_000)) > Money::ZERO);
+    }
+
+    #[test]
+    fn a_senior_on_the_standard_deduction_adds_it_all_back() {
+        // Single, 65+: the standard deduction is $16,100 + $2,050 = $18,150, which beats $17,000
+        // of itemized deductions, so AMT must add back the whole $18,150, not just the SALT.
+        let y = FederalTaxYear::y2026();
+        let fs = FilingStatus::Single;
+        let plain = FederalInput {
+            ordinary_income: Money::from_dollars(150_000),
+            seniors: 1,
+            ..Default::default()
+        };
+        let itemizing = FederalInput {
+            itemized: Money::from_dollars(17_000),
+            salt_in_itemized: Money::from_dollars(10_000),
+            ..plain
+        };
+        let (rp, ri) = (y.income_tax(fs, plain), y.income_tax(fs, itemizing));
+        assert_eq!(rp.deduction, ri.deduction);
+        let pref = Money::from_dollars(300_000);
+        let a = y.amt(fs, &plain, &rp, pref);
+        assert!(a > Money::ZERO);
+        assert_eq!(y.amt(fs, &itemizing, &ri, pref), a);
     }
 
     #[test]
