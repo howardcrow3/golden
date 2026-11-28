@@ -270,3 +270,10 @@ export function removePerson(f: Form, index: number): Form {
       .map((s) => ({ ...s, person: s.person > index ? s.person - 1 : s.person })),
   };
 }
+
+/** What an empty first and last year mean for an income of this kind (matches the planner's defaults). */
+export function yearHints(kind: string): { start: string; end: string } {
+  if (kind === "pension" || kind === "public_pension") return { start: "retirement", end: "for life" };
+  if (kind === "military_pension" || kind === "other") return { start: "now", end: "for life" };
+  return { start: "now", end: "retirement" };
+}

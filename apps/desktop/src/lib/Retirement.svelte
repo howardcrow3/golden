@@ -3,7 +3,7 @@
   import { getHousehold, LOCALITIES, runPlan, saveHousehold, type Household, type Invoke, type QuickPlanResult } from "./api";
   import { linePoints, verdict } from "./chart";
   import { formatCents, formatPercent } from "./money";
-  import { fromForm, newChild, newHome, newPerson, newStream, removePerson, toForm, type Form } from "./household";
+  import { fromForm, newChild, newHome, newPerson, newStream, removePerson, toForm, yearHints, type Form } from "./household";
   import Assumptions from "./Assumptions.svelte";
   import Allocate from "./Allocate.svelte";
   import SafeSpend from "./SafeSpend.svelte";
@@ -160,8 +160,8 @@
           </select>
         </label>
         <label>Per year <input bind:value={s.amount} aria-label={`Income amount ${i + 1}`} inputmode="numeric" /></label>
-        <label>First year <input bind:value={s.start} aria-label={`First year ${i + 1}`} size="5" placeholder="now" /></label>
-        <label>Last year <input bind:value={s.end} aria-label={`Last year ${i + 1}`} size="5" placeholder="retirement" /></label>
+        <label>First year <input bind:value={s.start} aria-label={`First year ${i + 1}`} size="5" placeholder={yearHints(s.kind).start} /></label>
+        <label>Last year <input bind:value={s.end} aria-label={`Last year ${i + 1}`} size="5" placeholder={yearHints(s.kind).end} /></label>
         <label>401(k) saving <input bind:value={s.contribution} aria-label={`401(k) saving ${i + 1}`} inputmode="numeric" /></label>
         <label>Type
           <select bind:value={s.kind} aria-label={`Income type ${i + 1}`}>

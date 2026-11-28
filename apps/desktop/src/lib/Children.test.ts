@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Household } from "./api";
-import { fromForm, newChild, toForm } from "./household";
+import { fromForm, newChild, toForm, yearHints } from "./household";
 
 const base: Household = {
   people: [{ name: "You", birthDate: "1981-06-15", retireAge: 62, ssAnnualCents: 0 }],
@@ -80,5 +80,15 @@ describe("income types in the household form", () => {
     const f = toForm(withStream({}));
     f.streams[0].match = "lots";
     expect(() => fromForm(f)).toThrow(/employer match/);
+  });
+});
+
+describe("year hints for each income type", () => {
+  it("say when an empty first and last year start and stop", () => {
+    expect(yearHints("")).toEqual({ start: "now", end: "retirement" });
+    expect(yearHints("pension")).toEqual({ start: "retirement", end: "for life" });
+    expect(yearHints("public_pension")).toEqual({ start: "retirement", end: "for life" });
+    expect(yearHints("military_pension")).toEqual({ start: "now", end: "for life" });
+    expect(yearHints("other")).toEqual({ start: "now", end: "for life" });
   });
 });
