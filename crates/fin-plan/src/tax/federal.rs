@@ -100,8 +100,9 @@ fn niit_threshold(fs: FilingStatus) -> Money {
     })
 }
 
-/// The 2025-2028 extra deduction for filers 65+: $6,000 each, reduced by 6% of income over
-/// $75,000 ($150,000 joint). Not available to married people filing separately (the IRS says
+/// The 2025-2028 extra deduction for filers 65+: $6,000 each, with each person's $6,000 reduced
+/// by 6% of income over $75,000 ($150,000 joint), so a joint return with two seniors loses it
+/// all at $250,000. Not available to married people filing separately (the IRS says
 /// to file jointly if married). Source: IRS fact sheet FS-2025-03,
 /// https://www.irs.gov/newsroom/one-big-beautiful-bill-act-tax-deductions-for-working-americans-and-seniors
 /// for the amount, years and thresholds; the 6% rate is from the statute (the fact sheet omits it).
@@ -114,11 +115,11 @@ fn senior_bonus_deduction(fs: FilingStatus, seniors: u8, magi: Money) -> Money {
     if !ok {
         return Money::ZERO;
     }
-    let full = Money::from_dollars(6_000 * seniors as i64);
     let cut = (magi - Money::from_dollars(start))
         .max(Money::ZERO)
         .mul_rate(0.06);
-    (full - cut).max(Money::ZERO)
+    let each = (Money::from_dollars(6_000) - cut).max(Money::ZERO);
+    Money::from_cents(each.cents() * seniors as i64)
 }
 
 impl FederalTaxYear {
@@ -504,5 +505,31 @@ mod tests {
             with(60_000, FilingStatus::MarriedSeparate),
             y.standard_deduction(FilingStatus::MarriedSeparate) + m(1_650)
         );
+    }
+
+    #[test]
+    fn each_seniors_6000_phases_out_separately_on_a_joint_return() {
+        // The 6% reduction applies to each person's $6,000, so a couple who are both 65+ lose
+        // it all at $250,000 of MAGI, not $350,000.
+        let y = FederalTaxYear::y2026();
+        let fs = FilingStatus::MarriedJoint;
+        let ded = |income: i64| {
+            y.income_tax(
+                fs,
+                FederalInput {
+                    ordinary_income: m(income),
+                    seniors: 2,
+                    senior_bonus: true,
+                    ..Default::default()
+                },
+            )
+            .deduction
+        };
+        let std_aged = y.standard_deduction(fs) + m(3_300);
+        assert_eq!(ded(150_000), std_aged + m(12_000));
+        // $50k over: each $6,000 loses $3,000.
+        assert_eq!(ded(200_000), std_aged + m(6_000));
+        assert_eq!(ded(250_000), std_aged);
+        assert_eq!(ded(300_000), std_aged);
     }
 }
