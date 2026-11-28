@@ -2696,7 +2696,7 @@
    "std_joint": 3060000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction phase-out at higher incomes is not modelled. The $84,490 / $108,320 thresholds are checked against the Minnesota Department of Revenue's Social Security subtraction page (updated 2025-12-17), which also says the subtraction falls 10% for each $4,000 of AGI over them (modelled as a straight line over $40,000). A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law.",
+   "notes": "Standard deduction phase-out at higher incomes is not modelled. The $84,490 / $108,320 thresholds are checked against the Minnesota Department of Revenue's Social Security subtraction page (updated 2025-12-17), which also says the subtraction falls 10% for each $4,000 of AGI over them; House Research (Minnesota Taxation of Social Security, 2025) confirms a part of $4,000 counts as a full step, and that is modelled. A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law.",
    "joint_brackets": [
     [
      0,
@@ -2719,7 +2719,8 @@
    "social_security": {
     "exempt_agi_single": 8449000,
     "exempt_agi_joint": 10832000,
-    "phaseout_width": 4000000
+    "phaseout_width": 4000000,
+    "phaseout_step": 400000
    }
   },
   "MO": {
@@ -3524,13 +3525,20 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 TC-40 instructions. Social Security stays in income and earns a credit of 4.5% of the taxable benefits, less 2.5% of income over $54,000 (single) / $90,000 (joint). The $450 retirement credit for people born before 1953 and the taxpayer credit are not modelled.",
+   "notes": "Checked against the 2025 TC-40 instructions. Social Security stays in income and earns a credit of 4.5% of the taxable benefits, less 2.5% of income over $54,000 (single) / $90,000 (joint). The $450 retirement credit for each person born on or before 1952 (less 2.5% of income over $25,000 single / $32,000 joint) is used instead of the Social Security credit when larger; income is taken as federal AGI. The taxpayer credit is not modelled.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 5400000,
     "exempt_agi_joint": 9000000,
     "credit_rate": 0.045,
     "credit_phaseout_rate": 0.025
+   },
+   "birth_year_credit": {
+    "born_by": 1952,
+    "per_person": 45000,
+    "start_single": 2500000,
+    "start_joint": 3200000,
+    "rate": 0.025
    }
   },
   "VA": {
