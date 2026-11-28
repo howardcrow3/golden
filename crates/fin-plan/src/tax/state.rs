@@ -1377,8 +1377,7 @@ mod tests {
         for (code, single, joint) in [
             ("NC", 12_750, 25_500),
             ("GA", 12_000, 24_000),
-            ("MS", 8_300, 16_600),
-            ("LA", 12_500, 25_000),
+            ("LA", 12_875, 25_750),
             ("IN", 1_000, 2_000),
             ("CO", 16_100, 32_200),
             ("MA", 4_400, 8_800),
@@ -1593,12 +1592,44 @@ mod tests {
     }
 
     #[test]
+    fn mississippi_iowa_kentucky_idaho_and_massachusetts_use_their_current_amounts() {
+        let y = StateTaxYear::y2026();
+        let tax = |c: &str, fs, inc: i64| y.income_tax(c, fs, m(inc)).unwrap();
+        let single = FilingStatus::Single;
+        // Mississippi: after the $8,300 deduction and exemption, the first $10,000 is
+        // untaxed and the rest pays 4%.
+        assert_eq!(tax("MS", single, 18_300), Money::ZERO);
+        assert_eq!(tax("MS", single, 28_300), m(10_000).mul_rate(0.04));
+        // Iowa: the federal $16,100 deduction, then 3.8%, less the $40 credit.
+        assert_eq!(tax("IA", single, 66_100), m(50_000).mul_rate(0.038) - m(40));
+        assert_eq!(
+            tax("IA", FilingStatus::MarriedJoint, 132_200),
+            m(100_000).mul_rate(0.038) - m(80)
+        );
+        // Kentucky: $3,360, then 3.5%.
+        assert_eq!(tax("KY", single, 53_360), m(50_000).mul_rate(0.035));
+        // Idaho: the federal $16,100, then 0% on the first $4,811 ($9,622 joint) and 5.3%.
+        assert_eq!(tax("ID", single, 70_911), m(50_000).mul_rate(0.053));
+        assert_eq!(
+            tax("ID", FilingStatus::MarriedJoint, 141_822),
+            m(100_000).mul_rate(0.053)
+        );
+        // Massachusetts: the 4% surtax starts at $1,083,150 of taxable income, joint too.
+        for fs in [single, FilingStatus::MarriedJoint] {
+            let d = if fs == single { 4_400 } else { 8_800 };
+            let at = |t: i64| tax("MA", fs, t + d);
+            assert_eq!(at(1_083_150), m(1_083_150).mul_rate(0.05));
+            assert_eq!(at(1_183_150) - at(1_083_150), m(9_000));
+        }
+    }
+
+    #[test]
     fn flat_tax_states_take_their_deduction_or_exemption_first() {
         let y = StateTaxYear::y2026();
         let single = FilingStatus::Single;
-        // Illinois: 4.95% after the $2,850 exemption.
+        // Illinois: 4.95% after the $2,925 exemption.
         assert_eq!(
-            y.income_tax("IL", single, m(52_850)).unwrap(),
+            y.income_tax("IL", single, m(52_925)).unwrap(),
             m(50_000).mul_rate(0.0495)
         );
         // Arizona and Idaho follow the federal standard deduction, Kentucky has its own.
@@ -1607,7 +1638,7 @@ mod tests {
         );
         assert!(y.income_tax("ID", single, m(60_000)).unwrap() < m(60_000).mul_rate(0.053));
         assert_eq!(
-            y.income_tax("KY", single, m(53_270)).unwrap(),
+            y.income_tax("KY", single, m(53_360)).unwrap(),
             m(50_000).mul_rate(0.035)
         );
     }
@@ -2401,8 +2432,8 @@ mod tests {
         assert_eq!(go(60_000, 0, 10_000, 76, 1950), plain(40_000));
         // A larger pension is still worth more than the standard deduction.
         assert_eq!(go(60_000, 0, 30_000, 76, 1950), plain(30_000));
-        // Tier 3 (born 1956): $20,000 less $8,000 taxable benefits and the $5,800 exemption.
-        assert_eq!(go(68_000, 8_000, 3_000, 70, 1956), plain(60_000 - 6_200));
+        // Tier 3 (born 1956): $20,000 less $8,000 taxable benefits and the $5,900 exemption.
+        assert_eq!(go(68_000, 8_000, 3_000, 70, 1956), plain(60_000 - 6_100));
         // Born 1962: only the pension subtraction.
         assert_eq!(go(68_000, 8_000, 3_000, 64, 1962), plain(60_000 - 3_000));
         // Unknown birth year: no standard deduction.
@@ -2620,8 +2651,8 @@ mod tests {
         );
         assert_eq!(
             y.income_tax("IL", FilingStatus::Single, m(100_000)),
-            // 4.95% after the $2,850 exemption.
-            Some(m(97_150).mul_rate(0.0495))
+            // 4.95% after the $2,925 exemption.
+            Some(m(97_075).mul_rate(0.0495))
         );
     }
 
@@ -2633,14 +2664,14 @@ mod tests {
         let va = y.income_tax("VA", FilingStatus::Single, m(50_000)).unwrap();
         let want = 60.0 + 60.0 + 600.0 + 0.0575 * (40_320.0 - 17_000.0);
         assert!((va.cents() as f64 / 100.0 - want).abs() < 1.0, "{va:?}");
-        // Illinois: the $2,850 exemption goes once AGI is over $250,000.
+        // Illinois: the $2,925 exemption goes once AGI is over $250,000.
         let il = |inc: i64| y.income_tax("IL", FilingStatus::Single, m(inc)).unwrap();
-        assert_eq!(il(250_000), m(250_000 - 2_850).mul_rate(0.0495));
+        assert_eq!(il(250_000), m(250_000 - 2_925).mul_rate(0.0495));
         assert_eq!(il(250_001), m(250_001).mul_rate(0.0495));
         let ilj = y
             .income_tax("IL", FilingStatus::MarriedJoint, m(400_000))
             .unwrap();
-        assert_eq!(ilj, m(400_000 - 5_700).mul_rate(0.0495));
+        assert_eq!(ilj, m(400_000 - 5_850).mul_rate(0.0495));
     }
 
     #[test]
