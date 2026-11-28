@@ -142,6 +142,35 @@ pub struct PlanInput {
     /// half it is given straight from the IRA (a qualified charitable distribution), which
     /// keeps that part of the required distribution out of taxable income.
     pub charity: Money,
+    /// Each person's share of the pre-tax balance, in the order of `people` (they should add up
+    /// to 1). Required distributions start at each owner's own age and the early-withdrawal
+    /// penalty follows each owner's age. Empty means the primary person owns all of it.
+    pub traditional_split: Vec<f64>,
+}
+
+impl PlanInput {
+    /// The normalized shares, one per person.
+    fn owner_shares(&self) -> Vec<f64> {
+        let n = self.people.len();
+        let raw: Vec<f64> = (0..n)
+            .map(|i| {
+                self.traditional_split
+                    .get(i)
+                    .copied()
+                    .unwrap_or(0.0)
+                    .max(0.0)
+            })
+            .collect();
+        let total: f64 = raw.iter().sum();
+        if total <= 0.0 {
+            let mut v = vec![0.0; n];
+            if n > 0 {
+                v[0] = 1.0;
+            }
+            return v;
+        }
+        raw.into_iter().map(|x| x / total).collect()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -191,6 +220,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
     let fed = FederalTaxYear::y2026();
     let states = StateTaxYear::y2026();
     let primary = &input.people[0];
+    let shares = input.owner_shares();
     let years =
         (input.horizon_age - primary.age_on(chrono_start(input.start_year))).max(0) as usize + 1;
 
@@ -210,8 +240,15 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         // Required minimum distributions come out of the pre-tax accounts first and count as
         // ordinary income; what is not needed for spending is saved in the taxable account.
         let age_now = primary.age_on(chrono_start(year));
-        let rmd =
-            crate::rmd::required(year - age_now, age_now, acc.traditional).min(acc.traditional);
+        // Each owner's distribution starts at their own age and is due on their own share.
+        let mut rmd = Money::ZERO;
+        for (person, share) in input.people.iter().zip(&shares) {
+            if *share > 0.0 {
+                let age = person.age_on(chrono_start(year));
+                rmd += crate::rmd::required(year - age, age, acc.traditional.mul_rate(*share));
+            }
+        }
+        let rmd = rmd.min(acc.traditional);
         acc.traditional -= rmd;
 
         let mut wages = Money::ZERO;
@@ -221,11 +258,18 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let mut match_total = Money::ZERO;
         let mut exempt = Money::ZERO;
         let mut pension = Money::ZERO;
+        // Each person has their own Social Security wage base.
+        let mut person_wages = vec![Money::ZERO; input.people.len()];
+        let mut person_se = vec![Money::ZERO; input.people.len()];
         for s in &input.streams {
             if year >= s.start_year && year <= s.end_year {
                 wages += s.annual_gross;
+                let slot = s.person.min(input.people.len().saturating_sub(1));
                 if s.self_employed {
                     se_net += s.annual_gross;
+                    person_se[slot] += s.annual_gross;
+                } else if !s.payroll_exempt {
+                    person_wages[slot] += s.annual_gross;
                 }
                 if s.payroll_exempt {
                     exempt += s.annual_gross;
@@ -260,8 +304,17 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
 
         // Tax on income that does not depend on withdrawals.
         let employee_wages = wages - se_net - exempt;
-        let se = fed.self_employment_tax(input.filing, se_net, employee_wages);
-        let fica = fed.fica_for_wages(input.filing, employee_wages) + se.tax;
+        let mut se = crate::tax::federal::SelfEmploymentTax {
+            tax: Money::ZERO,
+            deduction: Money::ZERO,
+        };
+        for (own, net) in person_wages.iter().zip(&person_se) {
+            let one =
+                fed.self_employment_tax_in_household(input.filing, *net, *own, employee_wages);
+            se.tax += one.tax;
+            se.deduction += one.deduction;
+        }
+        let fica = fed.fica_for_earners(input.filing, &person_wages) + se.tax;
         // Half the self-employment tax and the qualified business income deduction come off
         // ordinary income.
         let seniors = input
@@ -578,11 +631,14 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 final_ord = ord;
                 final_gains = gains;
                 // Pre-tax money taken before 59 and a half carries a 10% penalty.
-                let early = crate::tax::early_withdrawal_penalty(
-                    primary.age_on(chrono_start(year)) as f64 - 0.5,
-                    ord - base_ordinary,
-                    false,
-                );
+                let mut early = Money::ZERO;
+                for (person, share) in input.people.iter().zip(&shares) {
+                    early += crate::tax::early_withdrawal_penalty(
+                        person.age_on(chrono_start(year)) as f64 - 0.5,
+                        (ord - base_ordinary).mul_rate(*share),
+                        false,
+                    );
+                }
                 let new_tax = base_tax(ord, gains) + early;
                 let extra_tax = new_tax - income_tax_base;
                 let target = gap + extra_tax;
@@ -745,6 +801,7 @@ pub(crate) mod fixtures {
             roth_conversion: None,
             medicare: false,
             charity: Money::ZERO,
+            traditional_split: vec![],
         }
     }
 }
@@ -1194,6 +1251,40 @@ mod tests {
     }
 
     #[test]
+    fn required_distributions_follow_the_age_of_whoever_owns_the_account() {
+        let mut i = retired();
+        // The spouse is 81; the primary person is about 65.
+        i.people[1].birth_date = fin_core::NaiveDate::from_ymd_opt(1945, 3, 1).unwrap();
+        // With no owner split the primary person owns it all, so nothing is due yet.
+        assert_eq!(project_constant(&i, 0.03).rows[0].rmd, Money::ZERO);
+        i.traditional_split = vec![0.0, 1.0];
+        assert!(project_constant(&i, 0.03).rows[0].rmd > Money::ZERO);
+        // Half each: only the older spouse's half is due.
+        let half_each = {
+            let mut h = i.clone();
+            h.traditional_split = vec![1.0, 1.0];
+            project_constant(&h, 0.03).rows[0].rmd
+        };
+        let all_theirs = project_constant(&i, 0.03).rows[0].rmd;
+        assert!(half_each > Money::ZERO && half_each < all_theirs);
+    }
+
+    #[test]
+    fn the_early_withdrawal_penalty_follows_the_age_of_whoever_owns_the_account() {
+        let mut i = retired();
+        i.accounts.roth = Money::ZERO;
+        // The primary person is about 65, the spouse about 48.
+        let owned_by_older = project_constant(&i, 0.03);
+        i.traditional_split = vec![0.0, 1.0];
+        let owned_by_younger = project_constant(&i, 0.03);
+        let (a, b) = (&owned_by_older.rows[0], &owned_by_younger.rows[0]);
+        assert!(
+            b.taxes > a.taxes + a.withdrawals.mul_rate(0.05),
+            "{a:?} {b:?}"
+        );
+    }
+
+    #[test]
     fn required_distributions_start_at_75_for_someone_born_in_1961() {
         let p = project_constant(&retired(), 0.03);
         for r in &p.rows {
@@ -1321,6 +1412,29 @@ mod tests {
             p.rows[0].income_tax > Money::ZERO,
             "{:?}",
             p.rows[0].income_tax
+        );
+    }
+
+    #[test]
+    fn each_earner_has_their_own_social_security_wage_base() {
+        // One earner at $300,000 stops paying Social Security tax at the base. Two earners at
+        // $150,000 each are both under it, so together they pay more.
+        let mut one = couple();
+        one.streams[0].annual_gross = Money::from_dollars(300_000);
+        one.streams[0].traditional_contribution = Money::ZERO;
+        let mut two = one.clone();
+        two.streams[0].annual_gross = Money::from_dollars(150_000);
+        let mut b = two.streams[0].clone();
+        b.person = 1;
+        b.label = "B salary".into();
+        two.streams.push(b);
+        let p1 = project_constant(&one, 0.0);
+        let p2 = project_constant(&two, 0.0);
+        assert!(
+            p2.rows[0].taxes - p2.rows[0].income_tax > p1.rows[0].taxes - p1.rows[0].income_tax,
+            "{:?} {:?}",
+            p2.rows[0],
+            p1.rows[0]
         );
     }
 

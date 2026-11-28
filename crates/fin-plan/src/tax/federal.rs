@@ -201,6 +201,21 @@ impl FederalTaxYear {
 
     /// Employee-side FICA for one earner: Social Security to the wage base plus Medicare,
     /// plus the additional Medicare tax over the filing-status threshold.
+    /// Payroll tax for a household where each earner has their own Social Security wage base.
+    /// The additional Medicare tax counts everyone's wages together against the joint threshold.
+    pub fn fica_for_earners(&self, fs: FilingStatus, wages: &[Money]) -> Money {
+        let f = &self.fica;
+        let mut total = Money::ZERO;
+        let mut sum = Money::ZERO;
+        for w in wages {
+            let w = (*w).max(Money::ZERO);
+            sum += w;
+            total += w.min(f.ss_wage_base).mul_rate(f.ss_rate) + w.mul_rate(f.medicare_rate);
+        }
+        let over = (sum - f.addl_medicare_threshold[&fs]).max(Money::ZERO);
+        total + over.mul_rate(f.addl_medicare_rate)
+    }
+
     pub fn fica_for_wages(&self, fs: FilingStatus, wages: Money) -> Money {
         let f = &self.fica;
         let wages = wages.max(Money::ZERO);

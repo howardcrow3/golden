@@ -604,6 +604,21 @@ impl Household {
         } else {
             vec![]
         };
+        // The pre-tax balance is pooled, so assume it follows who earns: each person's share is
+        // their share of the household's pay. With no pay, the primary person owns it.
+        let traditional_split = {
+            let mut pay = vec![0f64; people.len()];
+            for s in &streams {
+                if let Some(slot) = pay.get_mut(s.person) {
+                    *slot += s.annual_gross.cents().max(0) as f64;
+                }
+            }
+            if pay.iter().sum::<f64>() > 0.0 {
+                pay
+            } else {
+                vec![]
+            }
+        };
         Ok(PlanInput {
             start_year: year,
             people,
@@ -640,6 +655,7 @@ impl Household {
             roth_conversion: None,
             medicare: self.medicare,
             charity: Money::from_cents(self.giving_cents.max(0)),
+            traditional_split,
         })
     }
 }

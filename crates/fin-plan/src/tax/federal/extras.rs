@@ -224,6 +224,20 @@ impl FederalTaxYear {
         net_earnings: Money,
         other_wages: Money,
     ) -> SelfEmploymentTax {
+        self.self_employment_tax_in_household(fs, net_earnings, other_wages, other_wages)
+    }
+
+    /// The same for one person in a household: `own_wages` share that person's Social Security
+    /// wage base, while the additional Medicare threshold counts every earner's
+    /// `household_wages`.
+    pub fn self_employment_tax_in_household(
+        &self,
+        fs: FilingStatus,
+        net_earnings: Money,
+        own_wages: Money,
+        household_wages: Money,
+    ) -> SelfEmploymentTax {
+        let other_wages = own_wages;
         let f = &self.fica;
         let base = net_earnings.max(Money::ZERO).mul_rate(0.9235);
         if base <= Money::ZERO {
@@ -235,7 +249,7 @@ impl FederalTaxYear {
         let room = (f.ss_wage_base - other_wages.max(Money::ZERO)).max(Money::ZERO);
         let ss = base.min(room).mul_rate(f.ss_rate * 2.0);
         let medicare = base.mul_rate(f.medicare_rate * 2.0);
-        let over = (base + other_wages.max(Money::ZERO) - f.addl_medicare_threshold[&fs])
+        let over = (base + household_wages.max(Money::ZERO) - f.addl_medicare_threshold[&fs])
             .max(Money::ZERO)
             .min(base);
         let addl = over.mul_rate(f.addl_medicare_rate);
