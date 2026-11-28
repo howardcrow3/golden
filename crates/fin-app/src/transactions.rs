@@ -214,6 +214,10 @@ impl App {
                 .set_setting(RULES_KEY, &json)
                 .map_err(|e| e.to_string())?;
             for other in self.db.uncategorized_txns().map_err(|e| e.to_string())? {
+                // A closed month is locked: leave its lines as they are.
+                if self.is_month_closed(other.day)? {
+                    continue;
+                }
                 if let Some(c) = self
                     .rules
                     .categorize(&other.payee, other.amount)
