@@ -85,6 +85,14 @@ impl App {
         if confirm.trim() != ERASE_WORD {
             return Err(format!("Type {ERASE_WORD} to confirm."));
         }
+        // Erasing the settings would forget a linked bank while its access token stays in the
+        // keychain and the Plaid connection stays live, so those must be unlinked first.
+        if !self.bank_items()?.is_empty() {
+            return Err(
+                "Unlink your banks on the Banks page first, so their sign-ins are removed too. Then erase."
+                    .into(),
+            );
+        }
         self.db
             .erase_personal_data(crate::licensing::KEEP_ON_ERASE)
             .map_err(|e| e.to_string())?;

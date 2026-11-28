@@ -292,10 +292,13 @@ pub fn parse_amount(token: &str) -> Option<i64> {
         (t, 1.0)
     };
     let v: f64 = num.parse().ok()?;
-    if !v.is_finite() || v < 0.0 {
+    // Anything over a trillion dollars is a typo (or "1e30"); refusing it keeps the plan's
+    // arithmetic far from overflow.
+    let dollars = v * mult;
+    if !v.is_finite() || v < 0.0 || dollars > 1e12 {
         return None;
     }
-    Some((v * mult * 100.0).round() as i64)
+    Some((dollars * 100.0).round() as i64)
 }
 
 /// First amount-looking token after `marker` in `text`.
@@ -333,8 +336,9 @@ fn money_tokens(text: &str) -> Vec<i64> {
 /// a year from 2036 to 2040", "an inheritance of $200k in 2032", "sell the house in 2035 for
 /// $500k".
 fn planned_costs(t: &str, today: NaiveDate) -> Vec<Change> {
+    // "2036-2040" is a span too, so a dash separates years like a space does.
     let years: Vec<i32> = t
-        .split_whitespace()
+        .split(|c: char| c.is_whitespace() || c == '-' || c == '\u{2013}')
         .filter_map(|w| {
             w.trim_matches(|c: char| !c.is_ascii_digit())
                 .parse::<i32>()
@@ -531,11 +535,13 @@ impl Interpreter for RuleInterpreter {
             }
         }
 
-        if t.contains("move to ") || t.contains("moving to ") || t.contains("relocate to ") {
-            let after = t
-                .split("to ")
-                .nth(1)
-                .unwrap_or("")
+        // Read the words right after the moving phrase, not after the first "to " in the
+        // sentence ("I want to move to Florida").
+        if let Some(after) = ["move to ", "moving to ", "relocate to "]
+            .iter()
+            .find_map(|m| t.find(m).map(|i| &t[i + m.len()..]))
+        {
+            let after = after
                 .trim_matches(|c: char| !c.is_alphanumeric() && c != ' ')
                 .to_string();
             let named = STATES
@@ -562,7 +568,6 @@ impl Interpreter for RuleInterpreter {
         ] {
             if let Some(i) = t.find(word) {
                 let rest = &t[i..];
-                let cents = amount_after(rest, word);
                 let year = rest
                     .split_whitespace()
                     .filter_map(|w| {
@@ -571,6 +576,16 @@ impl Interpreter for RuleInterpreter {
                             .ok()
                     })
                     .find(|y| (today.year()..=today.year() + 60).contains(y));
+                // "$50k bonus in 2028" puts the amount before the word; a bare number after
+                // it must not be the year itself.
+                let cents = money_tokens(rest)
+                    .first()
+                    .copied()
+                    .or_else(|| money_tokens(&t[..i]).last().copied())
+                    .or_else(|| {
+                        amount_after(rest, word)
+                            .filter(|c| Some(*c) != year.map(|y| i64::from(y) * 100))
+                    });
                 if let (Some(cents), Some(year)) = (cents, year) {
                     let mut label = word.to_string();
                     label[..1].make_ascii_uppercase();
@@ -628,9 +643,16 @@ impl Interpreter for RuleInterpreter {
         } else if has(&["live to 90", "to age 90", "until 90", "to 90"]) {
             pick("horizon_age", "Age 90");
         }
-        if has(&["social security", "claim"]) {
+        // Look for the age only after the Social Security words, so "retire at 67 and claim
+        // at 70" claims at 70.
+        if let Some(ss) = ["social security", "claim"]
+            .iter()
+            .filter_map(|w| t.find(w))
+            .min()
+            .map(|i| &t[i..])
+        {
             for (age, label) in [(62, "Age 62"), (67, "Age 67"), (70, "Age 70")] {
-                if t.contains(&format!("at {age}")) || t.contains(&format!("age {age}")) {
+                if ss.contains(&format!("at {age}")) || ss.contains(&format!("age {age}")) {
                     pick("ss_claim_age", label);
                     break;
                 }

@@ -230,3 +230,54 @@ fn changes_survive_a_json_round_trip_for_the_ui() {
     );
     assert_eq!(serde_json::from_str::<Change>(&json).unwrap(), c);
 }
+
+#[test]
+fn absurdly_large_amounts_are_not_understood() {
+    assert_eq!(parse_amount("$1e30"), None);
+    assert!(interpret("spend $1e30 a year").is_empty());
+}
+
+#[test]
+fn moving_is_understood_when_to_appears_earlier_in_the_sentence() {
+    for t in [
+        "I want to move to Florida",
+        "what if we decide to relocate to Texas",
+    ] {
+        assert!(
+            matches!(interpret(t).as_slice(), [Change::MoveTo { .. }]),
+            "{t}: {:?}",
+            interpret(t)
+        );
+    }
+    assert_eq!(
+        interpret("I want to move to Florida"),
+        vec![Change::MoveTo { state: "FL".into() }]
+    );
+}
+
+#[test]
+fn a_bonus_amount_written_before_the_word_is_not_read_as_the_year() {
+    assert_eq!(
+        interpret("what if I get a $50k bonus in 2028"),
+        vec![Change::OneTime {
+            label: "Bonus".into(),
+            person: 0,
+            cents: 5_000_000,
+            year: 2028,
+        }]
+    );
+}
+
+#[test]
+fn the_claim_age_comes_from_the_social_security_part_not_the_retirement_age() {
+    assert_eq!(
+        interpret("retire at 67 and claim social security at 70"),
+        vec![
+            Change::RetireAt { person: 0, age: 67 },
+            Change::SetPick {
+                key: "ss_claim_age".into(),
+                label: "Age 70".into(),
+            }
+        ]
+    );
+}

@@ -103,7 +103,8 @@ fn decode_chunked(mut body: &[u8]) -> Result<Vec<u8>, String> {
         if size == 0 {
             return Ok(out);
         }
-        if body.len() < size + 2 {
+        // A size near usize::MAX must not overflow into a short length and a bad slice.
+        if size.checked_add(2).is_none_or(|need| body.len() < need) {
             return Err(bad());
         }
         out.extend_from_slice(&body[..size]);

@@ -66,7 +66,8 @@ pub fn verify_signature(
     if sigs.is_empty() {
         return Err(WebhookError::BadHeader);
     }
-    if (now_unix - ts).abs() > tolerance_secs {
+    // abs_diff cannot overflow, so an attacker's ts=-9223372036854775808 is just stale.
+    if now_unix.abs_diff(ts) > tolerance_secs.max(0).unsigned_abs() {
         return Err(WebhookError::Stale);
     }
     // Paddle may send more than one h1 while a secret is being rotated; any match is enough.
