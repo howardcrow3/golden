@@ -2240,7 +2240,7 @@
    "std_joint": 1108800,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption combined.",
+   "notes": "Standard deduction plus personal exemption combined. Checked against the 2025 N-11 instructions: distributions from employer-funded pension plans are exempt; IRA and 401(k) withdrawals are treated as taxable here.",
    "joint_brackets": [
     [
      0,
@@ -2290,7 +2290,11 @@
      65000000,
      0.11
     ]
-   ]
+   ],
+   "retirement": {
+    "pension_full": true,
+    "min_age": 0
+   }
   },
   "IA": {
    "name": "Iowa",
@@ -2627,14 +2631,14 @@
    "std_joint": 1160000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Rate and $5,800 exemption (2025) checked against the 2025 MI-1040 booklet; Social Security is not taxed. People born 1946 to 1958 who reach 67 may take a $20,000 (single) / $40,000 (joint) standard deduction instead of a retirement subtraction; it is applied here to retirement income only. The retirement subtraction amounts on Form 4884, the pre-1946 tier and the 2026 phase-in are not modelled.",
+   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The 2025 rate is 4.25% and the exemption $5,800. From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. The older tiers, the $20,000 / $40,000 standard deduction choice and the pre-1946 interest and dividend subtraction are not modelled.",
    "retirement": {
     "min_age": 0,
     "household": {
-     "min_age": 67,
-     "cap_single": 2000000,
-     "cap_joint": 4000000,
-     "cap_separate": 2000000,
+     "min_age": 60,
+     "cap_single": 6589700,
+     "cap_joint": 13179400,
+     "cap_separate": 6589700,
      "full_to": 10000000000000,
      "steps": []
     }
@@ -2731,7 +2735,22 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Same schedule for all filers; follows the federal standard deduction."
+   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Public pensions (federal, state, local) can be exempt up to $47,633 less the Social Security exemption; all pensions are treated as private here, which errs high for public pension holders. The joint line is applied to the household.",
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 0,
+      "cap": 600000
+     }
+    ],
+    "phaseout": {
+     "start_single": 2500000,
+     "start_joint": 3200000,
+     "width": 1,
+     "dollar": true
+    }
+   }
   },
   "MS": {
    "name": "Mississippi",
@@ -3195,11 +3214,42 @@
      0.0275
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 215000,
+   "std_joint": 430000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Checked against the 2025 IT 1040 booklet. Social Security is left out. Personal exemptions are $2,150 each here (the 2025 amount for income of $40,001 to $80,000; it is $2,400 below and $1,900 above). Retirement income credit (up to $200) and the $50 senior credit apply when income less exemptions is under $100,000; the test here uses income less taxable Social Security. The 2025 top rate of 3.125% over $100,000 and the 2026 flat rate are as in the table.",
+   "retirement_credit": {
+    "income_limit": 10000000,
+    "steps": [
+     [
+      50000,
+      0
+     ],
+     [
+      150000,
+      2500
+     ],
+     [
+      300000,
+      5000
+     ],
+     [
+      500000,
+      8000
+     ],
+     [
+      800000,
+      13000
+     ],
+     [
+      100000000000,
+      20000
+     ]
+    ],
+    "senior_age": 65,
+    "senior_credit": 5000
+   }
   },
   "OK": {
    "name": "Oklahoma",
@@ -3280,7 +3330,7 @@
    "std_joint": 582000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption credit $256 per filer; the federal-tax subtraction is not modelled.",
+   "notes": "Personal exemption credit $256 per filer; the federal-tax subtraction is not modelled. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (household income under $22,500 / $45,000) and the federal pension subtraction (by months of service before October 1991) are not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3629,7 +3679,11 @@
    "std_joint": 400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption only; no standard deduction."
+   "notes": "Checked against the 2025 IT-140 instructions and Schedule M. Each person 65 or older may leave out up to $8,000 of income, less the Social Security left out (Schedule M line 47). For 2025 only 65% of Social Security over $50,000 / $100,000 AGI is deducted; the table here uses the full exemption that applies from 2026. The $2,000 WV public retirement modification is not modelled.",
+   "age_allowance": {
+    "age": 65,
+    "amount": 800000
+   }
   },
   "WY": {
    "name": "Wyoming",

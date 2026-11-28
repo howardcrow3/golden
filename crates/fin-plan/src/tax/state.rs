@@ -59,6 +59,12 @@ pub struct StateRules {
     /// An exemption for each person of an age whose amount steps down as income rises (New Mexico).
     #[serde(default)]
     pub age_exemption: Option<AgeExemptionSteps>,
+    /// Allowance for people of an age, cut by the Social Security left out (West Virginia).
+    #[serde(default)]
+    pub age_allowance: Option<AgeAllowance>,
+    /// Credits against tax for retirement income and age (Ohio).
+    #[serde(default)]
+    pub retirement_credit: Option<RetirementCredit>,
     /// For states in `taxes_social_security`: when benefits are left out of state income.
     #[serde(default)]
     pub social_security: Option<SocialSecurityRule>,
@@ -105,6 +111,10 @@ pub struct ExclusionPhaseout {
     pub start_single: Money,
     pub start_joint: Money,
     pub width: Money,
+    /// Instead of fading over `width`, the exclusion falls a dollar for each dollar of AGI (less
+    /// taxable Social Security) over the start (Missouri).
+    #[serde(default)]
+    pub dollar: bool,
 }
 
 /// New Jersey style: once someone in the household is `min_age`, pension and IRA income up to the
@@ -163,6 +173,60 @@ impl AgeDeduction {
         let each = (self.amount - (income - start).max(Money::ZERO)).max(Money::ZERO);
         let n = ages.iter().filter(|&&a| a >= self.age as i32).count() as i64;
         Money::from_cents(each.cents() * n)
+    }
+}
+
+/// Each person of `age` or older may leave out up to `amount` of income, less their share of the
+/// Social Security the state already left out (West Virginia).
+#[derive(Debug, Clone, Deserialize)]
+pub struct AgeAllowance {
+    pub age: u8,
+    pub amount: Money,
+}
+
+impl AgeAllowance {
+    pub fn total(&self, ss_subtracted: Money, ages: &[i32]) -> Money {
+        let n = ages.len().max(1) as i64;
+        let share = ss_subtracted.max(Money::ZERO).cents() / n;
+        let each = (self.amount.cents() - share).max(0);
+        let eligible = ages.iter().filter(|&&a| a >= self.age as i32).count() as i64;
+        Money::from_cents(each * eligible)
+    }
+}
+
+/// Ohio style credits against tax for people with retirement income and modest income.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RetirementCredit {
+    /// No credit when income (AGI less taxable Social Security) is this much or more.
+    pub income_limit: Money,
+    /// (retirement income up to, credit), in order; the last row catches everything above.
+    pub steps: Vec<(Money, Money)>,
+    /// A flat credit for the return when someone is `senior_age` or older.
+    #[serde(default)]
+    pub senior_age: u8,
+    #[serde(default)]
+    pub senior_credit: Money,
+}
+
+impl RetirementCredit {
+    pub fn total(&self, income: Money, retirement: Money, ages: &[i32]) -> Money {
+        if income >= self.income_limit {
+            return Money::ZERO;
+        }
+        let r = retirement.max(Money::ZERO);
+        let base = self
+            .steps
+            .iter()
+            .find(|(to, _)| r <= *to)
+            .or(self.steps.last())
+            .map(|(_, c)| *c)
+            .unwrap_or(Money::ZERO);
+        let senior = if self.senior_age > 0 && ages.iter().any(|&a| a >= self.senior_age as i32) {
+            self.senior_credit
+        } else {
+            Money::ZERO
+        };
+        base + senior
     }
 }
 
@@ -597,6 +661,11 @@ impl StateTaxYear {
         if let Some(a) = &r.age_exemption {
             income = (income - a.total(fs, federal_agi, &ret.ages)).max(Money::ZERO);
         }
+        let before_ss = (federal_agi - ss).max(Money::ZERO);
+        if let Some(a) = &r.age_allowance {
+            let sub = (ss - ss_in_state).max(Money::ZERO);
+            income = (income - a.total(sub, &ret.ages)).max(Money::ZERO);
+        }
         if let Some(x) = &r.retirement {
             let before = (federal_agi - ss).max(Money::ZERO);
             let mut ret = ret.clone();
@@ -609,9 +678,14 @@ impl StateTaxYear {
                 } else {
                     p.start_single
                 };
-                let over = (federal_agi - start).max(Money::ZERO).cents() as f64;
-                let share = (over / p.width.cents().max(1) as f64).min(1.0);
-                cut = cut.mul_rate(1.0 - share);
+                if p.dollar {
+                    let over = (before - start).max(Money::ZERO);
+                    cut = (cut - over).max(Money::ZERO);
+                } else {
+                    let over = (federal_agi - start).max(Money::ZERO).cents() as f64;
+                    let share = (over / p.width.cents().max(1) as f64).min(1.0);
+                    cut = cut.mul_rate(1.0 - share);
+                }
             }
             income = (income - cut - x.household_excluded(fs, before, &ret)).max(Money::ZERO);
         }
@@ -620,7 +694,14 @@ impl StateTaxYear {
             (Some(rule), true) => rule.credit(fs, income, ss),
             _ => Money::ZERO,
         };
-        Some((tax - credit).max(Money::ZERO))
+        let rc = r.retirement_credit.as_ref().map_or(Money::ZERO, |c| {
+            c.total(
+                before_ss,
+                ret.pension.max(Money::ZERO) + ret.distributions.max(Money::ZERO),
+                &ret.ages,
+            )
+        });
+        Some((tax - credit - rc).max(Money::ZERO))
     }
 
     /// State income tax on `federal_agi`-like income for a resident of `code`.
@@ -919,21 +1000,106 @@ mod tests {
     }
 
     #[test]
-    fn michigan_standard_deduction_for_those_67_and_over() {
+    fn michigan_subtracts_retirement_income_up_to_the_form_4884_limit() {
         let y = StateTaxYear::y2026();
-        let go = |fs, ages: &[i32], pen: i64| {
-            y.income_tax_with_retirement("MI", fs, m(80_000), Money::ZERO, &ret(pen, 0, ages))
+        let go = |fs, ages: &[i32], pen: i64, dist: i64| {
+            y.income_tax_with_retirement("MI", fs, m(150_000), Money::ZERO, &ret(pen, dist, ages))
                 .unwrap()
         };
         let plain = |fs, inc: i64| y.income_tax("MI", fs, m(inc)).unwrap();
         let single = FilingStatus::Single;
-        // The $5,800 exemption is the standard amount; at 67 up to $20,000 of retirement income more.
-        assert_eq!(go(single, &[60], 30_000), plain(single, 80_000));
-        assert_eq!(go(single, &[68], 30_000), plain(single, 60_000));
+        // $70,000 of pension and IRA income at 68: the $65,897 limit comes out.
         assert_eq!(
-            go(FilingStatus::MarriedJoint, &[68, 66], 50_000),
-            plain(FilingStatus::MarriedJoint, 40_000)
+            go(single, &[68], 40_000, 30_000),
+            plain(single, 150_000 - 65_897)
         );
+        // Joint: $131,794.
+        assert_eq!(
+            go(FilingStatus::MarriedJoint, &[68, 66], 100_000, 60_000),
+            plain(FilingStatus::MarriedJoint, 150_000 - 131_794)
+        );
+        // Smaller amounts come out in full.
+        assert_eq!(go(single, &[68], 20_000, 0), plain(single, 130_000));
+        // Born after 1966: nothing.
+        assert_eq!(go(single, &[55], 20_000, 0), plain(single, 150_000));
+    }
+
+    #[test]
+    fn missouri_private_pension_is_capped_and_fades_with_income() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, ss: i64, pen: i64, ages: &[i32]| {
+            y.income_tax_with_retirement("MO", single, m(agi), m(ss), &ret(pen, 0, ages))
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("MO", single, m(inc)).unwrap();
+        // Under $25,000 of other income: the full $6,000.
+        assert_eq!(go(25_000, 0, 20_000, &[66]), plain(25_000 - 6_000));
+        // Each dollar over the line takes a dollar of the exemption: $3,000 over, $3,000 left.
+        assert_eq!(go(28_000, 0, 20_000, &[66]), plain(28_000 - 3_000));
+        // $6,000 or more over: nothing.
+        assert_eq!(go(40_000, 0, 20_000, &[66]), plain(40_000));
+        // Taxable Social Security does not count towards the line.
+        assert_eq!(go(35_000, 10_000, 20_000, &[66]), plain(25_000 - 6_000));
+        // A smaller pension comes out in full.
+        assert_eq!(go(20_000, 0, 4_000, &[66]), plain(16_000));
+    }
+
+    #[test]
+    fn ohio_gives_credits_for_retirement_income_and_age() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, pen: i64, ages: &[i32]| {
+            y.income_tax_with_retirement("OH", single, m(agi), Money::ZERO, &ret(pen, 0, ages))
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("OH", single, m(inc)).unwrap();
+        // $60,000 of income: tax then a $200 retirement credit and the $50 senior credit.
+        assert_eq!(go(60_000, 20_000, &[66]), plain(60_000) - m(250));
+        // $4,000 of retirement income earns $80.
+        assert_eq!(go(60_000, 4_000, &[66]), plain(60_000) - m(130));
+        // Under 65: no senior credit.
+        assert_eq!(go(60_000, 20_000, &[62]), plain(60_000) - m(200));
+        // At $100,000 neither credit applies.
+        assert_eq!(go(100_000, 20_000, &[66]), plain(100_000));
+    }
+
+    #[test]
+    fn hawaii_leaves_out_employer_pensions_but_not_ira_withdrawals() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |pen: i64, dist: i64| {
+            y.income_tax_with_retirement(
+                "HI",
+                single,
+                m(80_000),
+                Money::ZERO,
+                &ret(pen, dist, &[70]),
+            )
+            .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("HI", single, m(inc)).unwrap();
+        assert_eq!(go(30_000, 0), plain(50_000));
+        assert_eq!(go(0, 30_000), plain(80_000));
+    }
+
+    #[test]
+    fn west_virginia_senior_modification_is_cut_by_benefits_left_out() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, ss: i64, age: i32| {
+            y.income_tax_with_retirement("WV", single, m(agi), m(ss), &ret(0, 0, &[age]))
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("WV", single, m(inc)).unwrap();
+        // 66 with no benefits: $8,000 comes out.
+        assert_eq!(go(50_000, 0, 66), plain(42_000));
+        // $3,000 of benefits (all left out) cuts it to $5,000.
+        assert_eq!(go(50_000, 3_000, 66), plain(50_000 - 3_000 - 5_000));
+        // $8,000 or more of benefits: no senior modification.
+        assert_eq!(go(50_000, 9_000, 66), plain(41_000));
+        // Under 65: none.
+        assert_eq!(go(50_000, 0, 60), plain(50_000));
     }
 
     #[test]
