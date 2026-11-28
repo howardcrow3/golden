@@ -127,47 +127,134 @@
      0.01
     ],
     [
-     1075600,
+     1145600,
      0.02
     ],
     [
-     2549900,
+     2715700,
      0.04
     ],
     [
-     4024500,
+     4286100,
      0.06
     ],
     [
-     5586600,
+     5949800,
      0.08
     ],
     [
-     7060600,
-     0.09300000000000001
+     7519700,
+     0.093
     ],
     [
-     36065900,
-     0.10300000000000001
+     38410900,
+     0.103
     ],
     [
-     43278700,
+     46092700,
      0.113
     ],
     [
-     72131400,
-     0.12300000000000001
+     76821300,
+     0.123
     ],
     [
      100000000,
      0.133
     ]
    ],
-   "std_single": 554000,
-   "std_joint": 1108000,
+   "std_single": 590000,
+   "std_joint": 1180000,
    "joint_multiplier": 2.0,
    "approximate": false,
-   "notes": "Includes 1% mental health surcharge over $1M."
+   "notes": "2026 rate schedules, standard deduction ($5,900 single, $11,800 joint and head of household) and personal exemption credits ($158 / $316) from FTB Tax News, October 2026. Includes the 1% mental health surcharge on taxable income over $1 million for every filing status. Not modelled: the extra $158 senior exemption credit at 65 and the exemption credit phase-out at high incomes.",
+   "joint_brackets": [
+    [
+     0,
+     0.01
+    ],
+    [
+     2291200,
+     0.02
+    ],
+    [
+     5431400,
+     0.04
+    ],
+    [
+     8572200,
+     0.06
+    ],
+    [
+     11899600,
+     0.08
+    ],
+    [
+     15039400,
+     0.093
+    ],
+    [
+     76821800,
+     0.103
+    ],
+    [
+     92185400,
+     0.113
+    ],
+    [
+     100000000,
+     0.123
+    ],
+    [
+     153642600,
+     0.133
+    ]
+   ],
+   "head_brackets": [
+    [
+     0,
+     0.01
+    ],
+    [
+     2292700,
+     0.02
+    ],
+    [
+     5431600,
+     0.04
+    ],
+    [
+     7001800,
+     0.06
+    ],
+    [
+     8665400,
+     0.08
+    ],
+    [
+     10235600,
+     0.093
+    ],
+    [
+     52238500,
+     0.103
+    ],
+    [
+     62686400,
+     0.113
+    ],
+    [
+     100000000,
+     0.123
+    ],
+    [
+     104477100,
+     0.133
+    ]
+   ],
+   "std_head": 1180000,
+   "credit_single": 15800,
+   "credit_joint": 31600
   },
   "CO": {
    "name": "Colorado",
@@ -2398,11 +2485,21 @@
    "std_joint": 570000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)). Checked against the 2025 IL-1040 instructions: the personal exemption is $2,850 per person ($5,700 joint), used here as the deduction. Not modelled: $1,000 more for each filer 65 or older or blind, and no exemption when federal AGI is over $250,000 (single) / $500,000 (joint).",
+   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)). Checked against the 2025 IL-1040 instructions: the personal exemption is $2,850 per person ($5,700 joint), used here as the deduction. Adds $1,000 for each filer 65 or older. No exemption when federal AGI is over $250,000 (single) / $500,000 (joint); the $1,000 at 65 is still given there, a small overstatement.",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
     "min_age": 0
+   },
+   "aged_extra_single": 100000,
+   "aged_extra_joint": 100000,
+   "std_phase_down": {
+    "start_single": 25000000,
+    "end_single": 25000001,
+    "floor_single": 0,
+    "start_joint": 50000000,
+    "end_joint": 50000001,
+    "floor_joint": 0
    }
   },
   "IN": {
@@ -2660,30 +2757,30 @@
      0.058
     ],
     [
-     2739900,
+     2740000,
      0.0675
     ],
     [
-     6484900,
+     6485000,
      0.0715
     ]
    ],
-   "std_single": 1365000,
-   "std_joint": 2730000,
+   "std_single": 2100000,
+   "std_joint": 4200000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Standard deduction and exemption phase-outs are not modelled. Follows the federal extra standard deduction at 65.",
+   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Follows the federal extra standard deduction at 65. 2026 rates, standard deduction ($15,700 single, $31,400 joint, $23,550 head of household) and $5,300 exemption from the May 2026 revised rate schedule. The standard deduction fades out over $100,000 to $175,000 single and $200,050 to $350,050 joint (2025 worksheet figures; heads of household use the single range here), leaving the exemption. The exemption phase-out over about $333,000 and the 2% surcharge over $1 million are not modelled, and the extra deduction at 65 is not faded with the rest.",
    "joint_brackets": [
     [
      0,
      0.058
     ],
     [
-     5484900,
+     5485000,
      0.0675
     ],
     [
-     12974900,
+     12975000,
      0.0715
     ]
    ],
@@ -2704,7 +2801,30 @@
    },
    "military": {},
    "aged_extra_single": 205000,
-   "aged_extra_joint": 165000
+   "aged_extra_joint": 165000,
+   "head_brackets": [
+    [
+     0,
+     0.058
+    ],
+    [
+     4110000,
+     0.0675
+    ],
+    [
+     9730000,
+     0.0715
+    ]
+   ],
+   "std_head": 2885000,
+   "std_phase_down": {
+    "start_single": 10000000,
+    "end_single": 17500000,
+    "floor_single": 530000,
+    "start_joint": 20005000,
+    "end_joint": 35005000,
+    "floor_joint": 1060000
+   }
   },
   "MI": {
    "name": "Michigan",
@@ -3790,11 +3910,11 @@
      0.0575
     ]
    ],
-   "std_single": 875000,
-   "std_joint": 1750000,
+   "std_single": 968000,
+   "std_joint": 1936000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled. Military benefits subtraction of up to $40,000 each. Each person 65 or older also gets an $800 personal exemption (2025 Form 760 instructions).",
+   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled. Military benefits subtraction of up to $40,000 each. Each person 65 or older also gets an $800 personal exemption (2025 Form 760 instructions). The standard deduction here includes the $930 personal exemption per filer ($8,750 + $930 single, $17,500 + $1,860 joint).",
    "age_deduction": {
     "age": 65,
     "amount": 1200000,

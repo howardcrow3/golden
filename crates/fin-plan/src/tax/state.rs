@@ -103,6 +103,10 @@ pub struct StateRules {
     pub brackets: BracketTable,
     pub std_single: Money,
     pub std_joint: Money,
+    /// A separate head-of-household standard deduction, when the state has one (Maine).
+    /// Without it heads of household use `std_single`.
+    #[serde(default)]
+    pub std_head: Option<Money>,
     /// The standard deduction shrinks as income rises (Alabama).
     #[serde(default)]
     pub std_phase_down: Option<StdPhaseDown>,
@@ -122,7 +126,7 @@ pub struct StateRules {
     /// A minimum tax of `rate` x AGI once AGI is over `agi_over` (Vermont).
     #[serde(default)]
     pub agi_floor_tax: Option<AgiFloorTax>,
-    /// Explicit head-of-household brackets (Connecticut).
+    /// Explicit head-of-household brackets (Connecticut, Maine).
     #[serde(default)]
     pub head_brackets: Option<BracketTable>,
     /// Connecticut style schedule where the exemption, an add-back, a recapture and a personal
@@ -1278,13 +1282,20 @@ impl StateTaxYear {
                 taxable,
             ));
         }
-        let std = if joint { r.std_joint } else { r.std_single };
+        let head = fs == FilingStatus::HeadOfHousehold;
+        let std = match (joint, head, r.std_head) {
+            (true, _, _) => r.std_joint,
+            (false, true, Some(h)) => h,
+            _ => r.std_single,
+        };
         let std = match &r.std_phase_down {
             Some(p) => p.apply(joint, std, income),
             None => std,
         };
         let taxable = (income - std - less).max(Money::ZERO);
-        let table = if let (true, Some(jb)) = (joint, r.joint_brackets.as_ref()) {
+        let table = if let (true, Some(hb)) = (head, r.head_brackets.as_ref()) {
+            hb.clone()
+        } else if let (true, Some(jb)) = (joint, r.joint_brackets.as_ref()) {
             jb.clone()
         } else if joint && r.joint_multiplier != 1.0 {
             BracketTable::new(
@@ -1615,6 +1626,43 @@ mod tests {
         let single = FilingStatus::Single;
         let at = |inc: i64| y.income_tax("AL", single, m(inc)).unwrap();
         assert!(at(30_500) - at(30_000) > at(40_500) - at(40_000));
+    }
+
+    #[test]
+    fn maine_uses_its_2026_schedule_and_fades_the_standard_deduction() {
+        let y = StateTaxYear::y2026();
+        let tax = |fs, inc: i64| y.income_tax("ME", fs, m(inc)).unwrap();
+        let close = |got: Money, want: f64| {
+            assert!(
+                (got.cents() as f64 / 100.0 - want).abs() < 1.0,
+                "{got:?} vs {want}"
+            )
+        };
+        // Single: $15,700 standard deduction plus the $5,300 exemption.
+        // $50,000 leaves $29,000: 5.8% of $27,400 plus 6.75% of $1,600.
+        close(
+            tax(FilingStatus::Single, 50_000),
+            27_400.0 * 0.058 + 1_600.0 * 0.0675,
+        );
+        // Joint: $31,400 plus two exemptions. $100,000 leaves $58,000.
+        close(
+            tax(FilingStatus::MarriedJoint, 100_000),
+            54_850.0 * 0.058 + 3_150.0 * 0.0675,
+        );
+        // Head of household: $23,550 plus one exemption, and its own wider brackets.
+        // $60,000 leaves $31,150, all in the 5.8% band.
+        close(tax(FilingStatus::HeadOfHousehold, 60_000), 31_150.0 * 0.058);
+        // Halfway through the single fade ($137,500) half the $15,700 is left,
+        // plus the whole exemption: $13,150 off.
+        close(
+            tax(FilingStatus::Single, 137_500),
+            27_400.0 * 0.058 + 37_450.0 * 0.0675 + (124_350.0 - 64_850.0) * 0.0715,
+        );
+        // From $175,000 only the exemption is left.
+        close(
+            tax(FilingStatus::Single, 200_000),
+            27_400.0 * 0.058 + 37_450.0 * 0.0675 + (194_700.0 - 64_850.0) * 0.0715,
+        );
     }
 
     #[test]
@@ -2417,11 +2465,9 @@ mod tests {
             go(80_000, 20_000, 60_000, &[66]),
             plain(80_000 - 28_216 - 2_050)
         );
-        // Halfway through the phase-out ($175,000): half the deduction.
-        assert_eq!(
-            go(175_000, 0, 60_000, &[66]),
-            plain(175_000 - 24_108 - 2_050)
-        );
+        // Halfway through the phase-out ($175,000): half the deduction. Age 60 here, so the
+        // extra deduction at 65 stays out of it.
+        assert_eq!(go(175_000, 0, 60_000, &[60]), plain(175_000 - 24_108));
         // At $225,000 and over it is gone.
         assert_eq!(go(225_000, 0, 60_000, &[66]), plain(225_000 - 2_050));
     }
@@ -2580,13 +2626,59 @@ mod tests {
     }
 
     #[test]
+    fn virginia_counts_its_930_exemption_and_illinois_drops_its_at_high_income() {
+        let y = StateTaxYear::y2026();
+        // Virginia, $50,000 single: less $8,750 and $930 leaves $40,320.
+        // 2% of $3,000, 3% of $2,000, 5% of $12,000 and 5.75% of the rest.
+        let va = y.income_tax("VA", FilingStatus::Single, m(50_000)).unwrap();
+        let want = 60.0 + 60.0 + 600.0 + 0.0575 * (40_320.0 - 17_000.0);
+        assert!((va.cents() as f64 / 100.0 - want).abs() < 1.0, "{va:?}");
+        // Illinois: the $2,850 exemption goes once AGI is over $250,000.
+        let il = |inc: i64| y.income_tax("IL", FilingStatus::Single, m(inc)).unwrap();
+        assert_eq!(il(250_000), m(250_000 - 2_850).mul_rate(0.0495));
+        assert_eq!(il(250_001), m(250_001).mul_rate(0.0495));
+        let ilj = y
+            .income_tax("IL", FilingStatus::MarriedJoint, m(400_000))
+            .unwrap();
+        assert_eq!(ilj, m(400_000 - 5_700).mul_rate(0.0495));
+    }
+
+    #[test]
     fn progressive_california() {
         let y = StateTaxYear::y2026();
-        let t = y
-            .income_tax("CA", FilingStatus::Single, m(100_000))
-            .unwrap();
-        // Taxable 94,460; brackets through 9.3%: plausible band for CA.
-        assert!(t > m(5_000) && t < m(7_000), "{t}");
+        let close = |fs, inc: i64, want: f64| {
+            let got = y.income_tax("CA", fs, m(inc)).unwrap();
+            assert!(
+                (got.cents() as f64 / 100.0 - want).abs() < 1.0,
+                "{got:?} vs {want}"
+            );
+        };
+        // FTB's 2026 Schedule X: $100,000 less the $5,900 deduction is $94,100, taxed at
+        // $3,310.88 plus 9.3% over $75,197, less the $158 exemption credit.
+        close(
+            FilingStatus::Single,
+            100_000,
+            3_310.88 + 0.093 * (94_100.0 - 75_197.0) - 158.0,
+        );
+        // Schedule Y: $200,000 less $11,800 is $188,200; credit $316.
+        close(
+            FilingStatus::MarriedJoint,
+            200_000,
+            6_621.76 + 0.093 * (188_200.0 - 150_394.0) - 316.0,
+        );
+        // Schedule Z: $100,000 less $11,800 is $88,200; credit $158.
+        close(
+            FilingStatus::HeadOfHousehold,
+            100_000,
+            2_483.29 + 0.08 * (88_200.0 - 86_654.0) - 158.0,
+        );
+        // The 1% surcharge starts at $1 million of taxable income for joint filers too.
+        let joint = |inc: i64| {
+            y.income_tax("CA", FilingStatus::MarriedJoint, m(inc))
+                .unwrap()
+        };
+        let step = joint(1_111_800) - joint(1_011_800);
+        assert_eq!(step, m(12_300));
     }
 
     #[test]
