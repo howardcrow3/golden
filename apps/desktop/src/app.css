@@ -4,6 +4,7 @@
 @import "./turtlebox/base.css";
 @import "./turtlebox/shell.css";
 @import "./turtlebox/extensions.css";
+@import "./turtlebox/downloads.css";
 @import "./turtlebox/charts.css";
 
 :root {

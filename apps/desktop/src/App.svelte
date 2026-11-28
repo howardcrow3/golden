@@ -11,6 +11,8 @@
   import Settings, { type SettingsTab } from "./lib/Settings.svelte";
   import Ask from "./lib/Ask.svelte";
   import AccountMenu from "./lib/AccountMenu.svelte";
+  import DownloadsPanel from "./lib/DownloadsPanel.svelte";
+  import { modelDownload } from "./lib/downloads.svelte";
   import PrivacyBadge from "./lib/PrivacyBadge.svelte";
   import TermsGate from "./lib/TermsGate.svelte";
   import { needsAcceptance } from "./lib/terms";
@@ -23,6 +25,10 @@
   let page = $state<(typeof pages)[number]>("Overview");
   let settings = $state<SettingsTab | null>(null);
   let canFeedback = $state(false);
+  // Pick up a model download already running, so the Downloads button shows it on any page.
+  $effect(() => {
+    modelDownload().load();
+  });
   $effect(() => {
     feedbackAvailable().then((ok) => (canFeedback = ok));
   });
@@ -111,6 +117,7 @@
     {#if page === "Overview"}<Overview onnavigate={(p) => { if ((pages as readonly string[]).includes(p)) page = p as (typeof pages)[number]; }} />{:else if page === "Transactions"}<Transactions />{:else if page === "Import"}<Import />{:else if page === "Banks"}<Banks />{:else if page === "Documents"}<Documents />{:else if page === "Ask"}<Ask />{:else if page === "What if"}<WhatIf />{:else if page === "Retirement"}<Retirement />{:else}<TaxCalculator />{/if}
     {/key}
   </main>
+  <DownloadsPanel />
   {#if showDock}<ChatDock page={page} onhide={() => setDock(false)} />{/if}
 </div>
 
