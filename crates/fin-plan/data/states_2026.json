@@ -2769,7 +2769,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Public pensions (federal, state, local) can be exempt up to $47,633 less the Social Security exemption; all pensions are treated as private here, which errs high for public pension holders. The joint line is applied to the household.",
+   "notes": "Checked against the 2025 MO-1040 instructions and Form MO-A. Social Security is left out. Private pension, IRA and 401(k) income is exempt up to $6,000 a person, less every dollar by which AGI (less taxable Social Security) is over $25,000 single / $32,000 joint. Government pensions (federal, state, local) are exempt up to $47,633 a person (the top Social Security benefit), less the Social Security exemption, with no income limit (MO-A Part 3 Section A); enter them as a government pension. The per-person limits and the joint line are applied to the household.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2783,7 +2783,9 @@
      "start_joint": 3200000,
      "width": 1,
      "dollar": true
-    }
+    },
+    "public_pension_cap": 4763300,
+    "public_less_ss_subtracted": true
    }
   },
   "MS": {
@@ -3728,10 +3730,14 @@
    "std_joint": 400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 IT-140 instructions and Schedule M. Each person 65 or older may leave out up to $8,000 of income, less the Social Security left out (Schedule M line 47). For 2025 only 65% of Social Security over $50,000 / $100,000 AGI is deducted; the table here uses the full exemption that applies from 2026. The $2,000 WV public retirement modification is not modelled.",
+   "notes": "Checked against the 2025 IT-140 instructions and Schedule M. Each person 65 or older may leave out up to $8,000 of income, less the Social Security left out (Schedule M line 47). For 2025 only 65% of Social Security over $50,000 / $100,000 AGI is deducted; the table here uses the full exemption that applies from 2026. Up to $2,000 a person of West Virginia public employee or federal retirement is left out (Schedule M line 33; enter it as a government pension), and that amount also cuts the $8,000 senior allowance (line 47).",
    "age_allowance": {
     "age": 65,
     "amount": 800000
+   },
+   "retirement": {
+    "min_age": 0,
+    "public_pension_cap": 200000
    }
   },
   "WY": {
