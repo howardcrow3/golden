@@ -1402,3 +1402,22 @@ export async function readSsaStatement(text: string, invoke?: Invoke): Promise<S
 export async function applySsaStatement(text: string, person: number, claim: string, invoke?: Invoke): Promise<number> {
   return (await (await resolve(invoke))("apply_ssa_statement", { text, person, claim })) as number;
 }
+
+export interface TermsAcceptance {
+  version: string;
+  /** The local day it was accepted, YYYY-MM-DD. */
+  acceptedOn: string;
+}
+/** The terms version last accepted on this computer, or null if never. */
+export async function termsAcceptance(invoke?: Invoke): Promise<TermsAcceptance | null> {
+  return ((await (await resolve(invoke))("terms_acceptance")) as TermsAcceptance | null) ?? null;
+}
+export async function acceptTerms(version: string, invoke?: Invoke): Promise<TermsAcceptance> {
+  return (await (await resolve(invoke))("accept_terms", { version })) as TermsAcceptance;
+}
+/** Close Golden, for someone who declines the terms. Does nothing outside the desktop app. */
+export async function quitApp(): Promise<void> {
+  if (!inTauri()) return;
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().close();
+}

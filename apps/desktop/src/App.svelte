@@ -11,7 +11,11 @@
   import Settings, { type SettingsTab } from "./lib/Settings.svelte";
   import Ask from "./lib/Ask.svelte";
   import PrivacyBadge from "./lib/PrivacyBadge.svelte";
-  import { feedbackAvailable, licenseStatus, onLicenseLink, type LicenseStatus } from "./lib/api";
+  import TermsGate from "./lib/TermsGate.svelte";
+  import { needsAcceptance } from "./lib/terms";
+  import { feedbackAvailable, inTauri, licenseStatus, onLicenseLink, termsAcceptance, type Invoke, type LicenseStatus } from "./lib/api";
+
+  let { invoke }: { invoke?: Invoke } = $props();
   import { setHideAmounts } from "./lib/money";
 
   const pages = ["Overview", "Transactions", "Import", "Banks", "Documents", "Ask", "Retirement", "What if", "Tax estimate"] as const;
@@ -20,6 +24,14 @@
   let canFeedback = $state(false);
   $effect(() => {
     feedbackAvailable().then((ok) => (canFeedback = ok));
+  });
+  /** "new" on first launch, "updated" when an older version was accepted, null once accepted. */
+  let gate = $state<"new" | "updated" | null>(null);
+  $effect(() => {
+    termsAcceptance(invoke)
+      .then((a) => (gate = needsAcceptance(a) ? (a ? "updated" : "new") : null))
+      // In the desktop app a failed read still asks; the browser preview has no database.
+      .catch(() => (gate = invoke || inTauri() ? "new" : null));
   });
   let lic = $state<LicenseStatus | null>(null);
   $effect(() => {
@@ -80,7 +92,7 @@
   );
 </script>
 
-<div class="shell" class:hide>
+<div class="shell" class:hide inert={gate !== null}>
   <nav class="side" aria-label="Main">
     <div class="wm"><i>G</i>Golden</div>
     {#each pages as p}
@@ -102,6 +114,7 @@
 </div>
 
 {#if settings}<Settings bind:tab={settings} {canFeedback} notice={linkNotice} onclose={() => (settings = null)} />{/if}
+{#if gate}<TermsGate updated={gate === "updated"} {invoke} onaccepted={() => (gate = null)} />{/if}
 
 <style>
   .shell { display: flex; height: 100vh; }

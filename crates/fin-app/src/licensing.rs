@@ -21,8 +21,15 @@ const LICENSE: &str = "license_token";
 /// A key for the bank-connection add-on alone (`core: false`), kept beside the app's key so a
 /// renewal of the add-on never replaces the key that unlocks the app.
 const ADDON: &str = "license_addon_token";
-/// Settings that survive "delete everything" so erasing cannot reset the trial or drop a licence.
-pub(crate) const KEEP_ON_ERASE: &[&str] = &[FIRST_RUN, LATEST_SEEN, LICENSE, ADDON];
+/// Settings that survive "delete everything" so erasing cannot reset the trial, drop a licence
+/// or ask for the terms again.
+pub(crate) const KEEP_ON_ERASE: &[&str] = &[
+    FIRST_RUN,
+    LATEST_SEEN,
+    LICENSE,
+    ADDON,
+    crate::terms::TERMS_KEY,
+];
 
 impl App {
     /// Every saved key that verifies, with its token.

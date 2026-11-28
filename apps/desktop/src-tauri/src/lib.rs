@@ -195,6 +195,16 @@ fn license_status(state: Shared) -> Result<LicenseStatus, String> {
 }
 
 #[tauri::command]
+fn terms_acceptance(state: Shared) -> Result<Option<fin_app::terms::TermsAcceptance>, String> {
+    lock(&state)?.terms_acceptance()
+}
+
+#[tauri::command]
+fn accept_terms(state: Shared, version: String) -> Result<fin_app::terms::TermsAcceptance, String> {
+    lock(&state)?.accept_terms(&version)
+}
+
+#[tauri::command]
 fn activate_license(state: Shared, token: String) -> Result<LicenseStatus, String> {
     lock(&state)?.activate_license(&token, today())
 }
@@ -1253,6 +1263,8 @@ pub fn run() {
             pricing,
             open_checkout,
             license_status,
+            terms_acceptance,
+            accept_terms,
             activate_license,
             accounts,
             cash_flow,
