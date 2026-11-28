@@ -88,8 +88,9 @@ const MONTHS: [&str; 12] = [
     "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
 ];
 
-/// A leading date and how many whitespace-separated tokens it used.
-fn leading_date(tokens: &[&str], year: i32) -> Option<(NaiveDate, usize)> {
+/// A leading date, how many whitespace-separated tokens it used, and whether it was written
+/// without a year (so `year` was assumed).
+fn leading_date(tokens: &[&str], year: i32) -> Option<(NaiveDate, usize, bool)> {
     let first = *tokens.first()?;
     // Month names: "Oct 17" or "Oct 17, 2026".
     let lower = first.to_ascii_lowercase();
@@ -98,26 +99,26 @@ fn leading_date(tokens: &[&str], year: i32) -> Option<(NaiveDate, usize)> {
             let day: u32 = tokens.get(1)?.trim_end_matches(',').parse().ok()?;
             if let Some(y) = tokens.get(2).and_then(|t| t.parse::<i32>().ok()) {
                 if (1990..=2100).contains(&y) {
-                    return NaiveDate::from_ymd_opt(y, m as u32 + 1, day).map(|d| (d, 3));
+                    return NaiveDate::from_ymd_opt(y, m as u32 + 1, day).map(|d| (d, 3, false));
                 }
             }
-            return NaiveDate::from_ymd_opt(year, m as u32 + 1, day).map(|d| (d, 2));
+            return NaiveDate::from_ymd_opt(year, m as u32 + 1, day).map(|d| (d, 2, true));
         }
         return None;
     }
     if let Some(d) = parse_date(first) {
-        return Some((d, 1));
+        return Some((d, 1, false));
     }
     // "10/17" with no year.
     let (m, d) = first.split_once('/')?;
     if d.contains('/') {
         return None;
     }
-    NaiveDate::from_ymd_opt(year, m.parse().ok()?, d.parse().ok()?).map(|dt| (dt, 1))
+    NaiveDate::from_ymd_opt(year, m.parse().ok()?, d.parse().ok()?).map(|dt| (dt, 1, true))
 }
 
-/// The year the statement is for: the most common four-digit year in the text.
-fn statement_year(text: &str) -> i32 {
+/// How often each plausible four-digit year appears in the text.
+fn year_counts(text: &str) -> std::collections::BTreeMap<i32, usize> {
     let mut counts = std::collections::BTreeMap::new();
     for w in text.split(|c: char| !c.is_ascii_digit()) {
         if w.len() == 4 {
@@ -129,6 +130,11 @@ fn statement_year(text: &str) -> i32 {
         }
     }
     counts
+}
+
+/// The year the statement is for: the most common four-digit year in the text.
+fn statement_year(text: &str) -> i32 {
+    year_counts(text)
         .into_iter()
         .max_by_key(|(y, n)| (*n, *y))
         .map(|(y, _)| y)
@@ -156,9 +162,10 @@ struct Row {
 
 fn rows(text: &str, year: i32) -> Vec<Row> {
     let mut out = vec![];
+    let mut yearless = vec![];
     for line in text.lines() {
         let tokens: Vec<&str> = line.split_whitespace().collect();
-        let Some((day, used)) = leading_date(&tokens, year) else {
+        let Some((day, used, no_year)) = leading_date(&tokens, year) else {
             continue;
         };
         let rest = &tokens[used..];
@@ -180,7 +187,7 @@ fn rows(text: &str, year: i32) -> Vec<Row> {
         money.reverse();
         let mut desc = &rest[..n];
         // A second (posting) date right after the first isn't part of the description.
-        if let Some((_, k)) = leading_date(desc, year) {
+        if let Some((_, k, _)) = leading_date(desc, year) {
             desc = &desc[k..];
         }
         let payee = desc.join(" ");
@@ -197,6 +204,31 @@ fn rows(text: &str, year: i32) -> Vec<Row> {
             amount: money[0],
             balance: money.get(1).copied(),
         });
+        yearless.push(no_year);
+    }
+    // A statement that runs across New Year prints "12/20" and "01/05" with no year: the late
+    // months belong to the year before the one it closes in.
+    let months: Vec<u32> = out
+        .iter()
+        .zip(&yearless)
+        .filter(|(_, y)| **y)
+        .map(|(r, _)| r.day.month())
+        .collect();
+    let wraps = months.iter().any(|m| *m >= 11)
+        && months.iter().any(|m| *m <= 2)
+        && !months.iter().any(|m| (5..=8).contains(m));
+    if wraps {
+        let end = if year_counts(text).contains_key(&(year + 1)) {
+            year + 1
+        } else {
+            year
+        };
+        for (r, _) in out.iter_mut().zip(&yearless).filter(|(_, y)| **y) {
+            let y = if r.day.month() >= 7 { end - 1 } else { end };
+            if let Some(d) = r.day.with_year(y) {
+                r.day = d;
+            }
+        }
     }
     out
 }
@@ -388,6 +420,26 @@ mod tests {
         let t = parse_text(text).unwrap();
         assert_eq!(cents(&t), vec![-450, 20_000]);
         assert_eq!(t[0].payee, "COFFEE SHOP");
+    }
+
+    #[test]
+    fn a_statement_across_new_year_dates_each_line_in_its_own_year() {
+        let d = |y, m, day| NaiveDate::from_ymd_opt(y, m, day).unwrap();
+        // The closing year is the more common one.
+        let text = "Card statement\nStatement period 12/15/2026 - 01/14/2027\n\
+            Payment due 02/08/2027\nMinimum payment due $25.00\n\
+            12/20 COFFEE SHOP 4.50\n01/05 GAS STATION 30.00\n";
+        let t = parse_text(text).unwrap();
+        assert_eq!((t[0].day, t[1].day), (d(2026, 12, 20), d(2027, 1, 5)));
+        // The opening year is the more common one.
+        let text = "Card statement\nOpened Dec 15, 2026  Closed Jan 14, 2027\n\
+            Member since 2026\nMinimum payment due $25.00\n\
+            Dec 20 COFFEE SHOP 4.50\nJan 5 GAS STATION 30.00\n";
+        let t = parse_text(text).unwrap();
+        assert_eq!((t[0].day, t[1].day), (d(2026, 12, 20), d(2027, 1, 5)));
+        // An ordinary month is untouched.
+        let t = parse_text("Card 2026\nNew balance\n10/02 COFFEE 4.50\n10/30 GAS 3.00\n").unwrap();
+        assert_eq!(t[1].day, d(2026, 10, 30));
     }
 
     #[test]

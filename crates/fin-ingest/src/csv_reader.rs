@@ -16,6 +16,13 @@ fn find(headers: &[String], names: &[&str]) -> Option<usize> {
     headers.iter().position(|h| names.iter().any(|n| h == n))
 }
 
+/// Like `find`, but the earliest name in `names` wins wherever its column is.
+fn find_preferred(headers: &[String], names: &[&str]) -> Option<usize> {
+    names
+        .iter()
+        .find_map(|n| headers.iter().position(|h| h == n))
+}
+
 fn columns(headers: &[String]) -> Result<Cols, IngestError> {
     let h: Vec<String> = headers
         .iter()
@@ -48,7 +55,8 @@ fn columns(headers: &[String]) -> Result<Cols, IngestError> {
     }
     Ok(Cols {
         date,
-        desc: find(
+        // Chase checking puts a "Details" column (DEBIT/CREDIT) before "Description".
+        desc: find_preferred(
             &h,
             &[
                 "description",
@@ -101,15 +109,18 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
         return Err(IngestError::Empty);
     }
     // Skip any preamble lines until one looks like a header (contains "date" and has a comma).
+    // Byte offsets come from split_inclusive so "\r\n" line endings are counted in full.
     let mut start = 0usize;
-    for (i, line) in text.lines().enumerate() {
+    let mut offset = 0usize;
+    for line in text.split_inclusive('\n') {
         let l = line.to_ascii_lowercase();
         if l.contains("date") && (l.contains(',') || l.contains(';') || l.contains('\t')) {
-            start = text.lines().take(i).map(|x| x.len() + 1).sum();
+            start = offset;
             break;
         }
+        offset += line.len();
     }
-    let body = &text[start.min(text.len())..];
+    let body = &text[start..];
     let delimiter = sniff_delimiter(body.lines().next().unwrap_or(""));
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(delimiter)
@@ -239,6 +250,28 @@ mod tests {
     fn preamble_and_blank_footer_are_skipped() {
         let t = parse("Account: Checking 4821\nGenerated 10/31/2026\nDate,Description,Amount\n10/01/2026,A,1.00\n,,\n").unwrap();
         assert_eq!(t.len(), 1);
+    }
+
+    #[test]
+    fn the_description_column_wins_over_a_details_column_before_it() {
+        // Chase checking: "Details" holds DEBIT/CREDIT, the merchant is under "Description".
+        let t = parse(
+            "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #\n\
+             DEBIT,10/01/2026,STARBUCKS STORE 5531,-4.50,DEBIT_CARD,995.50,,\n",
+        )
+        .unwrap();
+        assert_eq!(t[0].payee, "STARBUCKS STORE 5531");
+        assert_eq!(t[0].amount.cents(), -450);
+    }
+
+    #[test]
+    fn a_preamble_in_a_windows_file_is_skipped() {
+        let t = parse(
+            "Account: Checking 4821\r\nGenerated 10/31/2026\r\nAs of today\r\nDate;Description;Amount\r\n10/01/2026;Rent;-1.234,56\r\n",
+        )
+        .unwrap();
+        assert_eq!(t.len(), 1);
+        assert_eq!(t[0].amount.cents(), -123_456);
     }
 
     #[test]

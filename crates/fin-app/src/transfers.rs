@@ -18,12 +18,19 @@ impl App {
     pub fn mark_transfers(&self) -> Result<usize, String> {
         let from = NaiveDate::from_ymd_opt(1900, 1, 1).unwrap();
         let to = NaiveDate::from_ymd_opt(2999, 12, 31).unwrap();
+        // A purchase or refund already paired with each other is not also half of a transfer.
+        let netted: std::collections::HashSet<i64> = self
+            .db
+            .netted_ids()
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .collect();
         let legs: Vec<Leg> = self
             .db
             .txns_between(from, to)
             .map_err(|e| e.to_string())?
             .into_iter()
-            .filter(|t| t.category.is_none())
+            .filter(|t| t.category.is_none() && !netted.contains(&t.id))
             .map(|t| Leg {
                 id: t.id,
                 account: t.account.0,

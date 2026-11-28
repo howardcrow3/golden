@@ -16,6 +16,16 @@ fn tag<'a>(block: &'a str, name: &str) -> Option<&'a str> {
     }
 }
 
+/// Read an OFX amount. The spec allows a comma for the decimal point and has no thousands
+/// separators, so "-20,50" is twenty dollars fifty, not two thousand and fifty.
+fn amount(raw: &str) -> Result<Money, fin_core::MoneyError> {
+    if raw.contains(',') && !raw.contains('.') {
+        Money::parse(&raw.replace(',', "."))
+    } else {
+        Money::parse(raw)
+    }
+}
+
 /// Parse OFX/QFX (SGML 1.x or XML 2.x) statement transactions.
 pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
     let upper = text.to_ascii_uppercase();
@@ -46,7 +56,7 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
             row,
             msg: "missing TRNAMT".into(),
         })?;
-        let amount = Money::parse(amt).map_err(|e| IngestError::Row {
+        let amount = amount(amt).map_err(|e| IngestError::Row {
             row,
             msg: e.to_string(),
         })?;
@@ -76,7 +86,7 @@ pub fn ledger_balance(text: &str) -> Option<(fin_core::NaiveDate, Money)> {
         .map(|x| s + x)
         .unwrap_or(text.len());
     let block = &text[s..e];
-    let amount = Money::parse(tag(block, "BALAMT")?).ok()?;
+    let amount = amount(tag(block, "BALAMT")?).ok()?;
     let raw = tag(block, "DTASOF")?;
     let day = parse_date(&raw[..raw.len().min(8)])?;
     Some((day, amount))
@@ -123,6 +133,14 @@ mod tests {
         let x = "<OFX><STMTTRN><DTPOSTED>20261015</DTPOSTED><TRNAMT>-20.50</TRNAMT><NAME>Cafe</NAME></STMTTRN></OFX>";
         let t = parse(x).unwrap();
         assert_eq!(t[0].amount, Money::from_cents(-2050));
+    }
+
+    #[test]
+    fn a_decimal_comma_is_the_cents() {
+        let x = "<OFX><STMTTRN><DTPOSTED>20261015<TRNAMT>-20,50<NAME>Cafe</STMTTRN>\
+            <LEDGERBAL><BALAMT>1234,56<DTASOF>20261031</LEDGERBAL></OFX>";
+        assert_eq!(parse(x).unwrap()[0].amount, Money::from_cents(-2050));
+        assert_eq!(ledger_balance(x).unwrap().1, Money::from_cents(123_456));
     }
 
     #[test]

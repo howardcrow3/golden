@@ -68,3 +68,24 @@ fn a_refund_long_after_the_purchase_is_not_paired() {
     .unwrap();
     assert_eq!(month(&a).income_cents, 2_000);
 }
+
+#[test]
+fn a_purchase_already_cancelled_by_a_refund_is_not_also_a_transfer() {
+    let mut a = app();
+    a.import_statement(
+        b"Date,Description,Amount\n11/03/2026,BEST BUY 0042,-50.00\n11/10/2026,BEST BUY RETURN,50.00\n",
+        "Card",
+        "credit",
+    )
+    .unwrap();
+    // Money a friend sends the next day, into another account, for the same amount.
+    a.import_statement(
+        b"Date,Description,Amount\n11/04/2026,ZELLE FROM BOB,50.00\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    let m = month(&a);
+    // Bob's money is income; the purchase and its return cancel out.
+    assert_eq!((m.income_cents, m.spending_cents), (5_000, 0));
+}

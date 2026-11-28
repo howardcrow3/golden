@@ -130,9 +130,25 @@ impl RuleSet {
     pub fn categorize(&self, raw_payee: &str, amount: Money) -> Option<&str> {
         let key = merchant_key(raw_payee);
         let raw = raw_payee.to_lowercase();
+        // Built-in patterns are short ("irs", "rent"), so they must start a word: "first" is
+        // not the IRS and "parent" is not rent. The person's own rules match anywhere.
+        let at_word_start = |hay: &str, pat: &str| {
+            hay.match_indices(pat).any(|(i, _)| {
+                hay[..i]
+                    .chars()
+                    .next_back()
+                    .is_none_or(|c| !c.is_alphanumeric())
+            })
+        };
         self.rules
             .iter()
-            .filter(|r| key.contains(&r.contains) || raw.contains(&r.contains))
+            .filter(|r| {
+                if r.user {
+                    key.contains(&r.contains) || raw.contains(&r.contains)
+                } else {
+                    at_word_start(&key, &r.contains) || at_word_start(&raw, &r.contains)
+                }
+            })
             .filter(|r| match r.direction {
                 None => true,
                 Some(Direction::In) => amount > Money::ZERO,
@@ -178,6 +194,20 @@ mod tests {
         );
         assert_eq!(r.categorize("NETFLIX.COM", out(15)), Some("Subscriptions"));
         assert_eq!(r.categorize("Random Shop", out(10)), None);
+    }
+
+    #[test]
+    fn starter_rules_do_not_match_inside_other_words() {
+        let r = RuleSet::starter();
+        // A card payment to a bank named "First ..." is not a tax payment, and must stay
+        // uncategorized so it can pair with the card's side as a transfer.
+        assert_eq!(r.categorize("FIRST NATIONAL CARD PMT", out(500)), None);
+        assert_eq!(r.categorize("ONLINE PMT CURRENT CARD", out(80)), None);
+        assert_eq!(r.categorize("PARENTSQUARE SCHOOL", out(20)), None);
+        // Whole-word and word-start matches still work.
+        assert_eq!(r.categorize("IRS USATAXPYMT", out(900)), Some("Taxes"));
+        assert_eq!(r.categorize("RENT PAYMENT OCT", out(2000)), Some("Housing"));
+        assert_eq!(r.categorize("SHELL OIL 5744", out(40)), Some("Gas"));
     }
 
     #[test]
