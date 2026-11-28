@@ -51,6 +51,7 @@ impl App {
         }
         // Check everything before changing anything.
         f.household.validate((self.clock)())?;
+        crate::investments::check_holdings(&f.holdings)?;
         let people = f.household.people.len();
         let holdings = f.holdings.len();
         self.save_household(&f.household)?;
