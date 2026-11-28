@@ -19,17 +19,17 @@ pub fn start_age(birth_year: i32) -> i32 {
 
 /// Uniform Lifetime Table distribution period for the age reached this year.
 pub fn divisor(age: i32) -> Option<f64> {
-    const FROM_72: [f64; 29] = [
+    const FROM_72: [f64; 49] = [
         27.4, 26.5, 25.5, 24.6, 23.7, 22.9, 22.0, 21.1, 20.2, 19.4, 18.5, 17.7, 16.8, 16.0, 15.2,
-        14.4, 13.7, 12.9, 12.2, 11.5, 10.8, 10.1, 9.5, 8.9, 8.4, 7.8, 7.3, 6.8, 6.4,
+        14.4, 13.7, 12.9, 12.2, 11.5, 10.8, 10.1, 9.5, 8.9, 8.4, 7.8, 7.3, 6.8, 6.4, // 72-100
+        6.0, 5.6, 5.2, 4.9, 4.6, 4.3, 4.1, 3.9, 3.7, 3.5, 3.4, 3.3, 3.1, 3.0, 2.9, 2.8, 2.7, 2.5,
+        2.3, 2.0, // 101-120
     ];
     if age < 72 {
         None
-    } else if age <= 100 {
-        Some(FROM_72[(age - 72) as usize])
     } else {
-        // The table keeps falling about 0.4 a year, to 2.0 at 120 and over.
-        Some((6.4 - 0.4 * (age - 100) as f64).max(2.0))
+        // 120 and over all use 2.0.
+        Some(FROM_72[((age - 72) as usize).min(FROM_72.len() - 1)])
     }
 }
 
@@ -70,6 +70,25 @@ mod tests {
         // Past 100 it keeps falling and never gets below 2.0.
         assert!(divisor(105).unwrap() < divisor(100).unwrap());
         assert_eq!(divisor(125), Some(2.0));
+    }
+
+    #[test]
+    fn the_table_past_100_matches_publication_590b() {
+        for (age, d) in [
+            (101, 6.0),
+            (103, 5.2),
+            (104, 4.9),
+            (105, 4.6),
+            (108, 3.9),
+            (110, 3.5),
+            (111, 3.4),
+            (115, 2.9),
+            (118, 2.5),
+            (119, 2.3),
+            (120, 2.0),
+        ] {
+            assert_eq!(divisor(age), Some(d), "age {age}");
+        }
     }
 
     #[test]
