@@ -1,38 +1,63 @@
 //! "Send feedback": the body and signature for the High Turtle feedback service
-//! (`https://feedback.turtlebox.studio/v1/feedback`, see howardcrow3/highturtle `feedback/README.md`).
+//! (`https://feedback.turtlebox.studio/v1/feedback`, see docs/FEEDBACK_API.md).
 //!
-//! Each request carries `x-ht-app`, `x-ht-timestamp` (unix seconds) and `x-ht-signature`: hex
-//! HMAC-SHA256 with this app's key over `"<timestamp>.<raw body>"`. The key is compiled in from the
-//! `FEEDBACK_KEY` build variable (a GitHub Actions secret) and is never committed. Sending lives in
-//! the desktop shell, which owns the HTTP client.
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
+//! There is no secret in the app. Each install makes its own Ed25519 key the first time it sends
+//! feedback and keeps it in the OS keychain (the desktop shell does that). Every request carries
+//! `x-ht-install` (the public key, hex), `x-ht-timestamp` (unix seconds) and `x-ht-signature` (hex
+//! Ed25519 signature over [`signing_input`]). Sending lives in the desktop shell, which owns the
+//! HTTP client.
+use ed25519_dalek::{Signer, SigningKey};
 
 pub const FEEDBACK_URL: &str = "https://feedback.turtlebox.studio/v1/feedback";
 pub const APP_ID: &str = "golden";
 
-fn unhex(s: &str) -> Option<Vec<u8>> {
-    let s = s.trim();
-    if !s.len().is_multiple_of(2) {
-        return None;
-    }
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(s.get(i..i + 2)?, 16).ok())
-        .collect()
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// The signature header value for one request. `key_hex` is the app key as stored by the service.
-pub fn sign(key_hex: &str, timestamp: i64, body: &str) -> Option<String> {
-    let mut mac = Hmac::<Sha256>::new_from_slice(&unhex(key_hex)?).ok()?;
-    mac.update(format!("{timestamp}.{body}").as_bytes());
-    Some(
-        mac.finalize()
-            .into_bytes()
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect(),
-    )
+/// The exact text that is signed: app id, install id, timestamp and the raw body, so a signature
+/// cannot be reused for another app, another install, another moment or another message.
+pub fn signing_input(install: &str, timestamp: i64, body: &str) -> String {
+    format!("{APP_ID}.{install}.{timestamp}.{body}")
+}
+
+/// `(install id, signature)` for one request, both hex.
+pub fn sign(key: &SigningKey, timestamp: i64, body: &str) -> (String, String) {
+    let install = hex(key.verifying_key().as_bytes());
+    let sig = key.sign(signing_input(&install, timestamp, body).as_bytes());
+    (install, hex(&sig.to_bytes()))
+}
+
+/// A fresh install key. If the system random source fails (not expected) a time based seed is
+/// used rather than losing feedback; it only identifies the install to the service.
+pub fn new_key() -> SigningKey {
+    let mut seed = [0u8; 32];
+    if getrandom::fill(&mut seed).is_err() {
+        let t = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        seed[..16].copy_from_slice(&t.to_le_bytes());
+    }
+    SigningKey::from_bytes(&seed)
+}
+
+/// Hex form of a key's 32-byte seed, for the keychain.
+pub fn key_to_hex(key: &SigningKey) -> String {
+    hex(&key.to_bytes())
+}
+
+/// A key from its saved hex seed; `None` for anything that is not exactly 64 hex characters.
+pub fn key_from_hex(s: &str) -> Option<SigningKey> {
+    let s = s.trim();
+    if s.len() != 64 {
+        return None;
+    }
+    let mut seed = [0u8; 32];
+    for (i, b) in seed.iter_mut().enumerate() {
+        *b = u8::from_str_radix(s.get(i * 2..i * 2 + 2)?, 16).ok()?;
+    }
+    Some(SigningKey::from_bytes(&seed))
 }
 
 /// A sensible-looking email address, matching the service's own check: one `@`, no spaces, a dotted
@@ -113,21 +138,58 @@ pub fn body(
 mod tests {
     use super::*;
 
+    fn key(seed: u8) -> SigningKey {
+        SigningKey::from_bytes(&[seed; 32])
+    }
+
     #[test]
-    fn signature_matches_the_service() {
-        // Value computed by the service's own signer (feedback/src/core.mjs signBody) for these inputs.
-        let sig = sign(
-            &"ab".repeat(32),
-            1_795_694_400,
-            r#"{"app":"backer","rating":5}"#,
-        )
-        .unwrap();
-        assert_eq!(
-            sig,
-            "d2523b2c438bb71b1a763eaf45b3eeea2041afaf961bdf15c202c045455d54df"
+    fn a_request_is_signed_by_the_install_key_and_verifies() {
+        use ed25519_dalek::{Signature, Verifier};
+        let k = key(7);
+        let body = r#"{"app":"golden","rating":5}"#;
+        let (install, sig) = sign(&k, 1_795_694_400, body);
+        // The install id is the public key, so the service needs no shared secret to check it.
+        assert_eq!(install, hex(k.verifying_key().as_bytes()));
+        let sig_bytes: [u8; 64] = (0..64)
+            .map(|i| u8::from_str_radix(&sig[i * 2..i * 2 + 2], 16).unwrap())
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        let sig = Signature::from_bytes(&sig_bytes);
+        let msg = signing_input(&install, 1_795_694_400, body);
+        assert_eq!(msg, format!("golden.{install}.1795694400.{body}"));
+        assert!(k.verifying_key().verify(msg.as_bytes(), &sig).is_ok());
+        // Any change to the body, time or install breaks it.
+        for other in [
+            signing_input(&install, 1_795_694_401, body),
+            signing_input(&install, 1_795_694_400, r#"{"app":"golden","rating":1}"#),
+            signing_input("other", 1_795_694_400, body),
+        ] {
+            assert!(k.verifying_key().verify(other.as_bytes(), &sig).is_err());
+        }
+    }
+
+    #[test]
+    fn installs_have_different_ids_and_signing_is_deterministic() {
+        let (a, sa) = sign(&key(1), 10, "{}");
+        let (b, _) = sign(&key(2), 10, "{}");
+        assert_ne!(a, b);
+        assert_eq!(sign(&key(1), 10, "{}"), (a, sa));
+        assert_ne!(
+            new_key().verifying_key().as_bytes(),
+            new_key().verifying_key().as_bytes()
         );
-        assert!(sign("not hex", 1, "{}").is_none());
-        assert!(sign("abc", 1, "{}").is_none());
+    }
+
+    #[test]
+    fn saved_keys_round_trip_and_junk_is_ignored() {
+        let k = key(9);
+        assert_eq!(
+            key_from_hex(&key_to_hex(&k)).unwrap().to_bytes(),
+            k.to_bytes()
+        );
+        assert!(key_from_hex("nope").is_none());
+        assert!(key_from_hex(&"zz".repeat(32)).is_none());
     }
 
     #[test]
