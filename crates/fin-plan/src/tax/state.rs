@@ -210,6 +210,10 @@ pub struct RetirementExclusion {
     /// (New York, Louisiana, Kansas).
     #[serde(default)]
     pub public_pension_full: bool,
+    /// Government pensions are exempt in full when someone on the return was born before this
+    /// year (Michigan: before 1946); the household cap then covers only the rest.
+    #[serde(default)]
+    pub public_pension_full_born_before: i32,
     /// Otherwise, government pensions up to this much a person are left out, apart from the
     /// other caps and with no income limit (Missouri: the $47,633 top Social Security benefit;
     /// West Virginia: $2,000).
@@ -874,7 +878,7 @@ impl RetirementExclusion {
     pub fn public_excluded(&self, inc: &RetirementIncome) -> Money {
         let zero = Money::ZERO;
         let public = inc.public_pension.max(zero).min(inc.pension.max(zero));
-        if self.public_pension_full {
+        if self.public_pension_full || self.public_full_by_birth(inc) {
             return public;
         }
         if self.public_pension_cap <= zero {
@@ -886,6 +890,11 @@ impl RetirementExclusion {
             cut -= inc.ss_subtracted.max(zero);
         }
         cut.max(zero)
+    }
+
+    fn public_full_by_birth(&self, inc: &RetirementIncome) -> bool {
+        let before = self.public_pension_full_born_before;
+        before > 0 && inc.birth_years.iter().any(|&y| y > 0 && y < before)
     }
 
     /// The household-level exclusion for a return with `income` (before the exclusion).
@@ -919,7 +928,12 @@ impl RetirementExclusion {
         } else {
             inc.distributions.max(Money::ZERO)
         };
-        let base = (inc.pension.max(Money::ZERO) + dist).min(cap);
+        let mut pension = inc.pension.max(Money::ZERO);
+        if self.public_full_by_birth(inc) {
+            // Left out in full by `public_excluded`.
+            pension -= inc.public_pension.max(Money::ZERO).min(pension);
+        }
+        let base = (pension + dist).min(cap);
         if income <= h.full_to {
             return base;
         }
@@ -2472,6 +2486,27 @@ mod tests {
         let without = y.income_tax("OR", single, m(20_000 - 1_200)).unwrap();
         // $20,000 of income is $5,000 over the base: 9% of $2,500.
         assert_eq!(with, (without - m(225)).max(Money::ZERO));
+    }
+
+    #[test]
+    fn michigan_leaves_out_all_public_pensions_for_people_born_before_1946() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |public: i64, private: i64, born: i32| {
+            let r = RetirementIncome {
+                birth_years: vec![born],
+                public_pension: m(public),
+                ..ret(public + private, 0, &[2026 - born])
+            };
+            y.income_tax_with_retirement("MI", single, m(150_000), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("MI", single, m(inc)).unwrap();
+        // Born 1944: a $90,000 state pension is out in full, and $30,000 private
+        // pension still fits under the $65,897 cap.
+        assert_eq!(go(90_000, 30_000, 1944), plain(150_000 - 120_000));
+        // Born 1950: the same pensions share the one $65,897 cap.
+        assert_eq!(go(90_000, 30_000, 1950), plain(150_000 - 65_897));
     }
 
     #[test]

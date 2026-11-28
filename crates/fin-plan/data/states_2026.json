@@ -2857,7 +2857,7 @@
    "std_joint": 1180000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The rate is 4.25% and the 2026 exemption $5,900 (Tax Foundation 2026 table; $5,800 in 2025). From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Not modelled: the +$15,000 for Social Security exempt public work, unlimited public pensions for people born before 1946, and their $14,688 / $29,376 interest and dividend subtraction.",
+   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The rate is 4.25% and the 2026 exemption $5,900 (Tax Foundation 2026 table; $5,800 in 2025). From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Government pensions are left out in full when someone was born before 1946, with the cap covering only private pensions and withdrawals. Not modelled: the +$15,000 for Social Security exempt public work and, for people born before 1946, the $14,688 / $29,376 interest and dividend subtraction.",
    "retirement": {
     "min_age": 0,
     "household": {
@@ -2867,7 +2867,8 @@
      "cap_separate": 6589700,
      "full_to": 10000000000000,
      "steps": []
-    }
+    },
+    "public_pension_full_born_before": 1946
    },
    "birth_year_deductions": [
     {
