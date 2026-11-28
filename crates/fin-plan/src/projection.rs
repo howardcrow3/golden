@@ -309,6 +309,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 distributions: rmd + (ord - earned_ordinary).max(Money::ZERO),
                 social_security: ss,
                 ss_subtracted: Money::ZERO,
+                federal_agi: Money::ZERO,
                 ages: adult_ages.clone(),
             };
             let st = states
