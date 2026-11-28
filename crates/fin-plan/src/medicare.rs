@@ -13,19 +13,20 @@ const PART_B_BASE: i64 = 20_290;
 const PART_D_BASE: i64 = 3_899;
 
 /// `(MAGI above (single), MAGI above (joint), Part B per month, Part D surcharge per month)`
-/// in cents, from the lowest surcharge tier up.
+/// in cents, from the lowest surcharge tier up. The top tier applies at $500,000 ($750,000 joint)
+/// "or above", so its threshold is stored a cent lower.
 const TIERS: [(i64, i64, i64, i64); 5] = [
     (10_900_000, 21_800_000, 28_410, 1_450),
     (13_700_000, 27_400_000, 40_580, 3_750),
     (17_100_000, 34_200_000, 52_750, 6_040),
     (20_500_000, 41_000_000, 64_920, 8_330),
-    (50_000_000, 75_000_000, 68_990, 9_100),
+    (49_999_999, 74_999_999, 68_990, 9_100),
 ];
 
 /// Married people filing separately who lived with their spouse have only two surcharge steps:
 /// over $109,000 they pay the fourth tier, and from $391,000 the top one (CMS, 2026). Each entry
-/// is `(MAGI above, tier number)`.
-const SEPARATE_STEPS: [(i64, usize); 2] = [(10_900_000, 4), (39_100_000, 5)];
+/// is `(MAGI above, tier number)`; the top step is stored a cent under $391,000.
+const SEPARATE_STEPS: [(i64, usize); 2] = [(10_900_000, 4), (39_099_999, 5)];
 
 /// Which IRMAA tier (0 = none, 1..=5) a modified AGI falls in.
 pub fn irmaa_tier(filing: FilingStatus, magi: Money) -> usize {
@@ -105,8 +106,11 @@ mod tests {
         let sep = FilingStatus::MarriedSeparate;
         assert_eq!(irmaa_tier(sep, Money::from_dollars(109_000)), 0);
         assert_eq!(irmaa_tier(sep, Money::from_dollars(109_001)), 4);
-        assert_eq!(irmaa_tier(sep, Money::from_dollars(391_000)), 4);
-        assert_eq!(irmaa_tier(sep, Money::from_dollars(391_001)), 5);
+        assert_eq!(
+            irmaa_tier(sep, Money::from_dollars(391_000) - Money::from_cents(1)),
+            4
+        );
+        assert_eq!(irmaa_tier(sep, Money::from_dollars(391_000)), 5);
         // Single filers at the same income are only at the lower steps.
         assert_eq!(
             irmaa_tier(FilingStatus::Single, Money::from_dollars(120_000)),
@@ -133,9 +137,37 @@ mod tests {
         );
         assert_eq!(
             next_cliff(sep, Money::from_dollars(200_000)),
-            Some(Money::from_dollars(391_000))
+            Some(Money::from_dollars(391_000) - Money::from_cents(1))
         );
         assert!(next_cliff(sep, Money::from_dollars(500_000)).is_none());
+    }
+
+    #[test]
+    fn the_top_tier_starts_at_exactly_its_threshold() {
+        // CMS: the top tier is MAGI of $500,000 or more ($750,000 joint, $391,000 separately),
+        // unlike the lower tiers, which start above their thresholds.
+        assert_eq!(
+            irmaa_tier(FilingStatus::Single, Money::from_dollars(500_000)),
+            5
+        );
+        assert_eq!(
+            irmaa_tier(
+                FilingStatus::Single,
+                Money::from_dollars(500_000) - Money::from_cents(1)
+            ),
+            4
+        );
+        assert_eq!(
+            irmaa_tier(FilingStatus::MarriedJoint, Money::from_dollars(750_000)),
+            5
+        );
+        assert_eq!(
+            irmaa_tier(FilingStatus::MarriedSeparate, Money::from_dollars(391_000)),
+            5
+        );
+        // Staying at or under the cliff keeps the lower tier.
+        let cliff = next_cliff(FilingStatus::Single, Money::from_dollars(300_000)).unwrap();
+        assert_eq!(irmaa_tier(FilingStatus::Single, cliff), 4);
     }
 
     #[test]

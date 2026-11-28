@@ -154,8 +154,8 @@
      0.044000000000000004
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
    "notes": "Checked against the 2025 DR 0104 booklet and DR 0104AD. Social Security: a person 65 or older leaves all of it out; at 55 to 64 all of it if federal AGI is $75,000 or less (single) / $95,000 or less (joint), otherwise up to $20,000. Pension, annuity and IRA income: up to $24,000 a person at 65 or older and $20,000 at 55 to 64, less the Social Security subtracted. Benefits are split evenly between spouses, and the pension caps are pooled across the household, which can differ slightly from the form.",
@@ -2160,8 +2160,8 @@
      0.0519
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1200000,
+   "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
    "notes": "Georgia excludes up to $35,000 of retirement income per person aged 62 to 64 and $65,000 at 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
@@ -2352,8 +2352,8 @@
      0.029500000000000002
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 100000,
+   "std_joint": 200000,
    "joint_multiplier": 1.0,
    "approximate": false,
    "notes": ""
@@ -2420,8 +2420,8 @@
      0.03
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1250000,
+   "std_joint": 2500000,
    "joint_multiplier": 1.0,
    "approximate": false,
    "notes": "Louisiana exempts up to $12,000 of pension, annuity and IRA distributions for each person 65 or older (IT-540 instructions, code 06E). Federal, state and teacher retirement benefits are fully exempt in Louisiana but are not separated out here.",
@@ -2448,11 +2448,11 @@
      0.09
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 440000,
+   "std_joint": 880000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "5% plus 4% surtax over $1M; personal exemption not modeled."
+   "notes": "5% plus 4% surtax over $1M; the $4,400 ($8,800 joint) personal exemption stands in for the standard deduction."
   },
   "MD": {
    "name": "Maryland",
@@ -2712,8 +2712,8 @@
      0.04
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 830000,
+   "std_joint": 1660000,
    "joint_multiplier": 1.0,
    "approximate": false,
    "notes": "Mississippi exempts qualified retirement income (pensions, IRA and 401(k) withdrawals) once the owner is 59 and a half or retired; modelled from age 60.",
@@ -2766,8 +2766,8 @@
      0.039900000000000005
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1275000,
+   "std_joint": 2550000,
    "joint_multiplier": 1.0,
    "approximate": false,
    "notes": ""

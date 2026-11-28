@@ -59,7 +59,7 @@ impl FederalTaxYear {
         r: &FederalResult,
         preferences: Money,
     ) -> Money {
-        let standard_used = i.itemized <= self.standard_deduction(fs);
+        let standard_used = i.itemized <= self.standard_with_aged(fs, i.seniors);
         let addback = if standard_used {
             r.deduction
         } else {
@@ -168,6 +168,30 @@ mod tests {
     }
 
     #[test]
+    fn a_senior_on_the_standard_deduction_adds_it_all_back() {
+        // Single, 65+: the standard deduction is $16,100 + $2,050 = $18,150, which beats $17,000
+        // of itemized deductions, so AMT must add back the whole $18,150, not just the SALT.
+        let y = FederalTaxYear::y2026();
+        let fs = FilingStatus::Single;
+        let plain = FederalInput {
+            ordinary_income: Money::from_dollars(150_000),
+            seniors: 1,
+            ..Default::default()
+        };
+        let itemizing = FederalInput {
+            itemized: Money::from_dollars(17_000),
+            salt_in_itemized: Money::from_dollars(10_000),
+            ..plain
+        };
+        let (rp, ri) = (y.income_tax(fs, plain), y.income_tax(fs, itemizing));
+        assert_eq!(rp.deduction, ri.deduction);
+        let pref = Money::from_dollars(300_000);
+        let a = y.amt(fs, &plain, &rp, pref);
+        assert!(a > Money::ZERO);
+        assert_eq!(y.amt(fs, &itemizing, &ri, pref), a);
+    }
+
+    #[test]
     fn the_exemption_phases_out_above_the_start() {
         let y = FederalTaxYear::y2026();
         let fs = FilingStatus::Single;
@@ -247,10 +271,15 @@ pub fn qbi_deduction(
 }
 
 /// What one person can put into a Solo 401(k) in 2026: the employee deferral ($24,500, plus
-/// $8,000 from age 50) and an employer share of 20% of net earnings after half the self-employment
-/// tax, all capped at $72,000 (plus catch-up). Source: IRC section 415(c) and 402(g).
+/// $8,000 from age 50, or $11,250 for ages 60 to 63) and an employer share of 20% of net earnings
+/// after half the self-employment tax, all capped at $72,000 (plus catch-up). Source: IRC section
+/// 415(c), 402(g) and 414(v)(2)(E) (SECURE 2.0 section 109).
 pub fn solo_401k_limit(age: i32, net_earnings: Money, se_deduction: Money) -> Money {
-    let catch_up = if age >= 50 { 8_000 } else { 0 };
+    let catch_up = match age {
+        60..=63 => 11_250,
+        50.. => 8_000,
+        _ => 0,
+    };
     let employee = Money::from_dollars(24_500 + catch_up);
     let earnings = (net_earnings - se_deduction).max(Money::ZERO);
     let employer = earnings.mul_rate(0.20);
@@ -349,6 +378,28 @@ mod selfemp_tests {
                 Money::from_dollars(90_000),
                 Money::from_dollars(250_000)
             ) > Money::ZERO
+        );
+    }
+
+    #[test]
+    fn solo_401k_catch_up_is_larger_from_60_to_63() {
+        // SECURE 2.0: people who reach 60, 61, 62 or 63 in the year get $11,250 instead of
+        // $8,000 in 2026.
+        let big = Money::from_dollars(900_000);
+        assert_eq!(
+            solo_401k_limit(59, big, Money::ZERO),
+            Money::from_dollars(80_000)
+        );
+        for age in 60..=63 {
+            assert_eq!(
+                solo_401k_limit(age, big, Money::ZERO),
+                Money::from_dollars(83_250),
+                "age {age}"
+            );
+        }
+        assert_eq!(
+            solo_401k_limit(64, big, Money::ZERO),
+            Money::from_dollars(80_000)
         );
     }
 
