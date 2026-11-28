@@ -247,10 +247,15 @@ pub fn qbi_deduction(
 }
 
 /// What one person can put into a Solo 401(k) in 2026: the employee deferral ($24,500, plus
-/// $8,000 from age 50) and an employer share of 20% of net earnings after half the self-employment
-/// tax, all capped at $72,000 (plus catch-up). Source: IRC section 415(c) and 402(g).
+/// $8,000 from age 50, or $11,250 for ages 60 to 63) and an employer share of 20% of net earnings
+/// after half the self-employment tax, all capped at $72,000 (plus catch-up). Source: IRC section
+/// 415(c), 402(g) and 414(v)(2)(E) (SECURE 2.0 section 109).
 pub fn solo_401k_limit(age: i32, net_earnings: Money, se_deduction: Money) -> Money {
-    let catch_up = if age >= 50 { 8_000 } else { 0 };
+    let catch_up = match age {
+        60..=63 => 11_250,
+        50.. => 8_000,
+        _ => 0,
+    };
     let employee = Money::from_dollars(24_500 + catch_up);
     let earnings = (net_earnings - se_deduction).max(Money::ZERO);
     let employer = earnings.mul_rate(0.20);
@@ -349,6 +354,28 @@ mod selfemp_tests {
                 Money::from_dollars(90_000),
                 Money::from_dollars(250_000)
             ) > Money::ZERO
+        );
+    }
+
+    #[test]
+    fn solo_401k_catch_up_is_larger_from_60_to_63() {
+        // SECURE 2.0: people who reach 60, 61, 62 or 63 in the year get $11,250 instead of
+        // $8,000 in 2026.
+        let big = Money::from_dollars(900_000);
+        assert_eq!(
+            solo_401k_limit(59, big, Money::ZERO),
+            Money::from_dollars(80_000)
+        );
+        for age in 60..=63 {
+            assert_eq!(
+                solo_401k_limit(age, big, Money::ZERO),
+                Money::from_dollars(83_250),
+                "age {age}"
+            );
+        }
+        assert_eq!(
+            solo_401k_limit(64, big, Money::ZERO),
+            Money::from_dollars(80_000)
         );
     }
 
