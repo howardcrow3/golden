@@ -1468,17 +1468,23 @@ mod tests {
         };
         let plain = |c: &str, inc: i64| y.income_tax(c, single, m(inc)).unwrap();
         // Vermont: all of it out under $55,000, half at $60,000, none from $65,000.
-        assert_eq!(go("VT", 55_000, 20_000), plain("VT", 35_000));
-        assert_eq!(go("VT", 60_000, 20_000), plain("VT", 50_000));
-        assert_eq!(go("VT", 65_000, 20_000), plain("VT", 65_000));
+        assert_eq!(go("VT", 55_000, 20_000), plain("VT", 35_000 - 1_250));
+        assert_eq!(go("VT", 60_000, 20_000), plain("VT", 50_000 - 1_250));
+        assert_eq!(go("VT", 65_000, 20_000), plain("VT", 65_000 - 1_250));
         // Minnesota: 10% less is left out for each $4,000 over $84,490.
-        assert_eq!(go("MN", 84_490, 20_000), plain("MN", 64_490));
+        assert_eq!(go("MN", 84_490, 20_000), plain("MN", 64_490 - 2_000));
         // Minnesota moves in $4,000 steps, a part step counting in full: $20,000 over is five
         // steps (50% taxed), and $1 over is already one step (10%).
-        assert_eq!(go("MN", 104_490, 20_000), plain("MN", 94_490));
-        assert_eq!(go("MN", 84_491, 20_000), plain("MN", 64_491 + 2_000));
-        assert_eq!(go("MN", 88_491, 20_000), plain("MN", 68_491 + 4_000));
-        assert_eq!(go("MN", 124_490, 20_000), plain("MN", 124_490));
+        assert_eq!(go("MN", 104_490, 20_000), plain("MN", 94_490 - 2_000));
+        assert_eq!(
+            go("MN", 84_491, 20_000),
+            plain("MN", 64_491 + 2_000 - 2_000)
+        );
+        assert_eq!(
+            go("MN", 88_491, 20_000),
+            plain("MN", 68_491 + 4_000 - 2_000)
+        );
+        assert_eq!(go("MN", 124_490, 20_000), plain("MN", 124_490 - 2_000));
     }
 
     #[test]
@@ -1716,7 +1722,10 @@ mod tests {
                 .unwrap()
         };
         let (single, joint) = (FilingStatus::Single, FilingStatus::MarriedJoint);
-        for c in ["MO", "DC", "MT", "NM", "ND", "CO", "ID", "AZ"] {
+        for c in [
+            "MO", "DC", "MT", "NM", "ND", "CO", "ID", "AZ", "NE", "VA", "VT", "OR", "MN", "HI",
+            "WI", "ME",
+        ] {
             let r = y.rules(c).unwrap();
             assert!(r.aged_extra_single > Money::ZERO, "{c}");
             // Younger people get nothing extra; each person 65 or older lowers the tax.
@@ -1748,6 +1757,20 @@ mod tests {
             go("CA", single, 80_000, &[70]),
             y.income_tax("CA", single, m(80_000)).unwrap()
         );
+    }
+
+    #[test]
+    fn oklahoma_adds_an_exemption_at_65_for_low_incomes() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, ages: &[i32]| {
+            y.income_tax_with_retirement("OK", single, m(agi), Money::ZERO, &ret(0, 0, ages))
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("OK", single, m(inc)).unwrap();
+        assert_eq!(go(15_000, &[70]), plain(14_000));
+        assert_eq!(go(15_001, &[70]), plain(15_001));
+        assert_eq!(go(15_000, &[64]), plain(15_000));
     }
 
     #[test]
@@ -1872,8 +1895,9 @@ mod tests {
             .unwrap()
         };
         let plain = |inc: i64| y.income_tax("HI", single, m(inc)).unwrap();
-        assert_eq!(go(30_000, 0), plain(50_000));
-        assert_eq!(go(0, 30_000), plain(80_000));
+        // The extra $1,144 exemption at 65 comes off both.
+        assert_eq!(go(30_000, 0), plain(50_000 - 1_144));
+        assert_eq!(go(0, 30_000), plain(80_000 - 1_144));
     }
 
     #[test]
@@ -2306,7 +2330,8 @@ mod tests {
         let with = y
             .income_tax_with_retirement("OR", single, m(20_000), Money::ZERO, &r)
             .unwrap();
-        let without = y.income_tax("OR", single, m(20_000)).unwrap();
+        // The extra $1,200 at 65 comes off income first.
+        let without = y.income_tax("OR", single, m(20_000 - 1_200)).unwrap();
         // $20,000 of income is $5,000 over the base: 9% of $2,500.
         assert_eq!(with, (without - m(225)).max(Money::ZERO));
     }
@@ -2384,14 +2409,21 @@ mod tests {
                 .unwrap()
         };
         let plain = |inc: i64| y.income_tax("ME", single, m(inc)).unwrap();
-        // $60,000 pension at 66: the $48,216 cap comes out.
-        assert_eq!(go(80_000, 0, 60_000, &[66]), plain(80_000 - 48_216));
+        // $60,000 pension at 66: the $48,216 cap comes out, and so does the federal
+        // $2,050 extra standard deduction at 65.
+        assert_eq!(go(80_000, 0, 60_000, &[66]), plain(80_000 - 48_216 - 2_050));
         // $20,000 of benefits lowers the cap to $28,216.
-        assert_eq!(go(80_000, 20_000, 60_000, &[66]), plain(80_000 - 28_216));
+        assert_eq!(
+            go(80_000, 20_000, 60_000, &[66]),
+            plain(80_000 - 28_216 - 2_050)
+        );
         // Halfway through the phase-out ($175,000): half the deduction.
-        assert_eq!(go(175_000, 0, 60_000, &[66]), plain(175_000 - 24_108));
+        assert_eq!(
+            go(175_000, 0, 60_000, &[66]),
+            plain(175_000 - 24_108 - 2_050)
+        );
         // At $225,000 and over it is gone.
-        assert_eq!(go(225_000, 0, 60_000, &[66]), plain(225_000));
+        assert_eq!(go(225_000, 0, 60_000, &[66]), plain(225_000 - 2_050));
     }
 
     #[test]
@@ -2409,11 +2441,12 @@ mod tests {
         };
         let base = |agi: i64| y.income_tax("VA", FilingStatus::Single, m(agi)).unwrap();
         // Under $50,000 the full $12,000 comes off at 65 and over, nothing at 64.
-        assert_eq!(t(40_000, &[66]), base(28_000));
+        // The $800 extra exemption at 65 comes off too.
+        assert_eq!(t(40_000, &[66]), base(28_000 - 800));
         assert_eq!(t(40_000, &[64]), base(40_000));
         // $5,000 over the line cuts it to $7,000; $12,000 over removes it.
-        assert_eq!(t(55_000, &[66]), base(48_000));
-        assert_eq!(t(62_000, &[66]), base(62_000));
+        assert_eq!(t(55_000, &[66]), base(48_000 - 800));
+        assert_eq!(t(62_000, &[66]), base(62_000 - 800));
     }
 
     #[test]
