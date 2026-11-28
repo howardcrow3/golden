@@ -21,6 +21,17 @@ fn app() -> App {
 }
 
 #[test]
+fn starting_and_stopping_need_a_licence_after_the_trial() {
+    let a = app();
+    a.start_progress_tracking().unwrap();
+    a.db().set_setting("first_run", "2026-01-01").unwrap();
+    assert!(a.start_progress_tracking().is_err());
+    assert!(a.stop_progress_tracking().is_err());
+    // What was saved during the trial is still there to read.
+    assert!(a.progress().unwrap().is_some());
+}
+
+#[test]
 fn nothing_is_reported_before_tracking_starts() {
     assert_eq!(app().progress().unwrap(), None);
 }

@@ -112,11 +112,41 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE txn ADD COLUMN netted INTEGER NOT NULL DEFAULT 0;
     "#,
+    // Bank lines a statement has replaced, so a later sync of the same line can't add it again.
+    r#"
+    CREATE TABLE bank_reconciled (
+        external_id TEXT PRIMARY KEY,
+        account_id  INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE
+    );
+    "#,
+    // The dates each imported file covered, per account, so a row a day or two from a stored
+    // one only counts as its copy inside a period one import actually covered. Existing data
+    // gets one span per account from its first to last imported day (the earlier rule).
+    r#"
+    CREATE TABLE import_span (
+        id         INTEGER PRIMARY KEY,
+        account_id INTEGER NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+        first_day  TEXT NOT NULL,
+        last_day   TEXT NOT NULL
+    );
+    CREATE INDEX import_span_account ON import_span(account_id);
+    INSERT INTO import_span(account_id, first_day, last_day)
+        SELECT account_id, min(day), max(day) FROM txn WHERE external_id IS NULL
+        GROUP BY account_id;
+    "#,
 ];
 
-pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
-    let current: usize =
-        conn.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))? as usize;
+pub fn run(conn: &mut Connection) -> crate::Result<()> {
+    let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    // A newer build changed the schema in ways this one doesn't know; writing to it could
+    // damage the data, so stop before touching anything.
+    if version > latest_version() {
+        return Err(crate::DbError::Invalid(format!(
+            "This data was saved by a newer version of Golden (database version {version}; this copy reads up to {}). Update Golden to open it.",
+            latest_version()
+        )));
+    }
+    let current = version.max(0) as usize;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
         let tx = conn.transaction()?;
         tx.execute_batch(sql)?;
@@ -145,6 +175,20 @@ mod tests {
     }
 
     #[test]
+    fn a_database_from_a_newer_golden_is_refused() {
+        let mut c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "user_version", latest_version() + 1)
+            .unwrap();
+        let err = run(&mut c).unwrap_err().to_string();
+        assert!(err.contains("newer version of Golden"), "{err}");
+        // Nothing was changed.
+        let v: i64 = c
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, latest_version() + 1);
+    }
+
+    #[test]
     fn rerunning_is_a_no_op() {
         let mut c = Connection::open_in_memory().unwrap();
         run(&mut c).unwrap();
@@ -157,5 +201,34 @@ mod tests {
             )
             .unwrap();
         assert_eq!(n, 1);
+    }
+
+    #[test]
+    fn import_spans_are_backfilled_from_existing_rows() {
+        let mut c = Connection::open_in_memory().unwrap();
+        let before = MIGRATIONS.len() - 1;
+        for (i, sql) in MIGRATIONS[..before].iter().enumerate() {
+            c.execute_batch(sql).unwrap();
+            c.pragma_update(None, "user_version", (i + 1) as i64)
+                .unwrap();
+        }
+        c.execute_batch(
+            "INSERT INTO account(id, name, kind) VALUES (1, 'Checking', 'checking');
+             INSERT INTO txn(account_id, day, week_key, month_key, quarter_key, year_key, cents)
+             VALUES (1, '2026-01-03', '', '', '', '', -1), (1, '2026-03-30', '', '', '', '', -2);
+             INSERT INTO txn(account_id, day, week_key, month_key, quarter_key, year_key, cents,
+                 external_id)
+             VALUES (1, '2026-06-01', '', '', '', '', -3, 'bank-1');",
+        )
+        .unwrap();
+        run(&mut c).unwrap();
+        let span: (i64, String, String) = c
+            .query_row(
+                "SELECT account_id, first_day, last_day FROM import_span",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(span, (1, "2026-01-03".into(), "2026-03-30".into()));
     }
 }

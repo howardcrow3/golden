@@ -148,6 +148,36 @@ fn a_same_day_copy_is_matched_before_a_neighbouring_day() {
 }
 
 #[test]
+fn a_month_filled_in_later_keeps_purchases_next_to_its_edges() {
+    let (mut db, a) = setup();
+    // January and March are imported first; February comes later.
+    db.import_batch(&[
+        row(a, "2026-01-02", -100, "Other"),
+        row(a, "2026-01-31", -450, "Starbucks"),
+    ])
+    .unwrap();
+    db.import_batch(&[
+        row(a, "2026-03-01", -450, "Starbucks"),
+        row(a, "2026-03-30", -100, "Other"),
+    ])
+    .unwrap();
+    // February's own coffees, a day from January's last and March's first.
+    let s = db
+        .import_batch(&[
+            row(a, "2026-02-01", -450, "STARBUCKS STORE"),
+            row(a, "2026-02-15", -900, "Lunch"),
+            row(a, "2026-02-28", -450, "STARBUCKS STORE"),
+        ])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (3, 0));
+    // An overlapping re-download of January in another format is still caught.
+    let s = db
+        .import_batch(&[row(a, "2026-01-30", -450, "STARBUCKS STORE")])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (0, 1));
+}
+
+#[test]
 fn reimporting_the_same_file_still_adds_nothing() {
     let (mut db, a) = setup();
     let rows = [

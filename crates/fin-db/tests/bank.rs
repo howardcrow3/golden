@@ -101,6 +101,25 @@ fn account_links_round_trip_and_unlink_removes_synced_lines_only() {
 }
 
 #[test]
+fn an_unlink_that_fails_part_way_changes_nothing() {
+    let (mut db, a) = setup();
+    db.link_bank_account("bank-acc", "item-1", a).unwrap();
+    db.apply_bank_changes(&[bank("t1", a, "2026-11-02", -500, false)], &[])
+        .unwrap();
+    // Stand in for a failure (disk full, I/O error) after the synced lines are deleted.
+    db.connection()
+        .execute_batch(
+            "CREATE TRIGGER fail_unlink BEFORE DELETE ON bank_account
+             BEGIN SELECT RAISE(ABORT, 'disk full'); END;",
+        )
+        .unwrap();
+    assert!(db.unlink_bank_item("item-1").is_err());
+    // The bank's lines are still there while the bank is still linked.
+    assert_eq!(db.txn_count().unwrap(), 1);
+    assert_eq!(db.bank_account("bank-acc").unwrap(), Some(a));
+}
+
+#[test]
 fn a_statement_replaces_the_bank_lines_it_covers() {
     let (mut db, a) = setup();
     db.apply_bank_changes(
@@ -126,6 +145,40 @@ fn a_statement_replaces_the_bank_lines_it_covers() {
     assert_eq!(db.txn_count().unwrap(), 2);
     // Running it again changes nothing.
     assert_eq!(db.reconcile_bank(a).unwrap(), 0);
+}
+
+#[test]
+fn a_later_sync_does_not_bring_back_a_line_the_statement_covers() {
+    let (mut db, a) = setup();
+    db.apply_bank_changes(
+        &[
+            bank("t1", a, "2026-11-02", -1250, false),
+            bank("p1", a, "2026-11-04", -700, true),
+        ],
+        &[],
+    )
+    .unwrap();
+    for (day, cents) in [("2026-11-03", -1250), ("2026-11-05", -700)] {
+        db.add_txn(&NewTxn {
+            account: a,
+            day: d(day),
+            amount: Money::from_cents(cents),
+            payee: "SHELL OIL".into(),
+            memo: String::new(),
+            category: None,
+            stream: None,
+        })
+        .unwrap();
+    }
+    assert_eq!(db.reconcile_bank(a).unwrap(), 2);
+    // The bank later reports t1 as modified, and the pending line as posted under a new id.
+    let mut posted = bank("p1-posted", a, "2026-11-05", -700, false);
+    posted.replaces = Some("p1".into());
+    db.apply_bank_changes(&[bank("t1", a, "2026-11-02", -1250, false), posted], &[])
+        .unwrap();
+    // Only the two statement lines: nothing is counted twice.
+    assert_eq!(db.txn_count().unwrap(), 2);
+    assert_eq!(db.accounts().unwrap()[0].3, Money::from_cents(-1950));
 }
 
 #[test]

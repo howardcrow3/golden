@@ -106,6 +106,19 @@ impl RuleSet {
         v
     }
 
+    /// Category names that only ever file money coming in (pay, interest), sorted.
+    pub fn income_categories(&self) -> Vec<String> {
+        let mut v: Vec<String> = self
+            .rules
+            .iter()
+            .filter(|r| r.direction == Some(Direction::In))
+            .map(|r| r.category.clone())
+            .collect();
+        v.sort();
+        v.dedup();
+        v
+    }
+
     pub fn add_user_rule(&mut self, contains: &str, category: &str) {
         self.rules
             .retain(|r| !(r.user && r.contains == contains.to_lowercase()));
