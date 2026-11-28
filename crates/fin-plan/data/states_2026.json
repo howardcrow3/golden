@@ -2191,7 +2191,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Georgia excludes up to $35,000 of retirement income per person aged 62 to 64 and $65,000 at 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Retirees under 62 exclude up to $17,500 of military retirement income (the extra $17,500 for those with Georgia earned income is not modelled); from 62 it falls under the retirement exclusion.",
+   "notes": "Georgia excludes up to $35,000 of retirement income per person aged 62 to 64 and $65,000 at 65 or more. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Retirees under 62 exclude up to $17,500 of military retirement income, or $35,000 for those with more than $17,500 of their own earned income; from 62 it falls under the retirement exclusion.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2207,7 +2207,8 @@
    },
    "military": {
     "max_age": 61,
-    "per_person_cap": 1750000
+    "per_person_cap": 1750000,
+    "earned_extra": 1750000
    }
   },
   "HI": {
