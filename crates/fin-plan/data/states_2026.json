@@ -3464,7 +3464,7 @@
    "std_joint": 582000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption credit $256 per filer; federal income tax is subtracted up to $8,500, a limit that steps down over federal AGI of $125,000 ($250,000 joint) to nothing at $145,000 ($290,000); 2025 Table 4 figures. Head of household filers use the single limits here. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled.",
+   "notes": "Personal exemption credit $256 per filer; federal income tax is subtracted up to $8,500, a limit that steps down over federal AGI of $125,000 ($250,000 joint) to nothing at $145,000 ($290,000); 2025 Table 4 figures. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3547,7 +3547,8 @@
       29000000,
       0
      ]
-    ]
+    ],
+    "head_uses_joint": true
    }
   },
   "PA": {
