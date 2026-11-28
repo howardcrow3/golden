@@ -22,6 +22,23 @@ fn is_date(t: &str) -> bool {
             .all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
 }
 
+/// A bare amount with cents and no dollar sign: `999.99`, `-1,234.56`, `(45.00)`.
+fn is_plain_amount(t: &str) -> bool {
+    let t = t.strip_prefix('-').unwrap_or(t);
+    let t = t
+        .strip_prefix('(')
+        .and_then(|r| r.strip_suffix(')'))
+        .unwrap_or(t);
+    let Some((whole, cents)) = t.split_once('.') else {
+        return false;
+    };
+    cents.len() == 2
+        && cents.bytes().all(|b| b.is_ascii_digit())
+        && !whole.is_empty()
+        && whole.bytes().all(|b| b.is_ascii_digit() || b == b',')
+        && whole.bytes().next().is_some_and(|b| b.is_ascii_digit())
+}
+
 fn clean_token(t: &str) -> String {
     let edge = |c: char| {
         matches!(
@@ -60,6 +77,9 @@ fn clean_core(core: &str) -> String {
     }
     if is_date(core) {
         return core.into();
+    }
+    if is_plain_amount(core) {
+        return "[amt]".into();
     }
     let digits = core.chars().filter(|c| c.is_ascii_digit()).count();
     if digits >= 6 {
