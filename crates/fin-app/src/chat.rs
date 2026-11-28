@@ -568,7 +568,6 @@ impl Interpreter for RuleInterpreter {
         ] {
             if let Some(i) = t.find(word) {
                 let rest = &t[i..];
-                let cents = amount_after(rest, word);
                 let year = rest
                     .split_whitespace()
                     .filter_map(|w| {
@@ -577,6 +576,16 @@ impl Interpreter for RuleInterpreter {
                             .ok()
                     })
                     .find(|y| (today.year()..=today.year() + 60).contains(y));
+                // "$50k bonus in 2028" puts the amount before the word; a bare number after
+                // it must not be the year itself.
+                let cents = money_tokens(rest)
+                    .first()
+                    .copied()
+                    .or_else(|| money_tokens(&t[..i]).last().copied())
+                    .or_else(|| {
+                        amount_after(rest, word)
+                            .filter(|c| Some(*c) != year.map(|y| i64::from(y) * 100))
+                    });
                 if let (Some(cents), Some(year)) = (cents, year) {
                     let mut label = word.to_string();
                     label[..1].make_ascii_uppercase();

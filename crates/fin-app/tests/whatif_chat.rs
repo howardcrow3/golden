@@ -254,3 +254,16 @@ fn moving_is_understood_when_to_appears_earlier_in_the_sentence() {
         vec![Change::MoveTo { state: "FL".into() }]
     );
 }
+
+#[test]
+fn a_bonus_amount_written_before_the_word_is_not_read_as_the_year() {
+    assert_eq!(
+        interpret("what if I get a $50k bonus in 2028"),
+        vec![Change::OneTime {
+            label: "Bonus".into(),
+            person: 0,
+            cents: 5_000_000,
+            year: 2028,
+        }]
+    );
+}
