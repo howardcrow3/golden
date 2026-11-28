@@ -22,7 +22,7 @@
     const plaid = formatCents(p.plaidCents);
     const per = p.plaidInterval === "year" ? "a year" : "a month";
     const yearly = p.plaidYearlyCents > 0 ? `, or ${formatCents(p.plaidYearlyCents)} a year` : "";
-    return `Golden is ${core} once per major version. Bank connections are an optional ${plaid} ${per}${yearly}.`;
+    return `Golden is ${core} once per major version. Automatic bank updates are a separate add-on, not included in that price: ${plaid} ${per}${yearly}, on top of Golden.`;
   }
 
   $effect(() => {
