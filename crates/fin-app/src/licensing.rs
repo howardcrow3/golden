@@ -15,12 +15,14 @@ pub struct LicenseStatus {
 }
 
 const FIRST_RUN: &str = "first_run";
+/// The latest day the app has seen, so setting the clock back cannot give the trial back.
+const LATEST_SEEN: &str = "trial_latest_seen";
 const LICENSE: &str = "license_token";
 /// A key for the bank-connection add-on alone (`core: false`), kept beside the app's key so a
 /// renewal of the add-on never replaces the key that unlocks the app.
 const ADDON: &str = "license_addon_token";
 /// Settings that survive "delete everything" so erasing cannot reset the trial or drop a licence.
-pub(crate) const KEEP_ON_ERASE: &[&str] = &[FIRST_RUN, LICENSE, ADDON];
+pub(crate) const KEEP_ON_ERASE: &[&str] = &[FIRST_RUN, LATEST_SEEN, LICENSE, ADDON];
 
 impl App {
     /// Every saved key that verifies, with its token.
@@ -64,10 +66,26 @@ impl App {
             .set_setting_if_absent(FIRST_RUN, &today.format("%Y-%m-%d").to_string())
             .map_err(|e| e.to_string())?;
         let first = NaiveDate::parse_from_str(&first, "%Y-%m-%d").unwrap_or(today);
-        Ok((
-            access(first, today, self.app_key().as_ref()),
-            self.app_key(),
-        ))
+        let key = self.app_key();
+        if key.is_some() {
+            // A licence unlocks the app whatever the clock says.
+            return Ok((access(first, today, key.as_ref()), key));
+        }
+        // The trial counts from the latest day ever seen, so a clock set back (even to before
+        // the first run) cannot restart it. A clock that was once wrongly ahead costs at most
+        // the rest of the trial: a licence still unlocks, and reading and exporting still work.
+        let seen = self
+            .db
+            .get_setting(LATEST_SEEN)
+            .map_err(|e| e.to_string())?
+            .and_then(|v| NaiveDate::parse_from_str(&v, "%Y-%m-%d").ok());
+        let effective = seen.map_or(today, |s| s.max(today));
+        if seen != Some(effective) {
+            self.db
+                .set_setting(LATEST_SEEN, &effective.format("%Y-%m-%d").to_string())
+                .map_err(|e| e.to_string())?;
+        }
+        Ok((access(first, effective, None), None))
     }
 
     pub fn license_status(&self, today: NaiveDate) -> Result<LicenseStatus, String> {
