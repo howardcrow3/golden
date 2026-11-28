@@ -89,3 +89,17 @@ fn a_purchase_already_cancelled_by_a_refund_is_not_also_a_transfer() {
     // Bob's money is income; the purchase and its return cancel out.
     assert_eq!((m.income_cents, m.spending_cents), (5_000, 0));
 }
+
+#[test]
+fn a_paycheck_is_never_taken_for_a_refund() {
+    let mut a = app();
+    // An invoice paid to the employer, then that employer's payroll for the same amount.
+    a.import_statement(
+        b"Date,Description,Amount\n11/01/2026,ACME CORP INVOICE,-2500.00\n11/15/2026,ACME PAYROLL,2500.00\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    let m = month(&a);
+    assert_eq!((m.income_cents, m.spending_cents), (250_000, 250_000));
+}

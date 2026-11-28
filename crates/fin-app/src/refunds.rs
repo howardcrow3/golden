@@ -22,9 +22,29 @@ impl App {
             .map_err(|e| e.to_string())?
             .into_iter()
             .collect();
+        // Money in that is filed as income (pay, interest, dividends) is never a refund.
+        let mut income = self.rules.income_categories();
+        income.extend(
+            [
+                "Income",
+                "Salary",
+                "Wages",
+                "Interest",
+                "Dividends",
+                "Pension",
+                "Social Security",
+            ]
+            .map(String::from),
+        );
         let mut marked = vec![];
         for refund in txns.iter().filter(|t| t.amount.cents() > 0) {
-            if done.contains(&refund.id) || refund.category.as_deref() == Some(TRANSFER) {
+            if done.contains(&refund.id)
+                || refund.category.as_deref() == Some(TRANSFER)
+                || refund
+                    .category
+                    .as_ref()
+                    .is_some_and(|c| income.iter().any(|i| i.eq_ignore_ascii_case(c)))
+            {
                 continue;
             }
             // The nearest earlier purchase of exactly this amount from the same shop.
