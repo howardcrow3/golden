@@ -109,6 +109,10 @@ pub struct StateRules {
     /// retirement exclusion when larger (Michigan Tier 2 and Tier 3 standard deductions).
     #[serde(default)]
     pub birth_year_deductions: Vec<BirthYearDeduction>,
+    /// A credit for each person born by a year, cut as income rises, taken instead of the Social
+    /// Security credit when larger (Utah's $450 retirement credit).
+    #[serde(default)]
+    pub birth_year_credit: Option<BirthYearCredit>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -385,6 +389,10 @@ pub struct SocialSecurityRule {
     /// this much more income (Vermont: $10,000; Minnesota: 10% per $4,000, so $40,000).
     #[serde(default)]
     pub phaseout_width: Money,
+    /// When set, the phase-out moves in whole steps of this much income, a part step counting
+    /// as a whole one (Minnesota: 10% for each $4,000 or fraction of $4,000).
+    #[serde(default)]
+    pub phaseout_step: Money,
     /// Over the `exempt_agi` line no more than this share of the lesser of total benefits and
     /// the federal worksheet's income over its base amount stays in (Connecticut: 25%).
     #[serde(default)]
@@ -487,7 +495,11 @@ impl SocialSecurityRule {
             && agi < limit + self.phaseout_width
         {
             // Part of the benefits is still left out, less the further income is over the line.
-            let into = (agi - limit).max(Money::ZERO).cents() as f64;
+            let mut into = (agi - limit).max(Money::ZERO).cents() as f64;
+            if self.phaseout_step > Money::ZERO {
+                let step = self.phaseout_step.cents() as f64;
+                into = (into / step).ceil() * step;
+            }
             let share = into / self.phaseout_width.cents() as f64;
             return taxable_ss.mul_rate(share.clamp(0.0, 1.0));
         }
@@ -554,6 +566,33 @@ impl BirthYearDeduction {
             }
             _ => false,
         }
+    }
+}
+
+/// Utah's retirement credit (TC-40, code 18): `per_person` for each person born on or before
+/// `born_by`, less `rate` of income over the start for the filing status.
+#[derive(Debug, Clone, Deserialize)]
+pub struct BirthYearCredit {
+    pub born_by: i32,
+    pub per_person: Money,
+    pub start_single: Money,
+    pub start_joint: Money,
+    pub rate: f64,
+}
+
+impl BirthYearCredit {
+    pub fn total(&self, fs: FilingStatus, income: Money, birth_years: &[i32]) -> Money {
+        let n = birth_years.iter().filter(|&&b| b <= self.born_by).count() as i64;
+        if n == 0 {
+            return Money::ZERO;
+        }
+        let start = if fs == FilingStatus::MarriedJoint {
+            self.start_joint
+        } else {
+            self.start_single
+        };
+        let over = (income - start).max(Money::ZERO);
+        (Money::from_cents(self.per_person.cents() * n) - over.mul_rate(self.rate)).max(Money::ZERO)
     }
 }
 
@@ -882,10 +921,14 @@ impl StateTaxYear {
         }
         income = (income - ret_cut).max(Money::ZERO);
         let tax = self.income_tax(code, fs, income)?;
-        let credit = match (&r.social_security, r.taxes_social_security) {
+        let mut credit = match (&r.social_security, r.taxes_social_security) {
             (Some(rule), true) => rule.credit(fs, income, ss),
             _ => Money::ZERO,
         };
+        if let Some(c) = &r.birth_year_credit {
+            // One or the other: the household takes whichever is larger.
+            credit = credit.max(c.total(fs, federal_agi, &ret.birth_years));
+        }
         let rc = r.retirement_credit.as_ref().map_or(Money::ZERO, |c| {
             c.total(
                 before_ss,
@@ -1115,7 +1158,11 @@ mod tests {
         assert_eq!(go("VT", 65_000, 20_000), plain("VT", 65_000));
         // Minnesota: 10% less is left out for each $4,000 over $84,490.
         assert_eq!(go("MN", 84_490, 20_000), plain("MN", 64_490));
+        // Minnesota moves in $4,000 steps, a part step counting in full: $20,000 over is five
+        // steps (50% taxed), and $1 over is already one step (10%).
         assert_eq!(go("MN", 104_490, 20_000), plain("MN", 94_490));
+        assert_eq!(go("MN", 84_491, 20_000), plain("MN", 64_491 + 2_000));
+        assert_eq!(go("MN", 88_491, 20_000), plain("MN", 68_491 + 4_000));
         assert_eq!(go("MN", 124_490, 20_000), plain("MN", 124_490));
     }
 
@@ -1389,6 +1436,51 @@ mod tests {
         assert_eq!(go(90_000, 30_000, 0, 0, &[68]), plain(60_000));
         // At 62 they are not.
         assert_eq!(go(90_000, 30_000, 0, 0, &[62]), plain(90_000));
+    }
+
+    #[test]
+    fn utah_retirement_credit_is_for_people_born_by_1952_and_fades_with_income() {
+        let y = StateTaxYear::y2026();
+        let c = y.rules("UT").unwrap().birth_year_credit.clone().unwrap();
+        let single = FilingStatus::Single;
+        let joint = FilingStatus::MarriedJoint;
+        assert_eq!(c.total(single, m(20_000), &[1950]), m(450));
+        // $10,000 over $25,000 takes off $250.
+        assert_eq!(c.total(single, m(35_000), &[1950]), m(200));
+        assert_eq!(c.total(single, m(60_000), &[1950]), Money::ZERO);
+        assert_eq!(c.total(single, m(20_000), &[1953]), Money::ZERO);
+        assert_eq!(c.total(joint, m(32_000), &[1948, 1951]), m(900));
+        assert_eq!(c.total(joint, m(32_000), &[1948, 1960]), m(450));
+        // In the tax: with no benefits it is the only credit, so it comes off in full.
+        let r = RetirementIncome {
+            birth_years: vec![1950],
+            ..ret(20_000, 0, &[76])
+        };
+        let with = y
+            .income_tax_with_retirement("UT", single, m(30_000), Money::ZERO, &r)
+            .unwrap();
+        let without = y
+            .income_tax_with_retirement(
+                "UT",
+                single,
+                m(30_000),
+                Money::ZERO,
+                &ret(20_000, 0, &[76]),
+            )
+            .unwrap();
+        assert_eq!(without - with, m(325).min(without));
+        // When the Social Security credit is larger, that one is used instead, not both.
+        let r = RetirementIncome {
+            birth_years: vec![1950],
+            ..ret(0, 0, &[76])
+        };
+        let both = y
+            .income_tax_with_retirement("UT", single, m(40_000), m(20_000), &r)
+            .unwrap();
+        let ss_only = y
+            .income_tax_with_retirement("UT", single, m(40_000), m(20_000), &ret(0, 0, &[76]))
+            .unwrap();
+        assert_eq!(both, ss_only);
     }
 
     #[test]
