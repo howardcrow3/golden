@@ -267,3 +267,15 @@ fn restore_keeps_what_kind_of_holding_each_one_is() {
         src.balance_sheet().unwrap().assets
     );
 }
+
+#[test]
+fn restore_leaves_closed_months_alone() {
+    let src = loaded();
+    let json = src.backup_json().unwrap();
+    let mut dst = blank();
+    dst.close_month("2026-10").unwrap();
+    let r = dst.restore_backup(&json).unwrap();
+    // The two October lines stay out; the 2019 one comes in.
+    assert_eq!((r.added, r.skipped_closed), (1, 2));
+    assert_eq!(parse(&dst)["transactions"].as_array().unwrap().len(), 1);
+}
