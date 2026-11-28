@@ -33,7 +33,7 @@
    "std_joint": 1150000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction and personal exemption combined; Alabama's income-based deduction phase-down is not modelled.",
+   "notes": "Checked against the 2025 Form 40 booklet. Pensions from defined benefit plans (federal, state, military and employer plans under IRC 414(j)) are left out; IRA and 401(k) distributions are taxed. Social Security is not taxed. The standard deduction here is the amount for lower incomes combined with the personal exemption; the booklet cuts it as income rises (joint from $8,500 to $5,000 over $35,500), which is not modelled.",
    "joint_brackets": [
     [
      0,
@@ -47,7 +47,11 @@
      600000,
      0.05
     ]
-   ]
+   ],
+   "retirement": {
+    "pension_full": true,
+    "min_age": 0
+   }
   },
   "AR": {
    "name": "Arkansas",
@@ -2089,7 +2093,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Same schedule for all filers."
+   "notes": "Checked against the 2025 D-40 booklet: the rate schedule matches, Social Security is subtracted, and there is no general pension exclusion (only government survivor benefits at 62 and a disability exclusion)."
   },
   "DE": {
    "name": "Delaware",
@@ -2579,7 +2583,7 @@
    "std_joint": 2730000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled.",
+   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Standard deduction and exemption phase-outs are not modelled.",
    "joint_brackets": [
     [
      0,
@@ -2593,7 +2597,22 @@
      12974900,
      0.0715
     ]
-   ]
+   ],
+   "retirement": {
+    "min_age": 0,
+    "caps": [
+     {
+      "age": 55,
+      "cap": 4821600
+     }
+    ],
+    "less_social_security": true,
+    "phaseout": {
+     "start_single": 12500000,
+     "start_joint": 25000000,
+     "width": 10000000
+    }
+   }
   },
   "MI": {
    "name": "Michigan",
@@ -2604,11 +2623,22 @@
      0.0425
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 580000,
+   "std_joint": 1160000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Rate and $5,800 exemption (2025) checked against the 2025 MI-1040 booklet; Social Security is not taxed. People born 1946 to 1958 who reach 67 may take a $20,000 (single) / $40,000 (joint) standard deduction instead of a retirement subtraction; it is applied here to retirement income only. The retirement subtraction amounts on Form 4884, the pre-1946 tier and the 2026 phase-in are not modelled.",
+   "retirement": {
+    "min_age": 0,
+    "household": {
+     "min_age": 67,
+     "cap_single": 2000000,
+     "cap_joint": 4000000,
+     "cap_separate": 2000000,
+     "full_to": 10000000000000,
+     "steps": []
+    }
+   }
   },
   "MN": {
    "name": "Minnesota",
@@ -2988,7 +3018,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Follows the federal standard deduction. New Mexico leaves Social Security out when AGI is at or below $100,000 (single) / $150,000 (joint). Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Checked against the 2025 PIT-1 and PIT-ADJ instructions. Follows the federal standard deduction. Social Security is left out when AGI is $100,000 or less (single) / $150,000 or less (joint, head of household). Each person 65 or older takes an exemption of $8,000 that falls by $1,000 for each step of income (Table 1); the blind exemption, the $30,000 armed forces retirement exemption and the medical expense exemption are not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3019,6 +3049,17 @@
    "social_security": {
     "exempt_agi_single": 10000000,
     "exempt_agi_joint": 15000000
+   },
+   "age_exemption": {
+    "age": 65,
+    "amount": 800000,
+    "step": 100000,
+    "start_single": 1800000,
+    "width_single": 150000,
+    "start_joint": 3000000,
+    "width_joint": 300000,
+    "start_separate": 1500000,
+    "width_separate": 150000
    }
   },
   "NV": {
@@ -3302,11 +3343,26 @@
    "std_joint": 3290000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption; high-income phase-outs not modelled. Rhode Island leaves Social Security out for people at full retirement age with AGI at or below $107,000 (single) / $133,750 (joint). Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Checked against the 2025 RI-1040 instructions, Schedule M and the Social Security worksheet. Taxable Social Security is left out for people born on or before March 1, 1959 (age 67 or more in 2026) when federal AGI is under $107,000 (single) / $133,750 (joint); the share of a younger spouse stays in. Up to $50,000 of pension income (not IRA withdrawals) per person born on or before that date is left out under the same AGI limits; the joint figure here assumes both spouses qualify. Standard deduction and exemption phase-outs are not modelled.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 10700000,
-    "exempt_agi_joint": 13375000
+    "exempt_agi_joint": 13375000,
+    "exempt_min_age": 67
+   },
+   "retirement": {
+    "min_age": 0,
+    "household": {
+     "min_age": 67,
+     "cap_single": 5000000,
+     "cap_joint": 10000000,
+     "cap_separate": 5000000,
+     "full_to": 10000000000000,
+     "steps": [],
+     "pension_only": true,
+     "agi_limit_single": 10700000,
+     "agi_limit_joint": 13375000
+    }
    }
   },
   "SC": {
