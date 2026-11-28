@@ -171,7 +171,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 DR 0104 booklet and DR 0104AD. Social Security: a person 65 or older leaves all of it out; at 55 to 64 all of it if federal AGI is $75,000 or less (single) / $95,000 or less (joint), otherwise up to $20,000. Pension, annuity and IRA income: up to $24,000 a person at 65 or older and $20,000 at 55 to 64, less the Social Security subtracted. Benefits are split evenly between spouses, and the pension caps are pooled across the household, which can differ slightly from the form.",
+   "notes": "Checked against the 2025 DR 0104 booklet and DR 0104AD. Social Security: a person 65 or older leaves all of it out; at 55 to 64 all of it if federal AGI is $75,000 or less (single) / $95,000 or less (joint), otherwise up to $20,000. Pension, annuity and IRA income: up to $24,000 a person at 65 or older and $20,000 at 55 to 64, less the Social Security subtracted. Benefits are split evenly between spouses, and the pension caps are pooled across the household, which can differ slightly from the form. Retirees 54 or younger subtract up to $15,000 of military retirement pay each; from 55 it falls under the pension subtraction.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 7500000,
@@ -197,6 +197,10 @@
      }
     ],
     "less_ss_subtracted": true
+   },
+   "military": {
+    "max_age": 54,
+    "per_person_cap": 1500000
    }
   },
   "CT": {
@@ -3551,7 +3555,7 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 TC-40 instructions. Social Security stays in income and earns a credit of 4.5% of the taxable benefits, less 2.5% of income over $54,000 (single) / $90,000 (joint). The $450 retirement credit for each person born on or before 1952 (less 2.5% of income over $25,000 single / $32,000 joint) is used instead of the Social Security credit when larger; income is taken as federal AGI. The taxpayer credit is not modelled.",
+   "notes": "Checked against the 2025 TC-40 instructions. Social Security stays in income and earns a credit of 4.5% of the taxable benefits, less 2.5% of income over $54,000 (single) / $90,000 (joint). The $450 retirement credit for each person born on or before 1952 (less 2.5% of income over $25,000 single / $32,000 joint) is used instead of the Social Security credit when larger; income is taken as federal AGI. The taxpayer credit is not modelled. The military retirement credit is 4.5% of military retired pay, allowed with the Social Security credit but not with the $450 retirement credit.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 5400000,
@@ -3565,6 +3569,9 @@
     "start_single": 2500000,
     "start_joint": 3200000,
     "rate": 0.025
+   },
+   "military": {
+    "credit_rate": 0.045
    }
   },
   "VA": {
@@ -3625,7 +3632,7 @@
    "std_joint": 2590000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Checked against the 2025 Vermont income booklet (Retirement Income Exemption Worksheet): Social Security is fully exempt under $55,000 (single, head of household, separate) / $70,000 (joint) of Vermont AGI, and the exemption falls in a straight line to nothing at $65,000 / $80,000. The exemption is an either-or with the exemption for some government pensions, which is not modelled.",
+   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Checked against the 2025 Vermont income booklet (Retirement Income Exemption Worksheet): Social Security is fully exempt under $55,000 (single, head of household, separate) / $70,000 (joint) of Vermont AGI, and the exemption falls in a straight line to nothing at $65,000 / $80,000. The exemption is an either-or with the exemption for some government pensions, which is not modelled. Military retirement pay is exempt in full with AGI up to $125,000, falling to nothing at $175,000 (Military Retirement Income Exemption Worksheet).",
    "joint_brackets": [
     [
      0,
@@ -3653,6 +3660,13 @@
     "exempt_agi_single": 5500000,
     "exempt_agi_joint": 7000000,
     "phaseout_width": 1000000
+   },
+   "military": {
+    "phaseout": {
+     "start_single": 12500000,
+     "start_joint": 12500000,
+     "width": 5000000
+    }
    }
   },
   "WA": {
