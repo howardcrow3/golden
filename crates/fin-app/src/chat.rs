@@ -523,6 +523,16 @@ fn income_stream(t: &str, person: usize, today: NaiveDate) -> Option<Change> {
         ("pension", "Pension")
     } else if t.contains("annuity") {
         ("pension", "Annuity")
+    } else if [
+        "rental income",
+        "rent income",
+        "income from rent",
+        "rent out",
+    ]
+    .iter()
+    .any(|w| t.contains(w))
+    {
+        ("other", "Rental income")
     } else {
         return None;
     };
