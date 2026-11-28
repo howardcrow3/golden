@@ -101,6 +101,25 @@ fn account_links_round_trip_and_unlink_removes_synced_lines_only() {
 }
 
 #[test]
+fn an_unlink_that_fails_part_way_changes_nothing() {
+    let (mut db, a) = setup();
+    db.link_bank_account("bank-acc", "item-1", a).unwrap();
+    db.apply_bank_changes(&[bank("t1", a, "2026-11-02", -500, false)], &[])
+        .unwrap();
+    // Stand in for a failure (disk full, I/O error) after the synced lines are deleted.
+    db.connection()
+        .execute_batch(
+            "CREATE TRIGGER fail_unlink BEFORE DELETE ON bank_account
+             BEGIN SELECT RAISE(ABORT, 'disk full'); END;",
+        )
+        .unwrap();
+    assert!(db.unlink_bank_item("item-1").is_err());
+    // The bank's lines are still there while the bank is still linked.
+    assert_eq!(db.txn_count().unwrap(), 1);
+    assert_eq!(db.bank_account("bank-acc").unwrap(), Some(a));
+}
+
+#[test]
 fn a_statement_replaces_the_bank_lines_it_covers() {
     let (mut db, a) = setup();
     db.apply_bank_changes(

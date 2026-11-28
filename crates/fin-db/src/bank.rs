@@ -63,13 +63,15 @@ impl Db {
 
     /// Forget a bank item's account links and delete the lines it synced (unlinking a bank).
     pub fn unlink_bank_item(&self, item_id: &str) -> Result<usize> {
-        let n = self.conn.execute(
+        // All or nothing: a still-linked bank with its lines gone would sync them back in.
+        let tx = self.conn.unchecked_transaction()?;
+        let n = tx.execute(
             "DELETE FROM txn WHERE external_id IS NOT NULL AND account_id IN
                (SELECT account_id FROM bank_account WHERE item_id=?1)",
             [item_id],
         )?;
-        self.conn
-            .execute("DELETE FROM bank_account WHERE item_id=?1", [item_id])?;
+        tx.execute("DELETE FROM bank_account WHERE item_id=?1", [item_id])?;
+        tx.commit()?;
         Ok(n)
     }
 
