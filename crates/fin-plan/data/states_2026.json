@@ -2915,7 +2915,7 @@
    "std_joint": 3060000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction phase-out at higher incomes is not modelled. The $84,490 / $108,320 thresholds are checked against the Minnesota Department of Revenue's Social Security subtraction page (updated 2025-12-17), which also says the subtraction falls 10% for each $4,000 of AGI over them; House Research (Minnesota Taxation of Social Security, 2025) confirms a part of $4,000 counts as a full step, and that is modelled. A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law. Adds $2,000 at 65 for single filers and $1,550 each for married filers (2025 M1 instructions).",
+   "notes": "The 2026 amounts (brackets, $15,300 / $30,600 / $23,000 head of household standard deduction, $86,410 / $110,780 Social Security thresholds, $2,000 / $1,600 extra at 65, $244,400 deduction limit) are from the Department of Revenue's Inflation Adjusted Amounts for 2026 (Dec 1, 2025). The standard deduction falls by 3% of AGI over $244,400, to no less than 20% of it; heads of household use the single range. The Social Security subtraction page (updated 2025-12-17) says the subtraction falls 10% for each $4,000 of AGI over them; House Research (Minnesota Taxation of Social Security, 2025) confirms a part of $4,000 counts as a full step, and that is modelled. A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law.",
    "joint_brackets": [
     [
      0,
@@ -2936,14 +2936,41 @@
    ],
    "taxes_social_security": true,
    "social_security": {
-    "exempt_agi_single": 8449000,
-    "exempt_agi_joint": 10832000,
+    "exempt_agi_single": 8641000,
+    "exempt_agi_joint": 11078000,
     "phaseout_width": 4000000,
     "phaseout_step": 400000
    },
    "military": {},
    "aged_extra_single": 200000,
-   "aged_extra_joint": 155000
+   "aged_extra_joint": 160000,
+   "std_head": 2300000,
+   "head_brackets": [
+    [
+     0,
+     0.0535
+    ],
+    [
+     4101000,
+     0.068
+    ],
+    [
+     16480000,
+     0.0785
+    ],
+    [
+     27006000,
+     0.0985
+    ]
+   ],
+   "std_phase_down": {
+    "start_single": 24440000,
+    "end_single": 65240000,
+    "floor_single": 306000,
+    "start_joint": 24440000,
+    "end_joint": 106040000,
+    "floor_joint": 612000
+   }
   },
   "MO": {
    "name": "Missouri",
