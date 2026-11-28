@@ -42,6 +42,54 @@ impl StdPhaseDown {
     }
 }
 
+/// Federal income tax taken off state income: Alabama all of it, Missouri a share that falls as
+/// income rises (up to a limit), Oregon up to a limit that falls with federal AGI.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct FederalTaxDeduction {
+    /// The share of federal tax allowed by state income, as (at least, share) rows in rising
+    /// order; empty means all of it.
+    #[serde(default)]
+    pub shares: Vec<(Money, f64)>,
+    /// The most that can be taken by federal AGI, as (at least, limit) rows in rising order;
+    /// empty means no limit.
+    #[serde(default)]
+    pub limits_single: Vec<(Money, Money)>,
+    #[serde(default)]
+    pub limits_joint: Vec<(Money, Money)>,
+}
+
+impl FederalTaxDeduction {
+    fn row<T: Copy>(rows: &[(Money, T)], at: Money) -> Option<T> {
+        rows.iter().rev().find(|(from, _)| at >= *from).map(|r| r.1)
+    }
+
+    /// The deduction for `federal_tax`, given state income and federal AGI.
+    pub fn amount(
+        &self,
+        fs: FilingStatus,
+        state_income: Money,
+        federal_agi: Money,
+        federal_tax: Money,
+    ) -> Money {
+        let tax = federal_tax.max(Money::ZERO);
+        let share = if self.shares.is_empty() {
+            1.0
+        } else {
+            Self::row(&self.shares, state_income).unwrap_or(1.0)
+        };
+        let mut out = tax.mul_rate(share);
+        let limits = if fs == FilingStatus::MarriedJoint {
+            &self.limits_joint
+        } else {
+            &self.limits_single
+        };
+        if let Some(cap) = Self::row(limits, federal_agi) {
+            out = out.min(cap);
+        }
+        out.max(Money::ZERO)
+    }
+}
+
 /// How one state taxes ordinary income.
 #[derive(Debug, Clone, Deserialize)]
 pub struct StateRules {
@@ -120,6 +168,9 @@ pub struct StateRules {
     /// Military retirement pay left out of income, apart from the other retirement rules.
     #[serde(default)]
     pub military: Option<MilitaryRetirement>,
+    /// Federal income tax deducted from state income (Alabama, Missouri, Oregon).
+    #[serde(default)]
+    pub federal_tax_deduction: Option<FederalTaxDeduction>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -738,6 +789,8 @@ pub struct RetirementIncome {
     /// Each adult's own wages and self-employment income, in the same order as `ages`; empty
     /// when not known.
     pub earned: Vec<Money>,
+    /// Federal income tax for the year, after credits; zero when not known.
+    pub federal_tax: Money,
 }
 
 impl RetirementExclusion {
@@ -1112,7 +1165,12 @@ impl StateTaxYear {
             }
         }
         income = (income - ret_cut).max(Money::ZERO);
-        let tax = self.income_tax(code, fs, income)?;
+        // Federal tax comes off after the state's income is worked out, so the deductions that
+        // depend on that income (Alabama's sliding standard deduction) still see all of it.
+        let fed_cut = r.federal_tax_deduction.as_ref().map_or(Money::ZERO, |d| {
+            d.amount(fs, income, federal_agi, ret.federal_tax)
+        });
+        let tax = self.tax_less(code, fs, income, fed_cut)?;
         let mut credit = match (&r.social_security, r.taxes_social_security) {
             (Some(rule), true) => rule.credit(fs, income, ss),
             _ => Money::ZERO,
@@ -1149,6 +1207,12 @@ impl StateTaxYear {
     /// State income tax on `federal_agi`-like income for a resident of `code`.
     /// Returns None if the state code is unknown.
     pub fn income_tax(&self, code: &str, fs: FilingStatus, income: Money) -> Option<Money> {
+        self.tax_less(code, fs, income, Money::ZERO)
+    }
+
+    /// As `income_tax`, with `less` also taken off taxable income (but not off the income that
+    /// the standard deduction, exemption and recapture rules look at).
+    fn tax_less(&self, code: &str, fs: FilingStatus, income: Money, less: Money) -> Option<Money> {
         let r = self.rules(code)?;
         if r.kind == StateKind::None {
             return Some(Money::ZERO);
@@ -1156,7 +1220,7 @@ impl StateTaxYear {
         let joint = fs == FilingStatus::MarriedJoint;
         if let Some(t) = &r.agi_tables {
             // Connecticut: no standard deduction; the exemption steps down with AGI.
-            let taxable = (income - t.exemption(fs, income)).max(Money::ZERO);
+            let taxable = (income - t.exemption(fs, income) - less).max(Money::ZERO);
             let table = match (fs, joint, &r.head_brackets, &r.joint_brackets) {
                 (FilingStatus::HeadOfHousehold, _, Some(h), _) => h,
                 (_, true, _, Some(j)) => j,
@@ -1169,7 +1233,7 @@ impl StateTaxYear {
             Some(p) => p.apply(joint, std, income),
             None => std,
         };
-        let taxable = (income - std).max(Money::ZERO);
+        let taxable = (income - std - less).max(Money::ZERO);
         let table = if let (true, Some(jb)) = (joint, r.joint_brackets.as_ref()) {
             jb.clone()
         } else if joint && r.joint_multiplier != 1.0 {
@@ -1232,6 +1296,7 @@ mod tests {
             military: Vec::new(),
             cap_reduction: Money::ZERO,
             earned: Vec::new(),
+            federal_tax: Money::ZERO,
         }
     }
 
@@ -1491,6 +1556,66 @@ mod tests {
         let single = FilingStatus::Single;
         let at = |inc: i64| y.income_tax("AL", single, m(inc)).unwrap();
         assert!(at(30_500) - at(30_000) > at(40_500) - at(40_000));
+    }
+
+    #[test]
+    fn alabama_missouri_and_oregon_deduct_federal_tax() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let joint = FilingStatus::MarriedJoint;
+        let go = |c: &str, fs: FilingStatus, agi: i64, fed: i64| {
+            let r = RetirementIncome {
+                federal_tax: m(fed),
+                ..ret(0, 0, &[50])
+            };
+            y.income_tax_with_retirement(c, fs, m(agi), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |c: &str, fs: FilingStatus, inc: i64| y.income_tax(c, fs, m(inc)).unwrap();
+        // Alabama: all of it. The sliding standard deduction still looks at the full income, so
+        // a $30,000 earner is taxed as $30,000 less the deduction at $30,000, less $2,000.
+        let al = y.rules("AL").unwrap();
+        let std = al
+            .std_phase_down
+            .as_ref()
+            .unwrap()
+            .apply(false, al.std_single, m(30_000));
+        let expect = al.brackets.tax(m(30_000) - std - m(2_000));
+        assert_eq!(go("AL", single, 30_000, 2_000), expect);
+        assert!(go("AL", single, 30_000, 2_000) < plain("AL", single, 30_000));
+        // Missouri: 15% of it at $60,000 ...
+        assert_eq!(go("MO", single, 60_000, 6_000), plain("MO", single, 59_100));
+        // ... at most $5,000 single and $10,000 joint ...
+        assert_eq!(
+            go("MO", single, 24_000, 20_000),
+            plain("MO", single, 19_000)
+        );
+        assert_eq!(go("MO", joint, 24_000, 40_000), plain("MO", joint, 14_000));
+        // ... and none over $125,000.
+        assert_eq!(
+            go("MO", single, 130_000, 20_000),
+            plain("MO", single, 130_000)
+        );
+        // Oregon: up to $8,500, less as federal AGI passes $125,000 ($250,000 joint).
+        assert_eq!(go("OR", single, 80_000, 7_000), plain("OR", single, 73_000));
+        assert_eq!(
+            go("OR", single, 80_000, 12_000),
+            plain("OR", single, 71_500)
+        );
+        assert_eq!(
+            go("OR", single, 132_000, 20_000),
+            plain("OR", single, 126_900)
+        );
+        assert_eq!(
+            go("OR", single, 150_000, 20_000),
+            plain("OR", single, 150_000)
+        );
+        assert_eq!(
+            go("OR", joint, 255_000, 40_000),
+            plain("OR", joint, 248_200)
+        );
+        // States without the rule ignore it.
+        assert_eq!(go("CA", single, 80_000, 9_000), plain("CA", single, 80_000));
     }
 
     #[test]
