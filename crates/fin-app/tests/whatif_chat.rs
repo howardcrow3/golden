@@ -342,6 +342,15 @@ fn new_pensions_and_military_pay_become_lasting_income() {
         interpret("an annuity of $12k a year from 2030"),
         vec![inc("Annuity", 1_200_000, "pension", Some(2030))]
     );
+    // Rental income is taxable income with no payroll tax, from now.
+    assert_eq!(
+        interpret("what if we get rental income of $1,500 a month"),
+        vec![inc("Rental income", 1_800_000, "other", None)]
+    );
+    // Paying rent is not income.
+    assert!(!interpret("we pay rent of $2,000 a month")
+        .iter()
+        .any(|c| matches!(c, Change::Income { .. })));
     // No amount, no change; and a year is not an amount.
     assert!(interpret("what about a pension").is_empty());
     assert!(interpret("pension in 2030").is_empty());
