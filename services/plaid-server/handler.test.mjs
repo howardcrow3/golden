@@ -129,3 +129,11 @@ test("the OAuth return address is added to the link token when configured", () =
   assert.equal(t.redirect_uri, "https://x/link");
   assert.equal("redirect_uri" in plaidBody("/link/token", {}, { clientId: "c", secret: "s" }), false);
 });
+
+test("a JSON body that is not an object is a 400, not a crash", async () => {
+  const h = createHandler({ env, now });
+  for (const body of ["null", "[]", "7", '"x"']) {
+    const r = await h({ rawPath: "/transactions/sync", requestContext: { http: { method: "POST" } }, body });
+    assert.equal(r.statusCode, 400, body);
+  }
+});

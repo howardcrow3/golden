@@ -149,6 +149,10 @@ export function createHandler({ fetchImpl = fetch, env = process.env, now = () =
     } catch {
       return reply(400, { error: "body is not JSON" });
     }
+    // "null" parses fine but has no fields to read; anything but a plain object is refused.
+    if (input === null || typeof input !== "object" || Array.isArray(input)) {
+      return reply(400, { error: "body must be a JSON object" });
+    }
 
     const today = now().toISOString().slice(0, 10);
     const major = Number(env.GOLDEN_APP_MAJOR ?? 1);
