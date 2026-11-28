@@ -203,15 +203,18 @@ impl Db {
         // Rows already in the ledger before this file, for spotting the same transaction
         // described differently (another file format, or an overlapping statement).
         let mut existing = Self::existing_for_fuzzy(&tx, rows)?;
-        // A row dated a day or two off only counts as a repeat inside the period that earlier
-        // imports already cover; just past its end it is the next statement's own purchase.
-        let spans: std::collections::HashMap<i64, (NaiveDate, NaiveDate)> = {
-            let mut st = tx.prepare(
-                "SELECT account_id, min(day), max(day) FROM txn WHERE external_id IS NULL
-                 GROUP BY account_id",
-            )?;
-            let it = st.query_map([], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?;
+        // A row dated a day or two off only counts as a repeat inside a period one earlier
+        // import covered (both days in the same file's span); just past a statement's end, or
+        // in a month not imported yet, it is that period's own purchase.
+        let spans: Vec<(i64, NaiveDate, NaiveDate)> = {
+            let mut st = tx.prepare("SELECT account_id, first_day, last_day FROM import_span")?;
+            let it = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
             it.collect::<std::result::Result<_, rusqlite::Error>>()?
+        };
+        let covered = |account: i64, a: NaiveDate, b: NaiveDate| {
+            spans.iter().any(|(acct, lo, hi)| {
+                *acct == account && a >= *lo && a <= *hi && b >= *lo && b <= *hi
+            })
         };
         let dedupes: Vec<String> = rows
             .iter()
@@ -254,9 +257,7 @@ impl Db {
                                 e.day == t.day
                             } else {
                                 (e.day - t.day).num_days().abs() <= crate::dupes::NEAR_DAYS
-                                    && spans
-                                        .get(&e.account)
-                                        .is_some_and(|(lo, hi)| t.day >= *lo && t.day <= *hi)
+                                    && covered(e.account, e.day, t.day)
                             }
                             && crate::dupes::same_payee(&e.payee, &t.payee)
                     })
@@ -315,6 +316,20 @@ impl Db {
             } else {
                 summary.added += 1;
             }
+        }
+        // Remember the dates this file covered, per account.
+        let mut file_spans: std::collections::BTreeMap<i64, (NaiveDate, NaiveDate)> =
+            Default::default();
+        for t in rows {
+            let e = file_spans.entry(t.account.0).or_insert((t.day, t.day));
+            e.0 = e.0.min(t.day);
+            e.1 = e.1.max(t.day);
+        }
+        for (acct, (lo, hi)) in file_spans {
+            tx.execute(
+                "INSERT INTO import_span(account_id, first_day, last_day) VALUES (?1,?2,?3)",
+                params![acct, lo, hi],
+            )?;
         }
         tx.commit()?;
         Ok(summary)
