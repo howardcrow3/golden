@@ -215,6 +215,61 @@ fn the_pinned_service_token_verifies() {
     let p = verify(&public(), token, APP_MAJOR).unwrap();
     assert_eq!(p.buyer, "ctm_fixture");
     assert_eq!(p.plaid_until, Some(day(2026, 12, 18)));
+    // A key issued before the `core` field existed is the app, and re-issuing what it says
+    // gives back exactly the same bytes (the field is left out, not written as null).
+    assert_eq!(p.core, None);
+    assert!(p.is_core());
+    assert_eq!(fin_license::issue(&key(), &p), token);
+}
+
+/// Keys that say whether they unlock the app. billing/test/golden.test.mjs in
+/// howardcrow3/highturtle pins the service's output to these same bytes.
+const PINNED_CORE: &str = "eyJwcm9kdWN0IjoiZ29sZGVuIiwibWFqb3IiOjEsImlzc3VlZCI6IjIwMjYtMTEtMTgiLCJwbGFpZF91bnRpbCI6IjIwMjYtMTItMTgiLCJidXllciI6ImN0bV9maXh0dXJlIiwiY29yZSI6dHJ1ZX0.MYOnJgepFsQYp7k7xKz84Bqltrk-CjqJr8NSNE1bEaT5S8KmplOfClNuUh0_20fYQ1K-XSEj3OTdByp3kjr4Bg";
+const PINNED_ADDON_ONLY: &str = "eyJwcm9kdWN0IjoiZ29sZGVuIiwibWFqb3IiOjEsImlzc3VlZCI6IjIwMjYtMTEtMTgiLCJwbGFpZF91bnRpbCI6IjIwMjYtMTItMTgiLCJidXllciI6ImN0bV9maXh0dXJlIiwiY29yZSI6ZmFsc2V9.dcCSoD4fmIoY2m2yoNG7Ywbe1uKPHKBjtrcJfuAL4cYTe6NZTaa0-pUOFjHrzz_C0H_7_khxP8UHmKIBABmRCA";
+
+#[test]
+fn the_pinned_core_and_addon_only_tokens_verify() {
+    let core = verify(&public(), PINNED_CORE, APP_MAJOR).unwrap();
+    assert_eq!(core.core, Some(true));
+    assert!(core.is_core());
+    let addon = verify(&public(), PINNED_ADDON_ONLY, APP_MAJOR).unwrap();
+    assert_eq!(addon.core, Some(false));
+    assert!(!addon.is_core());
+    assert_eq!(addon.plaid_until, Some(day(2026, 12, 18)));
+    for (p, t) in [(&core, PINNED_CORE), (&addon, PINNED_ADDON_ONLY)] {
+        assert_eq!(fin_license::issue(&key(), p), t);
+    }
+}
+
+#[test]
+fn the_issued_key_says_whether_the_app_was_bought() {
+    let both = event(
+        "transaction.completed",
+        &[&prices().core, &prices().plaid],
+        "",
+    );
+    let i = licence_from_event(&both, &prices(), &key())
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        verify(&public(), &i.token, APP_MAJOR).unwrap().core,
+        Some(true)
+    );
+    let core = event("transaction.completed", &[&prices().core], "");
+    let i = licence_from_event(&core, &prices(), &key())
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        verify(&public(), &i.token, APP_MAJOR).unwrap().core,
+        Some(true)
+    );
+    let addon = event("transaction.completed", &[&prices().plaid], "");
+    let i = licence_from_event(&addon, &prices(), &key())
+        .unwrap()
+        .unwrap();
+    let p = verify(&public(), &i.token, APP_MAJOR).unwrap();
+    assert_eq!(p.core, Some(false));
+    assert!(p.plaid_until.is_some());
 }
 
 #[test]

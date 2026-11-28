@@ -64,6 +64,7 @@ fn a_real_issued_token_round_trips() {
             issued: fin_core::NaiveDate::from_ymd_opt(2026, 11, 18).unwrap(),
             plaid_until: None,
             buyer: "ctm_x".into(),
+            core: None,
         },
     );
     let link = format!("golden://activate?key={token}");
