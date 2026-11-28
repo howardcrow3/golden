@@ -2640,7 +2640,7 @@
    "std_joint": 1160000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The 2025 rate is 4.25% and the exemption $5,800. From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. The older tiers, the $20,000 / $40,000 standard deduction choice and the pre-1946 interest and dividend subtraction are not modelled.",
+   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The 2025 rate is 4.25% and the exemption $5,800. From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Not modelled: the +$15,000 for Social Security exempt public work, unlimited public pensions for people born before 1946, and their $14,688 / $29,376 interest and dividend subtraction.",
    "retirement": {
     "min_age": 0,
     "household": {
@@ -2651,7 +2651,25 @@
      "full_to": 10000000000000,
      "steps": []
     }
-   }
+   },
+   "birth_year_deductions": [
+    {
+     "born_from": 1946,
+     "born_to": 1952,
+     "min_age": 67,
+     "single": 2000000,
+     "joint": 4000000
+    },
+    {
+     "born_from": 1953,
+     "born_to": 1958,
+     "min_age": 67,
+     "single": 2000000,
+     "joint": 4000000,
+     "less_taxable_ss": true,
+     "less_exemptions": true
+    }
+   ]
   },
   "MN": {
    "name": "Minnesota",
@@ -3336,7 +3354,7 @@
    "std_joint": 582000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption credit $256 per filer; the federal-tax subtraction is not modelled. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (household income under $22,500 / $45,000) and the federal pension subtraction (by months of service before October 1991) are not modelled.",
+   "notes": "Personal exemption credit $256 per filer; the federal-tax subtraction is not modelled. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled.",
    "joint_brackets": [
     [
      0,
@@ -3356,7 +3374,17 @@
     ]
    ],
    "credit_single": 25600,
-   "credit_joint": 51200
+   "credit_joint": 51200,
+   "low_income_retirement_credit": {
+    "min_age": 62,
+    "base_single": 750000,
+    "base_joint": 1500000,
+    "income_base_single": 1500000,
+    "income_base_joint": 3000000,
+    "income_limit_single": 2250000,
+    "income_limit_joint": 4500000,
+    "rate": 0.09
+   }
   },
   "PA": {
    "name": "Pennsylvania",

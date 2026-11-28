@@ -98,9 +98,17 @@ pub struct StateRules {
     /// Credits against tax for retirement income and age (Ohio).
     #[serde(default)]
     pub retirement_credit: Option<RetirementCredit>,
+    /// A credit on pensions and withdrawals for low-income older households, shrunk by Social
+    /// Security and by income over a base (Oregon).
+    #[serde(default)]
+    pub low_income_retirement_credit: Option<LowIncomeRetirementCredit>,
     /// For states in `taxes_social_security`: when benefits are left out of state income.
     #[serde(default)]
     pub social_security: Option<SocialSecurityRule>,
+    /// Deductions on all income, by the older person's year of birth, claimed instead of the
+    /// retirement exclusion when larger (Michigan Tier 2 and Tier 3 standard deductions).
+    #[serde(default)]
+    pub birth_year_deductions: Vec<BirthYearDeduction>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -260,6 +268,49 @@ impl RetirementCredit {
             Money::ZERO
         };
         base + senior
+    }
+}
+
+/// Oregon's retirement income credit (ORS 316.157, Publication OR-17 worksheet): `rate` of the
+/// lesser of retirement income and `base` less Social Security less income over `income_base`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct LowIncomeRetirementCredit {
+    pub min_age: u8,
+    pub base_single: Money,
+    pub base_joint: Money,
+    pub income_base_single: Money,
+    pub income_base_joint: Money,
+    /// No credit when household income, or household income plus Social Security, reaches this.
+    pub income_limit_single: Money,
+    pub income_limit_joint: Money,
+    pub rate: f64,
+}
+
+impl LowIncomeRetirementCredit {
+    /// `income` is household income without Social Security; `ss` is total benefits.
+    pub fn total(
+        &self,
+        fs: FilingStatus,
+        income: Money,
+        retirement: Money,
+        ss: Money,
+        ages: &[i32],
+    ) -> Money {
+        let zero = Money::ZERO;
+        if !ages.iter().any(|&a| a >= self.min_age as i32) {
+            return zero;
+        }
+        let joint = fs == FilingStatus::MarriedJoint;
+        let pick = |s: Money, j: Money| if joint { j } else { s };
+        let limit = pick(self.income_limit_single, self.income_limit_joint);
+        let (income, ss) = (income.max(zero), ss.max(zero));
+        if income >= limit || income + ss >= limit {
+            return zero;
+        }
+        let room = (pick(self.base_single, self.base_joint) - ss).max(zero);
+        let over = (income - pick(self.income_base_single, self.income_base_joint)).max(zero);
+        let line10 = (room - over).max(zero);
+        retirement.max(zero).min(line10).mul_rate(self.rate)
     }
 }
 
@@ -474,6 +525,38 @@ impl SocialSecurityRule {
     }
 }
 
+/// A deduction for households whose older person was born in a span of years.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct BirthYearDeduction {
+    pub born_from: i32,
+    pub born_to: i32,
+    /// The older person must also be at least this old.
+    #[serde(default)]
+    pub min_age: u8,
+    pub single: Money,
+    pub joint: Money,
+    /// Reduced by the federally taxable Social Security.
+    #[serde(default)]
+    pub less_taxable_ss: bool,
+    /// Reduced by the state's personal exemptions.
+    #[serde(default)]
+    pub less_exemptions: bool,
+}
+
+impl BirthYearDeduction {
+    /// The deduction, before any cut, when the household's oldest person qualifies.
+    fn applies(&self, inc: &RetirementIncome) -> bool {
+        let oldest = inc.birth_years.iter().min();
+        let age = inc.ages.iter().max();
+        match (oldest, age) {
+            (Some(&b), Some(&a)) => {
+                b >= self.born_from && b <= self.born_to && a >= self.min_age as i32
+            }
+            _ => false,
+        }
+    }
+}
+
 /// Retirement income in a year, for the state's exclusion.
 #[derive(Debug, Clone, Default)]
 pub struct RetirementIncome {
@@ -487,6 +570,8 @@ pub struct RetirementIncome {
     pub federal_agi: Money,
     /// Ages of the (adult) people on the return.
     pub ages: Vec<i32>,
+    /// Their years of birth, in the same order; empty when not known.
+    pub birth_years: Vec<i32>,
 }
 
 impl RetirementExclusion {
@@ -760,6 +845,7 @@ impl StateTaxYear {
             let sub = (ss - ss_in_state).max(Money::ZERO);
             income = (income - a.total(sub, &ret.ages)).max(Money::ZERO);
         }
+        let mut ret_cut = Money::ZERO;
         if let Some(x) = &r.retirement {
             let before = (federal_agi - ss).max(Money::ZERO);
             let mut ret = ret.clone();
@@ -781,8 +867,20 @@ impl StateTaxYear {
                     cut = cut.mul_rate(1.0 - share);
                 }
             }
-            income = (income - cut - x.household_excluded(fs, before, &ret)).max(Money::ZERO);
+            ret_cut = cut + x.household_excluded(fs, before, &ret);
         }
+        let joint = fs == FilingStatus::MarriedJoint;
+        for d in r.birth_year_deductions.iter().filter(|d| d.applies(ret)) {
+            let mut alt = if joint { d.joint } else { d.single };
+            if d.less_taxable_ss {
+                alt -= ss;
+            }
+            if d.less_exemptions {
+                alt -= if joint { r.std_joint } else { r.std_single };
+            }
+            ret_cut = ret_cut.max(alt);
+        }
+        income = (income - ret_cut).max(Money::ZERO);
         let tax = self.income_tax(code, fs, income)?;
         let credit = match (&r.social_security, r.taxes_social_security) {
             (Some(rule), true) => rule.credit(fs, income, ss),
@@ -795,7 +893,19 @@ impl StateTaxYear {
                 &ret.ages,
             )
         });
-        Some((tax - credit - rc).max(Money::ZERO))
+        let lirc = r
+            .low_income_retirement_credit
+            .as_ref()
+            .map_or(Money::ZERO, |c| {
+                c.total(
+                    fs,
+                    before_ss,
+                    ret.pension.max(Money::ZERO) + ret.distributions.max(Money::ZERO),
+                    ret.social_security,
+                    &ret.ages,
+                )
+            });
+        Some((tax - credit - rc - lirc).max(Money::ZERO))
     }
 
     /// State income tax on `federal_agi`-like income for a resident of `code`.
@@ -879,6 +989,7 @@ mod tests {
             ss_subtracted: Money::ZERO,
             federal_agi: Money::ZERO,
             ages: ages.to_vec(),
+            birth_years: Vec::new(),
         }
     }
 
@@ -1278,6 +1389,93 @@ mod tests {
         assert_eq!(go(90_000, 30_000, 0, 0, &[68]), plain(60_000));
         // At 62 they are not.
         assert_eq!(go(90_000, 30_000, 0, 0, &[62]), plain(90_000));
+    }
+
+    #[test]
+    fn oregon_retirement_income_credit_follows_the_or17_worksheet() {
+        let c = StateTaxYear::y2026()
+            .rules("OR")
+            .unwrap()
+            .low_income_retirement_credit
+            .clone()
+            .unwrap();
+        let single = FilingStatus::Single;
+        // $10,000 pension, $3,000 of benefits, $14,000 other income: 9% of $4,500.
+        assert_eq!(
+            c.total(single, m(14_000), m(10_000), m(3_000), &[70]),
+            m(405)
+        );
+        // $17,000 of income: $2,000 over the base comes off too.
+        assert_eq!(
+            c.total(single, m(17_000), m(10_000), m(3_000), &[70]),
+            m(225)
+        );
+        // Small pensions cap it.
+        assert_eq!(c.total(single, m(5_000), m(1_000), m(0), &[70]), m(90));
+        // Too young, too much income, or income plus benefits too high.
+        assert_eq!(
+            c.total(single, m(14_000), m(10_000), m(3_000), &[61]),
+            Money::ZERO
+        );
+        assert_eq!(
+            c.total(single, m(22_500), m(10_000), m(0), &[70]),
+            Money::ZERO
+        );
+        assert_eq!(
+            c.total(single, m(16_000), m(10_000), m(7_000), &[70]),
+            Money::ZERO
+        );
+        // Joint figures double: at most 9% of $15,000.
+        let joint = FilingStatus::MarriedJoint;
+        assert_eq!(
+            c.total(joint, m(20_000), m(20_000), m(0), &[66, 63]),
+            m(1_350)
+        );
+        // It comes off Oregon tax, which it cannot push below zero.
+        let y = StateTaxYear::y2026();
+        let r = ret(10_000, 0, &[70]);
+        let with = y
+            .income_tax_with_retirement("OR", single, m(20_000), Money::ZERO, &r)
+            .unwrap();
+        let without = y.income_tax("OR", single, m(20_000)).unwrap();
+        // $20,000 of income is $5,000 over the base: 9% of $2,500.
+        assert_eq!(with, (without - m(225)).max(Money::ZERO));
+    }
+
+    #[test]
+    fn michigan_older_tiers_can_take_a_standard_deduction_instead() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, taxable_ss: i64, pension: i64, age: i32, born: i32| {
+            let r = RetirementIncome {
+                birth_years: vec![born],
+                ..ret(pension, 0, &[age])
+            };
+            y.income_tax_with_retirement("MI", single, m(agi), m(taxable_ss), &r)
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("MI", single, m(inc)).unwrap();
+        // Tier 2 (born 1950): $20,000 beats a $10,000 pension subtraction.
+        assert_eq!(go(60_000, 0, 10_000, 76, 1950), plain(40_000));
+        // A larger pension is still worth more than the standard deduction.
+        assert_eq!(go(60_000, 0, 30_000, 76, 1950), plain(30_000));
+        // Tier 3 (born 1956): $20,000 less $8,000 taxable benefits and the $5,800 exemption.
+        assert_eq!(go(68_000, 8_000, 3_000, 70, 1956), plain(60_000 - 6_200));
+        // Born 1962: only the pension subtraction.
+        assert_eq!(go(68_000, 8_000, 3_000, 64, 1962), plain(60_000 - 3_000));
+        // Unknown birth year: no standard deduction.
+        assert_eq!(go(60_000, 0, 10_000, 76, 0), plain(50_000));
+        // Joint: the older spouse decides.
+        let r = RetirementIncome {
+            birth_years: vec![1951, 1962],
+            ..ret(5_000, 0, &[75, 64])
+        };
+        let joint = FilingStatus::MarriedJoint;
+        assert_eq!(
+            y.income_tax_with_retirement("MI", joint, m(90_000), Money::ZERO, &r)
+                .unwrap(),
+            y.income_tax("MI", joint, m(50_000)).unwrap()
+        );
     }
 
     #[test]

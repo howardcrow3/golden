@@ -368,6 +368,12 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 ss_subtracted: Money::ZERO,
                 federal_agi: Money::ZERO,
                 ages: adult_ages.clone(),
+                birth_years: input
+                    .people
+                    .iter()
+                    .filter(|p| !p.is_dependent)
+                    .map(|p| p.birth_date.year())
+                    .collect(),
             };
             let st = states
                 .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
