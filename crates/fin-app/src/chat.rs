@@ -292,10 +292,13 @@ pub fn parse_amount(token: &str) -> Option<i64> {
         (t, 1.0)
     };
     let v: f64 = num.parse().ok()?;
-    if !v.is_finite() || v < 0.0 {
+    // Anything over a trillion dollars is a typo (or "1e30"); refusing it keeps the plan's
+    // arithmetic far from overflow.
+    let dollars = v * mult;
+    if !v.is_finite() || v < 0.0 || dollars > 1e12 {
         return None;
     }
-    Some((v * mult * 100.0).round() as i64)
+    Some((dollars * 100.0).round() as i64)
 }
 
 /// First amount-looking token after `marker` in `text`.

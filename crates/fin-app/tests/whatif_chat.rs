@@ -230,3 +230,9 @@ fn changes_survive_a_json_round_trip_for_the_ui() {
     );
     assert_eq!(serde_json::from_str::<Change>(&json).unwrap(), c);
 }
+
+#[test]
+fn absurdly_large_amounts_are_not_understood() {
+    assert_eq!(parse_amount("$1e30"), None);
+    assert!(interpret("spend $1e30 a year").is_empty());
+}
