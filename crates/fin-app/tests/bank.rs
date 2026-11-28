@@ -323,3 +323,31 @@ fn erasing_everything_does_not_orphan_a_linked_bank() {
     app.erase_all_data("DELETE").unwrap();
     assert!(s.get("plaid:item-1").unwrap().is_none());
 }
+
+#[test]
+fn a_line_for_an_account_plaid_did_not_describe_is_still_kept() {
+    // The cursor moves past every line in a sync, so a line left out here would never come back.
+    let mut app = app_with_plaid(true);
+    let (f, s) = (Fake::default(), Secrets::default());
+    linked(&mut app, &f, &s);
+    let mut stray = tx("t9", "2026-11-10", 40.0, "HARDWARE STORE");
+    stray["account_id"] = json!("pa-unknown-7788");
+    f.on("/transactions/sync", 200, page(json!([stray]), "c2"));
+    let r = app.bank_sync(&f, &s, "item-1").unwrap();
+    assert_eq!((r.added, r.skipped), (1, 0));
+    assert_eq!(app.db().txn_count().unwrap(), 3);
+    let rows = app.transactions("2026-11-10", "2026-11-10", false).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].amount_cents, -4_000);
+    assert!(rows[0].account.starts_with("Chase"), "{}", rows[0].account);
+    // A later sync of the same account goes to the same place.
+    let accounts_before = app.accounts().unwrap().len();
+    let mut again = tx("t10", "2026-11-11", 5.0, "HARDWARE STORE");
+    again["account_id"] = json!("pa-unknown-7788");
+    f.on("/transactions/sync", 200, page(json!([again]), "c3"));
+    app.bank_sync(&f, &s, "item-1").unwrap();
+    let rows = app.transactions("2026-11-10", "2026-11-11", false).unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].account, rows[1].account);
+    assert_eq!(app.accounts().unwrap().len(), accounts_before);
+}

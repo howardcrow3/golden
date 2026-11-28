@@ -211,6 +211,30 @@ impl App {
                 .map_err(|e| e.to_string())?;
         }
 
+        // A line for an account Plaid did not describe still gets a home: the cursor moves past
+        // every line in this sync, so a line left out now would never be sent again.
+        for m in changes.added.iter().chain(changes.modified.iter()) {
+            if self
+                .db
+                .bank_account(&m.account_id)
+                .map_err(|e| e.to_string())?
+                .is_none()
+            {
+                let tail: String = {
+                    let chars: Vec<char> = m.account_id.chars().collect();
+                    chars[chars.len().saturating_sub(4)..].iter().collect()
+                };
+                let name = format!("{institution} account {tail}").trim().to_string();
+                let id = self
+                    .db
+                    .find_or_add_account(&name, "other")
+                    .map_err(|e| e.to_string())?;
+                self.db
+                    .link_bank_account(&m.account_id, item_id, id)
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+
         let mut report = BankSyncReport::default();
         let mut upserts = vec![];
         let mut touched: Vec<AccountId> = vec![];
