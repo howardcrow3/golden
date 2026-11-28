@@ -71,6 +71,31 @@ fn spending_in_a_named_category() {
 }
 
 #[test]
+fn paying_and_being_charged_are_spending_but_getting_paid_is_income() {
+    let a = app();
+    for q in [
+        "how much have I paid in fees last month",
+        "what did I pay last month",
+        "how much was I charged last month",
+        "how much did we pay for things last month",
+    ] {
+        let r = a.ask(q).unwrap();
+        assert!(r.understood, "{q}");
+        assert!(r.text.contains("spent"), "{q}: {}", r.text);
+        assert!(r.behind.iter().all(|t| t.amount_cents < 0), "{q}");
+    }
+    for q in [
+        "how much did I get paid last month",
+        "what was I paid last month",
+        "how much did I earn last month",
+    ] {
+        let r = a.ask(q).unwrap();
+        assert_eq!(r.facts[0].cents, 500_000, "{q}: {}", r.text);
+        assert!(r.text.contains("earned"), "{q}: {}", r.text);
+    }
+}
+
+#[test]
 fn income_and_saving() {
     let a = app();
     let inc = a.ask("what did I earn last month").unwrap();

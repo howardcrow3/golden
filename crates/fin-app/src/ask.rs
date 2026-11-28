@@ -123,7 +123,23 @@ fn intent(q: &str) -> Option<Intent> {
         Some(Intent::Balance)
     } else if has(&["save", "saved", "saving", "savings rate"]) {
         Some(Intent::Saving)
-    } else if has(&["earn", "income", "made", "paid", "salary", "revenue"]) {
+    } else if has(&[
+        "got paid",
+        "get paid",
+        "getting paid",
+        "was paid",
+        "were paid",
+        "was i paid",
+        "were we paid",
+        "paid me",
+        "paid us",
+        "paycheck",
+    ]) {
+        // Being paid is income; paying ("what have I paid", below) is spending.
+        Some(Intent::Income)
+    } else if has(&["paid", "pay ", "charged", "charges"]) || q.ends_with(" pay") {
+        Some(Intent::Spending)
+    } else if has(&["earn", "income", "made", "salary", "revenue"]) {
         Some(Intent::Income)
     } else if has(&["spend", "spent", "spending", "cost", "expens"]) {
         Some(Intent::Spending)
