@@ -636,11 +636,32 @@ impl Interpreter for RuleInterpreter {
         ]) {
             pick("return_volatility", "Gentle");
         }
-        if has(&["live to 100", "to age 100", "until 100", "to 100"]) {
+        // "to 90" is an age only when nothing amount-like follows ("up to 90k", "to 90,000",
+        // "to 90%") and it is not "up to" (a spending cap).
+        let age_phrase = |w: &str| {
+            t.match_indices(w).any(|(i, _)| {
+                let after = t[i + w.len()..].chars().next();
+                let amountish = after.is_some_and(|c| c.is_alphanumeric() || c == ',' || c == '%')
+                    || t[i + w.len()..].starts_with('.')
+                        && t[i + w.len() + 1..].starts_with(|c: char| c.is_ascii_digit());
+                !amountish && !t[..i].trim_end().ends_with("up")
+            })
+        };
+        let horizon = |n: u32| {
+            [
+                format!("live to {n}"),
+                format!("to age {n}"),
+                format!("until {n}"),
+                format!("to {n}"),
+            ]
+            .iter()
+            .any(|w| age_phrase(w))
+        };
+        if horizon(100) {
             pick("horizon_age", "Age 100");
-        } else if has(&["live to 95", "to age 95", "until 95", "to 95"]) {
+        } else if horizon(95) {
             pick("horizon_age", "Age 95");
-        } else if has(&["live to 90", "to age 90", "until 90", "to 90"]) {
+        } else if horizon(90) {
             pick("horizon_age", "Age 90");
         }
         // Look for the age only after the Social Security words, so "retire at 67 and claim

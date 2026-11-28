@@ -281,3 +281,27 @@ fn the_claim_age_comes_from_the_social_security_part_not_the_retirement_age() {
         ]
     );
 }
+
+#[test]
+fn a_spending_cap_is_not_a_plan_horizon() {
+    for text in [
+        "what if we spend up to 90k a year",
+        "spend up to 90,000",
+        "what if we spend up to 95k",
+        "cut spending to 90k",
+    ] {
+        assert!(
+            !interpret(text)
+                .iter()
+                .any(|c| matches!(c, Change::SetPick { key, .. } if key == "horizon_age")),
+            "{text}"
+        );
+    }
+    assert_eq!(
+        interpret("plan to age 90"),
+        vec![Change::SetPick {
+            key: "horizon_age".into(),
+            label: "Age 90".into()
+        }]
+    );
+}
