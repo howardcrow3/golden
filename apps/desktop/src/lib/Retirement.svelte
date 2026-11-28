@@ -206,6 +206,11 @@
     <label>Cash <input bind:value={f.cash} aria-label="Cash" inputmode="numeric" /></label>
     <label>Taxable investments <input bind:value={f.taxable} aria-label="Taxable investments" inputmode="numeric" /></label>
     <label>Traditional 401(k)/IRA <input bind:value={f.traditional} aria-label="Traditional 401(k)/IRA" inputmode="numeric" /></label>
+    {#if f.people.length >= 2}
+      <label>{f.people[0].name || "First person"}'s share of it (%)
+        <input bind:value={f.traditionalFirst} aria-label="Pre-tax share" inputmode="decimal" placeholder="Split by pay" />
+      </label>
+    {/if}
     <label>Roth <input bind:value={f.roth} aria-label="Roth" inputmode="numeric" /></label>
     <label>Spending in retirement
       <select bind:value={f.spendingRule} aria-label="Spending rule">

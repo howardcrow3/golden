@@ -101,6 +101,10 @@ pub struct Household {
     /// Your own healthcare figures instead of the built-in estimates (used when `health` is on).
     #[serde(default)]
     pub health_detail: Option<HealthRow>,
+    /// The first person's share of the pre-tax balance, in basis points (10000 is all of it);
+    /// the second person owns the rest. Missing means split by each person's share of pay.
+    #[serde(default)]
+    pub traditional_first_bp: Option<i32>,
 }
 
 /// Healthcare estimates you can change. Money in cents; percentages in basis points.
@@ -262,6 +266,7 @@ impl From<LegacyHousehold> for Household {
             children: vec![],
             locality: None,
             health_detail: None,
+            traditional_first_bp: None,
         }
     }
 }
@@ -338,6 +343,11 @@ impl Household {
             }
             if p.ss_annual_cents < 0 {
                 return Err("Amounts cannot be negative.".into());
+            }
+        }
+        if let Some(bp) = self.traditional_first_bp {
+            if !(0..=10_000).contains(&bp) {
+                return Err("The pre-tax account share should be from 0% to 100%.".into());
             }
         }
         if self.streams.len() > 20 {
@@ -604,21 +614,29 @@ impl Household {
         } else {
             vec![]
         };
-        // The pre-tax balance is pooled, so assume it follows who earns: each person's share is
-        // their share of the household's pay. With no pay, the primary person owns it.
-        let traditional_split = {
-            let mut pay = vec![0f64; people.len()];
-            for s in &streams {
-                if let Some(slot) = pay.get_mut(s.person) {
-                    *slot += s.annual_gross.cents().max(0) as f64;
-                }
-            }
-            if pay.iter().sum::<f64>() > 0.0 {
-                pay
+        // The pre-tax balance is pooled. When the household says who owns it, use that;
+        // otherwise assume it follows who earns: each person's share is their share of the
+        // household's pay. With no pay, the primary person owns it.
+        let traditional_split =
+            if let (Some(bp), true) = (self.traditional_first_bp, people.len() >= 2) {
+                let first = bp.clamp(0, 10_000) as f64 / 10_000.0;
+                let mut v = vec![0f64; people.len()];
+                v[0] = first;
+                v[1] = 1.0 - first;
+                v
             } else {
-                vec![]
-            }
-        };
+                let mut pay = vec![0f64; people.len()];
+                for s in &streams {
+                    if let Some(slot) = pay.get_mut(s.person) {
+                        *slot += s.annual_gross.cents().max(0) as f64;
+                    }
+                }
+                if pay.iter().sum::<f64>() > 0.0 {
+                    pay
+                } else {
+                    vec![]
+                }
+            };
         Ok(PlanInput {
             start_year: year,
             people,

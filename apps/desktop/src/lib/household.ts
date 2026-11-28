@@ -25,6 +25,8 @@ export interface Form {
   children: ChildForm[];
   locality: string;
   healthDetail: HealthForm;
+  /** The first person's share of the pre-tax balance as a percentage; empty to split by pay. */
+  traditionalFirst: string;
 }
 
 /** Healthcare figures as typed: dollars, whole years, and percentages. */
@@ -126,6 +128,7 @@ export function toForm(h: Household): Form {
         }
       : null,
     locality: h.locality ?? "",
+    traditionalFirst: h.traditionalFirstBp == null ? "" : String(h.traditionalFirstBp / 100),
     healthDetail: h.healthDetail
       ? {
           pre65: dollars(h.healthDetail.pre65Cents),
@@ -228,6 +231,7 @@ export function fromForm(f: Form): Household {
         }
       : {}),
     ...(f.locality ? { locality: f.locality } : {}),
+    ...(f.traditionalFirst.trim() !== "" && f.people.length >= 2 ? { traditionalFirstBp: pct(f.traditionalFirst, "Pre-tax share", 100) } : {}),
     ...(f.children.length > 0
       ? {
           children: f.children.map((c, i) => {

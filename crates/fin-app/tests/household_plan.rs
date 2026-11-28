@@ -253,3 +253,31 @@ fn an_expired_trial_cannot_change_the_profile_but_can_still_read_it() {
     assert!(app.household().is_ok());
     assert!(app.assumptions().is_ok());
 }
+
+#[test]
+fn the_pre_tax_owner_share_can_be_set_and_is_checked() {
+    let app = app();
+    let mut h = app.household().unwrap();
+    h.people.push(second_person());
+    // Without a share, the split follows pay; the sample's salary is the first person's.
+    app.save_household(&h).unwrap();
+    let (plan, _) = app.plan(TODAY()).unwrap();
+    // (Raw pay figures; the planner normalizes them.)
+    assert!(plan.traditional_split[0] > 0.0);
+    assert_eq!(plan.traditional_split[1], 0.0);
+    // A quarter for the first person, the rest for the second.
+    h.traditional_first_bp = Some(2_500);
+    app.save_household(&h).unwrap();
+    assert_eq!(app.household().unwrap().traditional_first_bp, Some(2_500));
+    let (plan, _) = app.plan(TODAY()).unwrap();
+    assert_eq!(plan.traditional_split, vec![0.25, 0.75]);
+    // Out of range is refused.
+    h.traditional_first_bp = Some(12_000);
+    assert!(app.save_household(&h).is_err());
+    // With one person the share is ignored.
+    h.people.pop();
+    h.traditional_first_bp = Some(0);
+    app.save_household(&h).unwrap();
+    let (plan, _) = app.plan(TODAY()).unwrap();
+    assert!(plan.traditional_split.len() <= 1);
+}
