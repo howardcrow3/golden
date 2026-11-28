@@ -64,6 +64,7 @@ impl ModelInterpreter {
              {{\"kind\":\"oneTime\",\"label\":\"<short>\",\"person\":<index>,\"cents\":<cents>,\"year\":<year>}}\n\
              {{\"kind\":\"raise\",\"person\":<index>,\"bp\":<raise in basis points, 100 = 1%>}}\n\
              {{\"kind\":\"plannedCost\",\"label\":\"<short>\",\"cents\":<cents, negative for money coming in>,\"year\":<year>}}\n\
+             {{\"kind\":\"income\",\"label\":\"<short>\",\"person\":<index>,\"cents\":<cents a year>,\"incomeKind\":\"pension|public_pension|military_pension|other\",\"startYear\":<year or null>}}\n\
              {{\"kind\":\"setBalance\",\"account\":\"cash|taxable|traditional|roth\",\"cents\":<balance in cents>}}\n\
              {{\"kind\":\"spendingRule\",\"rule\":\"fixed|guardrails|percent|vpw\"}}\n\
              {{\"kind\":\"withdrawalOrder\",\"order\":\"standard|traditional_first|roth_first|blended\"}}\n\
@@ -139,6 +140,20 @@ fn valid(c: &Change, h: &Household, today: NaiveDate) -> bool {
         Change::SpendingRule { rule } => crate::chat::SPENDING_RULES.contains(&rule.as_str()),
         Change::WithdrawalOrder { order } => {
             crate::chat::WITHDRAWAL_ORDERS.contains(&order.as_str())
+        }
+        Change::Income {
+            label,
+            person,
+            cents,
+            income_kind,
+            start_year,
+        } => {
+            *person < people
+                && !label.trim().is_empty()
+                && label.len() <= 60
+                && (1..=MAX_DOLLARS_IN_CENTS).contains(cents)
+                && crate::chat::INCOME_KINDS.contains(&income_kind.as_str())
+                && start_year.is_none_or(|y| (today.year()..=today.year() + 60).contains(&y))
         }
         Change::SetPick { key, label } => Assumptions::defaults()
             .get(key)
