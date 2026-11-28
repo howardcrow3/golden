@@ -195,3 +195,27 @@ fn documents_round_trip_and_erasing_personal_data_removes_them() {
     assert!(db.list_documents("").unwrap().is_empty());
     assert!(!db.delete_document(d.id).unwrap());
 }
+
+#[test]
+fn netting_a_pair_is_all_or_nothing() {
+    let (db, _) = seeded();
+    let ids: Vec<i64> = db
+        .txns_between(d(2026, 10, 1), d(2026, 10, 31))
+        .unwrap()
+        .iter()
+        .map(|t| t.id)
+        .collect();
+    // Stand in for a write that fails on the second line of the pair.
+    db.connection()
+        .execute_batch(&format!(
+            "CREATE TRIGGER fail_net BEFORE UPDATE OF netted ON txn WHEN new.id = {}
+             BEGIN SELECT RAISE(ABORT, 'disk full'); END;",
+            ids[1]
+        ))
+        .unwrap();
+    assert!(db.set_netted(&ids[..2], true).is_err());
+    assert!(
+        db.netted_ids().unwrap().is_empty(),
+        "half a pair was netted"
+    );
+}

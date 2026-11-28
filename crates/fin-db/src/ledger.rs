@@ -489,10 +489,12 @@ impl Db {
     /// Mark transactions as cancelled out by a refund (or clear the mark). They stay listed and
     /// still count toward balances, but are left out of income and spending totals.
     pub fn set_netted(&self, ids: &[i64], on: bool) -> Result<()> {
+        // All or nothing: half a pair netted would leave one side out of the totals.
+        let tx = self.conn.unchecked_transaction()?;
         for id in ids {
-            self.conn
-                .execute("UPDATE txn SET netted=?1 WHERE id=?2", params![on, id])?;
+            tx.execute("UPDATE txn SET netted=?1 WHERE id=?2", params![on, id])?;
         }
+        tx.commit()?;
         Ok(())
     }
 
