@@ -25,7 +25,7 @@ export const TERMS: TermsSection[] = [
   {
     heading: "1. Agreement",
     paragraphs: [
-      "These terms are an agreement between you and High Turtle (\"we\", \"us\"), the maker of Golden. By installing or using Golden you agree to them. If you do not agree, do not use Golden.",
+      "These terms are an agreement between you and High Turtle LLC (\"High Turtle\", \"we\", \"us\"), the maker of Golden. By installing or using Golden you agree to them. If you do not agree, do not use Golden.",
     ],
   },
   {

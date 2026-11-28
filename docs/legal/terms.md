@@ -11,7 +11,7 @@ Version 2026-11-28. Draft: a lawyer must review this text before release.
 
 ## 1. Agreement
 
-These terms are an agreement between you and High Turtle ("we", "us"), the maker of Golden. By installing or using Golden you agree to them. If you do not agree, do not use Golden.
+These terms are an agreement between you and High Turtle LLC ("High Turtle", "we", "us"), the maker of Golden. By installing or using Golden you agree to them. If you do not agree, do not use Golden.
 
 ## 2. Education and information only, not advice
 
