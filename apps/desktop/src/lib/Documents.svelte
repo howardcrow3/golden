@@ -1,6 +1,7 @@
 <script lang="ts">
   import { vaultAdd, vaultDelete, vaultExport, vaultList, type Invoke, type VaultDoc } from "./api";
   import { formatCents } from "./money";
+  import Receipts from "./Receipts.svelte";
 
   let { invoke }: { invoke?: Invoke } = $props();
   let docs = $state<VaultDoc[]>([]);
@@ -8,10 +9,12 @@
   let note = $state("");
   let error = $state("");
   let busy = $state(false);
+  let version = $state(0);
 
   async function load() {
     try {
       docs = await vaultList(query, invoke);
+      version += 1;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }
@@ -99,6 +102,7 @@
       {/each}
     </ul>
   {/if}
+  <Receipts {invoke} {version} />
 </section>
 
 <style>
