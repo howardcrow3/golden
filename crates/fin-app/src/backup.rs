@@ -156,7 +156,15 @@ impl App {
             ids.insert(name.to_string(), id);
         }
         let mut rows = vec![];
+        let mut kept: Vec<&Value> = vec![];
+        let mut skipped_closed = 0;
         for t in v["transactions"].as_array().into_iter().flatten() {
+            // A closed month is locked: a restore leaves it as it is, like an import is refused.
+            if self.is_month_closed(parse_day(t["day"].as_str().unwrap_or_default())?)? {
+                skipped_closed += 1;
+                continue;
+            }
+            kept.push(t);
             let account = t["account"].as_str().unwrap_or_default();
             let id = match ids.get(account) {
                 Some(id) => *id,
@@ -184,7 +192,7 @@ impl App {
             });
         }
         let summary = self.db.import_batch(&rows).map_err(|e| e.to_string())?;
-        self.restore_txn_extras(&v, &rows)?;
+        self.restore_txn_extras(&kept, &rows)?;
         // A refund and its purchase are paired after every import; a restore is one too, or
         // both would count again in income and spending.
         self.mark_refunds()?;
@@ -207,6 +215,7 @@ impl App {
             accounts: ids.len(),
             added: summary.added,
             skipped_duplicates: summary.skipped,
+            skipped_closed,
             settings_restored: restored,
         })
     }
@@ -215,13 +224,12 @@ impl App {
 impl App {
     /// Put back each restored transaction's note, tags and split. Like settings, they are only
     /// filled in where the transaction here has none, so restoring twice changes nothing.
-    fn restore_txn_extras(&self, v: &Value, rows: &[NewTxn]) -> Result<(), String> {
+    fn restore_txn_extras(&self, saved: &[&Value], rows: &[NewTxn]) -> Result<(), String> {
         let have_extras = self.db.txn_extras().map_err(|e| e.to_string())?;
         let have_splits = self.db.all_splits().map_err(|e| e.to_string())?;
         let mut copies: std::collections::HashMap<(i64, String, i64, &str, &str), usize> =
             Default::default();
-        let saved = v["transactions"].as_array().into_iter().flatten();
-        for (t, row) in saved.zip(rows) {
+        for (t, row) in saved.iter().zip(rows) {
             let n = copies
                 .entry((
                     row.account.0,
@@ -270,5 +278,7 @@ pub struct RestoreReport {
     pub accounts: usize,
     pub added: usize,
     pub skipped_duplicates: usize,
+    /// Lines left out because their month is closed here.
+    pub skipped_closed: usize,
     pub settings_restored: Vec<String>,
 }

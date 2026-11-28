@@ -19,6 +19,19 @@ fn amounts_numbers_emails_and_keys_are_scrubbed() {
 }
 
 #[test]
+fn amounts_without_a_dollar_sign_are_scrubbed() {
+    assert_eq!(sanitize("amount -999.99 posted"), "amount [amt] posted");
+    assert_eq!(sanitize("total 1,234.56 ok"), "total [amt] ok");
+    assert_eq!(sanitize("fee (45.00) charged"), "fee ([amt]) charged");
+}
+
+#[test]
+fn versions_and_short_decimals_survive() {
+    let m = "app 0.1.0 took 1.5 s, ratio 0.123 on 2026-11-24";
+    assert_eq!(sanitize(m), m);
+}
+
+#[test]
 fn ordinary_text_dates_and_small_numbers_survive() {
     let m = "imported 42 rows from checking.csv on 2026-11-24 (3 duplicates)";
     assert_eq!(sanitize(m), m);

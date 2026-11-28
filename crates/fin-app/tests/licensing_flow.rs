@@ -19,8 +19,88 @@ fn token(sk: &SigningKey, major: u32, plaid_until: Option<NaiveDate>) -> String 
             issued: d(2026, 11, 1),
             plaid_until,
             buyer: "b1".into(),
+            core: None,
         },
     )
+}
+
+fn keyed(sk: &SigningKey, plaid_until: Option<NaiveDate>, core: Option<bool>) -> String {
+    issue(
+        sk,
+        &LicensePayload {
+            product: "golden".into(),
+            major: APP_MAJOR,
+            issued: d(2026, 11, 1),
+            plaid_until,
+            buyer: "b1".into(),
+            core,
+        },
+    )
+}
+
+fn licensed_app(sk: &SigningKey) -> App {
+    let app = App::in_memory()
+        .unwrap()
+        .with_public_key(Some(sk.verifying_key()))
+        .with_clock(|| d(2026, 12, 20));
+    app.license_status(d(2026, 11, 1)).unwrap(); // trial started 2026-11-01, over by 12-20
+    app
+}
+
+#[test]
+fn an_addon_only_key_turns_on_bank_sync_but_does_not_unlock_the_app() {
+    let sk = SigningKey::generate(&mut OsRng);
+    let app = licensed_app(&sk);
+    let s = app
+        .activate_license(
+            &keyed(&sk, Some(d(2027, 1, 20)), Some(false)),
+            d(2026, 12, 20),
+        )
+        .unwrap();
+    assert_eq!(
+        (s.state.as_str(), s.can_edit, s.plaid_active),
+        ("expired", false, true)
+    );
+    // Buying the app afterwards unlocks it and keeps the add-on's date.
+    let s = app
+        .activate_license(&keyed(&sk, None, Some(true)), d(2026, 12, 20))
+        .unwrap();
+    assert_eq!((s.state.as_str(), s.plaid_active), ("licensed", true));
+    // The sync service is sent the key that carries the add-on.
+    assert!(app.license_status(d(2027, 1, 20)).unwrap().plaid_active);
+}
+
+#[test]
+fn an_addon_only_key_never_takes_away_the_app_someone_bought() {
+    let sk = SigningKey::generate(&mut OsRng);
+    for app_key in [
+        keyed(&sk, None, None),
+        keyed(&sk, None, Some(true)),
+        keyed(&sk, Some(d(2026, 12, 25)), None),
+    ] {
+        let app = licensed_app(&sk);
+        app.activate_license(&app_key, d(2026, 12, 20)).unwrap();
+        // A renewal key that only covers the add-on, with a later date.
+        let s = app
+            .activate_license(
+                &keyed(&sk, Some(d(2027, 2, 20)), Some(false)),
+                d(2026, 12, 20),
+            )
+            .unwrap();
+        assert_eq!((s.state.as_str(), s.plaid_active), ("licensed", true));
+        let later = app.license_status(d(2027, 2, 1)).unwrap();
+        assert_eq!(
+            (later.state.as_str(), later.plaid_active),
+            ("licensed", true)
+        );
+        // An older add-on key changes nothing.
+        app.activate_license(
+            &keyed(&sk, Some(d(2027, 1, 1)), Some(false)),
+            d(2026, 12, 20),
+        )
+        .unwrap();
+        assert!(app.license_status(d(2027, 2, 1)).unwrap().plaid_active);
+    }
 }
 
 #[test]
@@ -151,6 +231,104 @@ fn the_trial_ends_exactly_after_fourteen_days() {
         ("trial", Some(1))
     );
     assert_eq!(day(14).state, "expired");
-    // A clock set back before the first run never extends or breaks the trial.
-    assert_eq!(day(-30).days_left, Some(14));
+    // Setting the clock back, even before the first run, does not restart the trial.
+    assert_eq!(day(-30).state, "expired");
+}
+
+#[test]
+fn setting_the_clock_back_does_not_give_the_trial_back() {
+    let app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 1));
+    let at = |y, m, dd| app.license_status(d(y, m, dd)).unwrap();
+    assert_eq!(at(2026, 11, 1).days_left, Some(14));
+    assert_eq!(at(2026, 11, 11).days_left, Some(4)); // day 10
+                                                     // Back to the first day, and to before the first run.
+    assert_eq!(at(2026, 11, 1).days_left, Some(4));
+    assert_eq!(at(2026, 10, 1).days_left, Some(4));
+    // Time moving on normally still counts down.
+    assert_eq!(at(2026, 11, 13).days_left, Some(2));
+    assert_eq!(at(2026, 11, 15).state, "expired");
+    let back = at(2026, 11, 2);
+    assert_eq!((back.state.as_str(), back.can_edit), ("expired", false));
+}
+
+#[test]
+fn a_clock_set_back_before_the_first_run_on_day_four_keeps_ten_days() {
+    let app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 1));
+    app.license_status(d(2026, 11, 1)).unwrap();
+    assert_eq!(
+        app.license_status(d(2026, 11, 5)).unwrap().days_left,
+        Some(10)
+    );
+    assert_eq!(
+        app.license_status(d(2025, 1, 1)).unwrap().days_left,
+        Some(10)
+    );
+}
+
+#[test]
+fn a_clock_that_was_wrongly_ahead_never_locks_a_licensed_app() {
+    let sk = SigningKey::generate(&mut OsRng);
+    let mut app = App::in_memory()
+        .unwrap()
+        .with_public_key(Some(sk.verifying_key()))
+        .with_clock(|| d(2026, 11, 2));
+    app.license_status(d(2026, 11, 1)).unwrap();
+    // The clock was years ahead once: the trial is used up (that is the most it costs) ...
+    let s = app.license_status(d(2031, 1, 1)).unwrap();
+    assert_eq!(s.state, "expired");
+    let s = app.license_status(d(2026, 11, 2)).unwrap();
+    assert_eq!((s.state.as_str(), s.can_edit), ("expired", false));
+    // ... reads still work, and a licence unlocks everything whatever the clock says.
+    assert!(app.accounts().is_ok());
+    let s = app
+        .activate_license(&token(&sk, APP_MAJOR, Some(d(2027, 11, 1))), d(2026, 11, 2))
+        .unwrap();
+    assert_eq!((s.state.as_str(), s.can_edit), ("licensed", true));
+    // The add-on's date follows the real clock, not the latest date seen.
+    assert!(app.license_status(d(2026, 11, 2)).unwrap().plaid_active);
+    app.import_statement(CSV.as_bytes(), "Checking", "checking")
+        .unwrap();
+}
+
+#[test]
+fn erasing_or_restoring_a_backup_does_not_reset_the_latest_date_seen() {
+    let mut app = App::in_memory().unwrap().with_clock(|| d(2026, 11, 11));
+    app.license_status(d(2026, 11, 1)).unwrap();
+    assert_eq!(
+        app.license_status(d(2026, 11, 11)).unwrap().days_left,
+        Some(4)
+    );
+    app.erase_all_data("DELETE").unwrap();
+    assert_eq!(
+        app.license_status(d(2026, 11, 1)).unwrap().days_left,
+        Some(4)
+    );
+    let fresh = App::in_memory().unwrap().with_clock(|| d(2026, 11, 1));
+    fresh.license_status(d(2026, 11, 1)).unwrap();
+    let backup = fresh.backup_json().unwrap();
+    app.restore_backup(&backup).unwrap();
+    assert_eq!(
+        app.license_status(d(2026, 11, 1)).unwrap().days_left,
+        Some(4)
+    );
+}
+
+#[test]
+fn an_addon_key_saved_by_an_older_version_survives_buying_the_app() {
+    // Older versions kept one key; an add-on-only key may sit in the app's place.
+    let sk = SigningKey::generate(&mut OsRng);
+    let app = licensed_app(&sk);
+    app.db()
+        .set_setting(
+            "license_token",
+            &keyed(&sk, Some(d(2027, 3, 1)), Some(false)),
+        )
+        .unwrap();
+    let s = app.license_status(d(2026, 12, 20)).unwrap();
+    assert_eq!((s.state.as_str(), s.plaid_active), ("expired", true));
+    let s = app
+        .activate_license(&keyed(&sk, None, Some(true)), d(2026, 12, 20))
+        .unwrap();
+    assert_eq!((s.state.as_str(), s.plaid_active), ("licensed", true));
+    assert!(app.license_status(d(2027, 2, 1)).unwrap().plaid_active);
 }

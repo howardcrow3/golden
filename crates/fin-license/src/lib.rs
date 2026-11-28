@@ -27,6 +27,19 @@ pub struct LicensePayload {
     pub plaid_until: Option<NaiveDate>,
     /// Opaque buyer reference (not an email), for support lookups.
     pub buyer: String,
+    /// Whether this key unlocks the app itself. `Some(false)` is a bank-connection add-on
+    /// bought on its own: it turns on bank sync but not the app. Keys issued before this field
+    /// existed leave it out and count as the app (`None`), and a key without it serializes to
+    /// exactly the bytes it always did, so its signature still holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub core: Option<bool>,
+}
+
+impl LicensePayload {
+    /// Whether the key unlocks the app (every key issued before the add-on was sold alone does).
+    pub fn is_core(&self) -> bool {
+        self.core != Some(false)
+    }
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -122,9 +135,10 @@ impl Access {
     }
 }
 
-/// Decide what the person may do today. `first_run` is when the trial started.
+/// Decide what the person may do today. `first_run` is when the trial started. A key for the
+/// bank-connection add-on alone (`core: Some(false)`) does not unlock the app.
 pub fn access(first_run: NaiveDate, today: NaiveDate, license: Option<&LicensePayload>) -> Access {
-    if license.is_some() {
+    if license.is_some_and(LicensePayload::is_core) {
         return Access::Licensed;
     }
     let used = (today - first_run).num_days().max(0);
@@ -159,6 +173,7 @@ mod tests {
             issued: d(2026, 11, 20),
             plaid_until: plaid,
             buyer: "b-123".into(),
+            core: None,
         }
     }
     fn keys() -> (SigningKey, VerifyingKey) {
@@ -262,6 +277,36 @@ mod tests {
             access(start, d(2026, 11, 10), None),
             Access::Trial { days_left: 14 }
         );
+    }
+
+    #[test]
+    fn an_addon_only_key_turns_on_bank_sync_but_not_the_app() {
+        let mut p = payload(1, Some(d(2027, 11, 20)));
+        p.core = Some(false);
+        let start = d(2026, 11, 15);
+        assert_eq!(
+            access(start, d(2026, 11, 20), Some(&p)),
+            Access::Trial { days_left: 9 }
+        );
+        assert_eq!(access(start, d(2026, 12, 20), Some(&p)), Access::Expired);
+        assert!(plaid_active(Some(&p), d(2026, 12, 20)));
+        p.core = Some(true);
+        assert_eq!(access(start, d(2026, 12, 20), Some(&p)), Access::Licensed);
+        p.core = None; // issued before the field existed
+        assert_eq!(access(start, d(2026, 12, 20), Some(&p)), Access::Licensed);
+    }
+
+    #[test]
+    fn a_newer_app_field_does_not_break_reading_a_key() {
+        // Unknown fields are ignored, which is also how an older app reads a key with `core`.
+        let (sk, vk) = keys();
+        let body = br#"{"product":"golden","major":1,"issued":"2026-11-20","plaid_until":null,"buyer":"b","core":false,"later":1}"#;
+        let tok = format!(
+            "{}.{}",
+            B64.encode(body),
+            B64.encode(sk.sign(body).to_bytes())
+        );
+        assert_eq!(verify(&vk, &tok, 1).unwrap().core, Some(false));
     }
 
     #[test]

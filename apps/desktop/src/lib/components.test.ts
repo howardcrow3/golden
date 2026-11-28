@@ -159,7 +159,7 @@ describe("License prices", () => {
   it("shows $39.99 once and $5 a month by default", () => {
     render(License);
     expect(screen.getByTestId("prices").textContent).toBe(
-      "Golden is $39.99 once per major version. Automatic bank updates are a separate add-on, not included in that price: $9.97 a month, or $100.00 a year, on top of Golden.",
+      "Golden is $39.99. Automatic bank updates are a separate add-on, not included in that price: $9.97 a month, or $100.00 a year, on top of Golden.",
     );
   });
   it("uses the prices the app reports and shows a bad price ID warning", async () => {
@@ -169,7 +169,7 @@ describe("License prices", () => {
         : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
     render(License, { invoke });
     await vi.waitFor(() =>
-      expect(screen.getByTestId("prices").textContent).toBe("Golden is $25.00 once per major version. Automatic bank updates are a separate add-on, not included in that price: $20.00 a year, on top of Golden."),
+      expect(screen.getByTestId("prices").textContent).toBe("Golden is $25.00. Automatic bank updates are a separate add-on, not included in that price: $20.00 a year, on top of Golden."),
     );
     expect((await screen.findByRole("alert")).textContent).toMatch(/product ID/);
   });
@@ -237,6 +237,20 @@ describe("License", () => {
     await fireEvent.input(screen.getByLabelText("Licence key"), { target: { value: "x.y" } });
     await fireEvent.click(screen.getByRole("button", { name: "Activate" }));
     expect((await screen.findByRole("alert")).textContent).toMatch(/signature is not valid/);
+  });
+  it("says a bank-connections-only key turns on bank sync but Golden still needs buying", async () => {
+    const bankOnly = { state: "expired", daysLeft: null, canEdit: false, plaidActive: true };
+    const invoke = async (cmd: string) => (cmd === "activate_license" ? bankOnly : trial);
+    render(License, { invoke });
+    await fireEvent.input(screen.getByLabelText("Licence key"), { target: { value: "abc.def" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Activate" }));
+    expect((await screen.findByRole("status")).textContent).toMatch(/Bank connections key accepted.*Golden itself still needs a licence/);
+    expect(screen.getByTestId("status").textContent).toMatch(/Bank connections are on.*Golden itself still needs buying/);
+    cleanup();
+    render(License, { invoke: async () => ({ ...bankOnly, state: "trial", daysLeft: 4, canEdit: true }) });
+    expect((await screen.findByTestId("status")).textContent).toBe(
+      "Trial: 4 days left. Bank connections are on; Golden itself still needs buying.",
+    );
   });
   it("keeps Activate disabled until something is pasted", () => {
     render(License, { invoke: async () => trial });

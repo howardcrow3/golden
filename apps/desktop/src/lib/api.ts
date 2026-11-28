@@ -538,6 +538,7 @@ export interface RestoreReport {
   accounts: number;
   added: number;
   skippedDuplicates: number;
+  skippedClosed: number;
   settingsRestored: string[];
 }
 export async function restoreBackup(bytes: Uint8Array, invoke?: Invoke): Promise<RestoreReport> {

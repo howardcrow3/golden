@@ -37,6 +37,11 @@ fn activate(app: &AppHandle, token: &str) -> LinkResult {
         Err(_) => Err("the data store is busy; try again".to_string()),
     };
     match result {
+        // A key for bank connections alone turns on bank sync but not the app.
+        Ok(s) if s.state != "licensed" && s.plaid_active => LinkResult {
+            ok: true,
+            message: "Bank connections are on. Golden itself still needs a licence: buy it on the Licence screen.".into(),
+        },
         Ok(_) => LinkResult {
             ok: true,
             message: "Your licence is active. Thank you!".into(),

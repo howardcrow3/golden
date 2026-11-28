@@ -26,6 +26,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 fin-app = { path = "../../../crates/fin-app", default-features = false, features = ["sqlcipher"] }
 fin-db = { path = "../../../crates/fin-db", default-features = false, features = ["sqlcipher"] }
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
+ed25519-dalek = "2"
 fin-ai = { path = "../../../crates/fin-ai", features = ["llama"] }
 fin-license = { path = "../../../crates/fin-license" }
 chrono = "0.4"
