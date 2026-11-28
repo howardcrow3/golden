@@ -252,3 +252,9 @@ fn a_model_inside_the_app_answers_and_beats_a_saved_address() {
         .unwrap();
     assert!(prep.changes.is_empty());
 }
+
+#[test]
+fn a_huge_chunk_size_is_an_error_not_a_crash() {
+    let raw = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nffffffffffffffff\r\nabc\r\n0\r\n\r\n";
+    assert!(response_body(raw).is_err());
+}
