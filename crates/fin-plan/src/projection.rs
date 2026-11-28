@@ -320,7 +320,9 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         // Money needed after tax; withdrawals are grossed up by iterating (tax depends on withdrawals).
         // A pension, an annuity or rental income is not a wage: its owner is still retired.
         let retired = wages - exempt == Money::ZERO;
-        let portfolio = acc.total();
+        // The portfolio at the start of the year: the required distribution was already moved
+        // out of the pre-tax account above, but it is still the household's money.
+        let portfolio = acc.total() + rmd;
         if retired {
             match input.spending_rule {
                 SpendingRule::Fixed => {}
@@ -1474,5 +1476,29 @@ mod review_tests {
         let p = project(&i, &|_| 0.0);
         // 4% of the $900,000 portfolio, not the fixed $110,000.
         assert_eq!(p.rows[0].spending, Money::from_dollars(36_000));
+    }
+
+    #[test]
+    fn percent_of_portfolio_counts_the_required_distribution_still_in_the_account() {
+        // Age 80: a required distribution comes out first, but it is part of the portfolio the
+        // spending rule is a percent of.
+        let mut i = couple();
+        i.people[0].birth_date = fin_core::NaiveDate::from_ymd_opt(1946, 6, 15).unwrap();
+        i.streams.clear();
+        i.social_security.clear();
+        i.accounts = Accounts {
+            cash: Money::ZERO,
+            taxable: Money::ZERO,
+            taxable_gain_share: 0.0,
+            traditional: Money::from_dollars(1_000_000),
+            roth: Money::ZERO,
+        };
+        i.spending_rule = SpendingRule::PercentOfPortfolio {
+            rate: 0.04,
+            floor: Money::ZERO,
+        };
+        let p = project(&i, &|_| 0.0);
+        assert!(p.rows[0].rmd > Money::ZERO);
+        assert_eq!(p.rows[0].spending, Money::from_dollars(40_000));
     }
 }
