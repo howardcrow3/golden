@@ -115,6 +115,10 @@ test("GET /link serves the sign-in page with no secrets and no caching", async (
   assert.equal(r.headers["cache-control"], "no-store");
   assert.ok(r.body.includes("cdn.plaid.com/link/v2/stable/link-initialize.js"));
   assert.ok(r.body.includes("golden://plaid?public_token="));
+  // The app's `state` goes out with the sign-in and comes back with the return, also across an OAuth bounce.
+  assert.ok(r.body.includes('params.get("state")'));
+  assert.ok(r.body.includes('"&state=" + encodeURIComponent(state)'));
+  assert.ok(r.body.includes('sessionStorage.getItem("golden_link_state")'));
   assert.ok(!r.body.includes("client_id") && !r.body.includes("PLAID_SECRET"));
   assert.equal(r.body, LINK_PAGE);
 });

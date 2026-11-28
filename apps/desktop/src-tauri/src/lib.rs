@@ -1095,6 +1095,7 @@ pub fn run() {
             // Read scans and photos in the document vault with the operating system's own OCR.
             core.set_ocr(fin_ocr::system_engine());
             app.manage(Mutex::new(core));
+            app.manage(bank::PendingLink::default());
             app.manage(std::sync::Arc::new(fin_ai::manager::DownloadState::default()));
             attach_model(app.handle());
             deep_link::setup(app);

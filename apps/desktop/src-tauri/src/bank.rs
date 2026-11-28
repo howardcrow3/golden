@@ -11,6 +11,41 @@ use tauri::Manager;
 /// Sent to the screen when the person comes back from their bank's sign-in page.
 pub const LINK_EVENT: &str = "plaid-link";
 
+/// The `state` of the bank sign-in this copy started, and when. A `golden://plaid` link is only
+/// accepted if it carries it, once, within a quarter of an hour.
+#[derive(Default)]
+pub struct PendingLink(Mutex<Option<(String, std::time::Instant)>>);
+
+impl PendingLink {
+    fn start(&self) -> String {
+        let state = fin_plaid::link::new_state();
+        if let Ok(mut g) = self.0.lock() {
+            *g = Some((state.clone(), std::time::Instant::now()));
+        }
+        state
+    }
+
+    /// The `state` to expect now, or empty when no sign-in is under way (which accepts nothing).
+    pub fn expected(&self) -> String {
+        match self.0.lock() {
+            Ok(g) => match g.as_ref() {
+                Some((s, at)) if at.elapsed() < std::time::Duration::from_secs(15 * 60) => {
+                    s.clone()
+                }
+                _ => String::new(),
+            },
+            Err(_) => String::new(),
+        }
+    }
+
+    /// A return was accepted: it can't be used again.
+    pub fn finish(&self) {
+        if let Ok(mut g) = self.0.lock() {
+            *g = None;
+        }
+    }
+}
+
 /// Where the sync service lives, set at build time (see services/plaid-server/README.md).
 fn service_base() -> Result<&'static str, String> {
     option_env!("GOLDEN_PLAID_SERVICE_URL")
@@ -100,7 +135,8 @@ pub async fn bank_connect(app: tauri::AppHandle) -> Result<(), String> {
         let base = service_base()?;
         let state = app.state::<Mutex<Core>>();
         let token = lock(&state)?.bank_link_token(&Https)?;
-        crate::open_in_browser(&fin_plaid::link::page_url(base, &token))
+        let state = app.state::<PendingLink>().start();
+        crate::open_in_browser(&fin_plaid::link::page_url(base, &token, &state))
     })
     .await
     .map_err(|e| e.to_string())?

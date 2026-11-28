@@ -67,10 +67,11 @@ main{max-width:30rem;padding:2rem;text-align:center}</style></head>
   var msg = document.getElementById("msg");
   var params = new URLSearchParams(location.search);
   var token = params.get("token");
+  var state = params.get("state") || "";
   var oauth = params.has("oauth_state_id");
   try {
-    if (token) sessionStorage.setItem("golden_link_token", token);
-    else if (oauth) token = sessionStorage.getItem("golden_link_token");
+    if (token) { sessionStorage.setItem("golden_link_token", token); sessionStorage.setItem("golden_link_state", state); }
+    else if (oauth) { token = sessionStorage.getItem("golden_link_token"); state = sessionStorage.getItem("golden_link_state") || ""; }
   } catch (e) {}
   if (!token) { msg.textContent = "This link has expired. Go back to Golden and press Connect again."; return; }
   var cfg = {
@@ -79,7 +80,7 @@ main{max-width:30rem;padding:2rem;text-align:center}</style></head>
       var name = (meta && meta.institution && meta.institution.name) || "";
       msg.textContent = "Connected. Returning to Golden…";
       location.href = "golden://plaid?public_token=" + encodeURIComponent(publicToken) +
-        "&institution=" + encodeURIComponent(name);
+        "&institution=" + encodeURIComponent(name) + "&state=" + encodeURIComponent(state);
     },
     onExit: function () { msg.textContent = "Not connected. You can close this tab and go back to Golden."; }
   };
