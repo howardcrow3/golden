@@ -67,8 +67,10 @@ pub fn run(base: &PlanInput, picks: &Picks, stock_share: f64) -> Result<Backtest
     let hist = history();
     let (plan, _) =
         scenario::resolve(base, &Assumptions::defaults(), picks).map_err(|e| e.to_string())?;
-    let primary_age = plan.people[0]
-        .age_on(fin_core::NaiveDate::from_ymd_opt(plan.start_year, 1, 1).ok_or("bad start year")?);
+    // Ages in the projection are the age reached by December 31, so count years the same way.
+    let primary_age = plan.people[0].age_on(
+        fin_core::NaiveDate::from_ymd_opt(plan.start_year, 12, 31).ok_or("bad start year")?,
+    );
     let n = (plan.horizon_age - primary_age).max(0) as usize + 1;
     if n > hist.len() {
         return Err(format!(
@@ -141,11 +143,16 @@ mod tests {
     #[test]
     fn replays_every_start_year_that_fits() {
         let b = run(&couple(), &Picks::new(), 0.6).unwrap();
-        // The fixture runs from 49 to 95: 47 years, so 98 - 47 + 1 windows.
-        assert_eq!(b.years, 47);
-        assert_eq!(b.windows.len(), 98 - 47 + 1);
+        // The fixture's projection has a row for each age from 50 to 95 (ages at year end):
+        // 46 years, the same span the replay must cover, so 98 - 46 + 1 windows.
+        let rows = crate::projection::project_constant(&couple(), 0.04)
+            .rows
+            .len();
+        assert_eq!(rows, 46);
+        assert_eq!(b.years, rows);
+        assert_eq!(b.windows.len(), 98 - 46 + 1);
         assert_eq!(b.windows[0].start_year, 1928);
-        assert_eq!(b.windows.last().unwrap().start_year, 2025 - 46);
+        assert_eq!(b.windows.last().unwrap().start_year, 2025 - 45);
         assert!((0.0..=1.0).contains(&b.success_rate));
     }
 

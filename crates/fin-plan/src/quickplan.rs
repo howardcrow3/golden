@@ -594,7 +594,7 @@ mod backtest_tests {
     #[test]
     fn backtest_reports_windows_and_the_worst_starts() {
         let r = backtest(&couple(), &Picks::new(), 0.6).unwrap();
-        assert_eq!(r.windows.len(), 52);
+        assert_eq!(r.windows.len(), 53);
         assert_eq!(r.worst.len(), 3);
         let v = serde_json::to_value(&r).unwrap();
         assert!(v["windows"][0]["startYear"].is_number() && v["successRate"].is_number());
