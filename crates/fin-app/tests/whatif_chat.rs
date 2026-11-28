@@ -267,3 +267,17 @@ fn a_bonus_amount_written_before_the_word_is_not_read_as_the_year() {
         }]
     );
 }
+
+#[test]
+fn the_claim_age_comes_from_the_social_security_part_not_the_retirement_age() {
+    assert_eq!(
+        interpret("retire at 67 and claim social security at 70"),
+        vec![
+            Change::RetireAt { person: 0, age: 67 },
+            Change::SetPick {
+                key: "ss_claim_age".into(),
+                label: "Age 70".into(),
+            }
+        ]
+    );
+}

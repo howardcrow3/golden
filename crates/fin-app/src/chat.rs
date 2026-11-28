@@ -643,9 +643,16 @@ impl Interpreter for RuleInterpreter {
         } else if has(&["live to 90", "to age 90", "until 90", "to 90"]) {
             pick("horizon_age", "Age 90");
         }
-        if has(&["social security", "claim"]) {
+        // Look for the age only after the Social Security words, so "retire at 67 and claim
+        // at 70" claims at 70.
+        if let Some(ss) = ["social security", "claim"]
+            .iter()
+            .filter_map(|w| t.find(w))
+            .min()
+            .map(|i| &t[i..])
+        {
             for (age, label) in [(62, "Age 62"), (67, "Age 67"), (70, "Age 70")] {
-                if t.contains(&format!("at {age}")) || t.contains(&format!("age {age}")) {
+                if ss.contains(&format!("at {age}")) || ss.contains(&format!("age {age}")) {
                     pick("ss_claim_age", label);
                     break;
                 }
