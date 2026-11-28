@@ -1518,20 +1518,20 @@ mod tests {
         assert_eq!(go("VT", 55_000, 20_000), plain("VT", 35_000 - 1_250));
         assert_eq!(go("VT", 60_000, 20_000), plain("VT", 50_000 - 1_250));
         assert_eq!(go("VT", 65_000, 20_000), plain("VT", 65_000 - 1_250));
-        // Minnesota: 10% less is left out for each $4,000 over $84,490.
-        assert_eq!(go("MN", 84_490, 20_000), plain("MN", 64_490 - 2_000));
+        // Minnesota: 10% less is left out for each $4,000 over $86,410.
+        assert_eq!(go("MN", 86_410, 20_000), plain("MN", 66_410 - 2_000));
         // Minnesota moves in $4,000 steps, a part step counting in full: $20,000 over is five
         // steps (50% taxed), and $1 over is already one step (10%).
-        assert_eq!(go("MN", 104_490, 20_000), plain("MN", 94_490 - 2_000));
+        assert_eq!(go("MN", 106_410, 20_000), plain("MN", 96_410 - 2_000));
         assert_eq!(
-            go("MN", 84_491, 20_000),
-            plain("MN", 64_491 + 2_000 - 2_000)
+            go("MN", 86_411, 20_000),
+            plain("MN", 66_411 + 2_000 - 2_000)
         );
         assert_eq!(
-            go("MN", 88_491, 20_000),
-            plain("MN", 68_491 + 4_000 - 2_000)
+            go("MN", 90_411, 20_000),
+            plain("MN", 70_411 + 4_000 - 2_000)
         );
-        assert_eq!(go("MN", 124_490, 20_000), plain("MN", 124_490 - 2_000));
+        assert_eq!(go("MN", 126_410, 20_000), plain("MN", 126_410 - 2_000));
     }
 
     #[test]
@@ -1848,6 +1848,35 @@ mod tests {
             tax(FilingStatus::MarriedJoint, 60_000),
             want(60_000 - 4_300)
         );
+    }
+
+    #[test]
+    fn minnesota_2026_head_of_household_and_deduction_limit() {
+        let y = StateTaxYear::y2026();
+        let close = |fs, inc: i64, want: f64| {
+            let got = y.income_tax("MN", fs, m(inc)).unwrap();
+            assert!(
+                (got.cents() as f64 / 100.0 - want).abs() < 1.0,
+                "{got:?} vs {want}"
+            );
+        };
+        // Head of household: $23,000 off, then 5.35% up to $41,010.
+        close(FilingStatus::HeadOfHousehold, 60_000, 37_000.0 * 0.0535);
+        // Single at $344,400: 3% of the $100,000 over $244,400 comes off the $15,300.
+        let taxable = 344_400.0 - (15_300.0 - 3_000.0);
+        close(
+            FilingStatus::Single,
+            344_400,
+            33_310.0 * 0.0535
+                + (109_430.0 - 33_310.0) * 0.068
+                + (203_150.0 - 109_430.0) * 0.0785
+                + (taxable - 203_150.0) * 0.0985,
+        );
+        // Far above, only 20% of the deduction is left.
+        let r = y.rules("MN").unwrap();
+        let p = r.std_phase_down.as_ref().unwrap();
+        assert_eq!(p.apply(false, m(15_300), m(2_000_000)), m(3_060));
+        assert_eq!(p.apply(true, m(30_600), m(2_000_000)), m(6_120));
     }
 
     #[test]
