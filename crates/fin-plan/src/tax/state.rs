@@ -1869,6 +1869,9 @@ mod tests {
             go("MO", 100_000, 0, 60_000, 60_000, 66),
             plain("MO", 100_000 - 47_633)
         );
+        // Arizona: $2,500 of a government pension each, nothing for a private one.
+        assert_eq!(go("AZ", 80_000, 0, 30_000, 30_000, 66), plain("AZ", 77_500));
+        assert_eq!(go("AZ", 80_000, 0, 30_000, 0, 66), plain("AZ", 80_000));
         // Taxable benefits of $10,000 come out on their own and cut the public cap by as much.
         assert_eq!(
             go("MO", 110_000, 10_000, 60_000, 60_000, 66),
