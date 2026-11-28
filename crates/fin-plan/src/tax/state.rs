@@ -1494,6 +1494,29 @@ mod tests {
     }
 
     #[test]
+    fn wisconsin_slides_its_standard_deduction_down_to_nothing() {
+        let y = StateTaxYear::y2026();
+        let p = y.rules("WI").unwrap().std_phase_down.clone().unwrap();
+        let r = y.rules("WI").unwrap();
+        let (s, j) = (r.std_single, r.std_joint);
+        // Full deduction at low incomes, none at high ones.
+        assert_eq!(p.apply(false, s, m(20_000)), s);
+        assert_eq!(p.apply(false, s, m(150_000)), Money::ZERO);
+        assert_eq!(p.apply(true, j, m(30_000)), j);
+        assert_eq!(p.apply(true, j, m(170_000)), Money::ZERO);
+        // In between it falls 12 cents (single) and about 19.8 cents (joint) per dollar.
+        let drop = p.apply(false, s, m(50_000)) - p.apply(false, s, m(60_000));
+        assert!((drop.cents() - 120_000).abs() <= 100, "{drop:?}");
+        let drop = p.apply(true, j, m(50_000)) - p.apply(true, j, m(60_000));
+        assert!((drop.cents() - 197_780).abs() <= 200, "{drop:?}");
+        // So a $60,000 single filer pays more than the flat maximum deduction suggested.
+        let single = FilingStatus::Single;
+        let tax = y.income_tax("WI", single, m(60_000)).unwrap();
+        let flat = r.brackets.tax(m(60_000) - s);
+        assert!(tax > flat);
+    }
+
+    #[test]
     fn alabama_leaves_pensions_out_but_taxes_ira_withdrawals() {
         let y = StateTaxYear::y2026();
         let single = FilingStatus::Single;
@@ -1691,6 +1714,16 @@ mod tests {
         assert_eq!(
             go("MO", single, 80_000, 0, 30_000, &[30_000], &[45]),
             plain("MO", single, 50_000)
+        );
+        // Rhode Island: all of it at any age, and the $50,000 pension
+        // exclusion at 67 still applies to the rest.
+        assert_eq!(
+            go("RI", single, 80_000, 0, 30_000, &[30_000], &[50]),
+            plain("RI", single, 50_000)
+        );
+        assert_eq!(
+            go("RI", single, 100_000, 0, 90_000, &[30_000], &[70]),
+            plain("RI", single, 20_000)
         );
         // California has no such rule.
         assert_eq!(
