@@ -54,10 +54,11 @@ pub fn find(plan: &PlanInput, p: &Projection, real_return: f64) -> Vec<Milestone
         ));
     }
     // Coast FI: savings left alone, with no more contributions, reach the FI number by the
-    // year work ends.
+    // year work ends. Retirement starts with the balance at the end of the last working year,
+    // so a year's end balance grows only until then.
     if let Some(r) = retire {
         let hit = rows.iter().take_while(|x| x.year < r.year).find(|x| {
-            let years = r.year - x.year;
+            let years = r.year - 1 - x.year;
             let grown = x.end_balance.cents() as f64 * (1.0 + real_return).powi(years);
             grown >= need.cents() as f64
         });
@@ -127,6 +128,32 @@ mod tests {
         p.rows.clear();
         p.depleted_year = None;
         assert!(find(&plan, &p, 0.03).is_empty());
+    }
+
+    #[test]
+    fn coast_fi_grows_savings_only_until_work_ends() {
+        // Work ends in 2031: the balance at the end of 2030 is what retirement starts with, so
+        // it gets no more growth. $2.4M is short of the $2.5M number even though a further
+        // year at 5% would pass it.
+        let (mut plan, mut p, _) = run();
+        plan.annual_spending = Money::from_dollars(100_000);
+        p.depleted_year = None;
+        let mut row = p.rows[0].clone();
+        row.social_security = Money::ZERO;
+        row.medicare = Money::ZERO;
+        row.rmd = Money::ZERO;
+        let mut working = row.clone();
+        working.year = 2030;
+        working.earned = Money::from_dollars(1);
+        working.end_balance = Money::from_dollars(2_400_000);
+        let mut retired = row;
+        retired.year = 2031;
+        retired.earned = Money::ZERO;
+        retired.end_balance = Money::from_dollars(2_400_000);
+        p.rows = vec![working, retired];
+        let ms = find(&plan, &p, 0.05);
+        assert!(ms.iter().any(|x| x.key == "retire"));
+        assert!(!ms.iter().any(|x| x.key == "coast"), "{ms:?}");
     }
 
     #[test]
