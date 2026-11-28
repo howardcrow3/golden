@@ -2392,7 +2392,7 @@
    "std_joint": 2656000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption combined.",
+   "notes": "Standard deduction plus personal exemption combined. Kansas exempts KPERS, federal civil service and military retirement; enter those as a government pension. Other pensions and IRA withdrawals are taxed.",
    "joint_brackets": [
     [
      0,
@@ -2402,7 +2402,11 @@
      4600000,
      0.0558
     ]
-   ]
+   ],
+   "retirement": {
+    "min_age": 0,
+    "public_pension_full": true
+   }
   },
   "KY": {
    "name": "Kentucky",
@@ -2441,7 +2445,7 @@
    "std_joint": 2500000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Louisiana exempts up to $12,000 of pension, annuity and IRA distributions for each person 65 or older (IT-540 instructions, code 06E). Federal, state and teacher retirement benefits are fully exempt in Louisiana but are not separated out here.",
+   "notes": "Louisiana exempts up to $12,000 of pension, annuity and IRA distributions for each person 65 or older (IT-540 instructions, code 06E). Federal, state and teacher retirement benefits are fully exempt in Louisiana; enter them as a government pension.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2449,7 +2453,8 @@
       "age": 65,
       "cap": 1200000
      }
-    ]
+    ],
+    "public_pension_full": true
    }
   },
   "MA": {
@@ -3161,7 +3166,7 @@
    "std_joint": 1605000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. NYC and Yonkers taxes are not included. New York excludes up to $20,000 of pension and annuity income per person aged 59 and a half or more (modelled from 60). The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. NYC and Yonkers taxes are not included. New York excludes up to $20,000 of pension and annuity income per person aged 59 and a half or more (modelled from 60). The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Pensions from New York State, its local governments and the federal government are fully exempt (IT-201-I, line 26); a government pension entered in Golden is treated that way, and pensions from other states' governments should be entered as ordinary pensions.",
    "joint_brackets": [
     [
      0,
@@ -3223,7 +3228,8 @@
       "age": 60,
       "cap": 2000000
      }
-    ]
+    ],
+    "public_pension_full": true
    }
   },
   "OH": {

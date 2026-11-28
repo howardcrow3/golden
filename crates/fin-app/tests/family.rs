@@ -108,6 +108,41 @@ fn a_pension_starts_at_retirement_and_pays_no_payroll_tax() {
 }
 
 #[test]
+fn a_government_pension_is_a_pension_that_some_states_exempt() {
+    use fin_app::household::StreamRow;
+    let mut h = Household::sample();
+    h.state = "NY".into();
+    h.streams.push(StreamRow {
+        label: "State pension".into(),
+        person: 0,
+        annual_cents: 4_000_000,
+        self_employed: false,
+        start_year: None,
+        end_year: None,
+        contribution_cents: 0,
+        kind: Some("public_pension".into()),
+        employer_match_cents: 0,
+        hsa_cents: 0,
+    });
+    let p = h.plan_input(today()).unwrap();
+    let s = p.streams.last().unwrap();
+    assert!(s.payroll_exempt && s.pension && s.public_pension);
+    assert!(s.start_year >= p.streams[0].end_year);
+    // The same income as a private pension pays more New York tax over the plan.
+    let tax = |h: &Household| -> i64 {
+        let input = h.plan_input(today()).unwrap();
+        fin_plan::projection::project(&input, &|_| 0.04)
+            .rows
+            .iter()
+            .map(|r| r.income_tax.cents())
+            .sum()
+    };
+    let public = tax(&h);
+    h.streams.last_mut().unwrap().kind = Some("pension".into());
+    assert!(tax(&h) > public);
+}
+
+#[test]
 fn match_and_hsa_carry_through_and_bad_kinds_are_errors() {
     let mut h = Household::sample();
     h.streams[0].employer_match_cents = 300_000;

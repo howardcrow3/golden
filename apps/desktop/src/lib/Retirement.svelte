@@ -167,6 +167,7 @@
           <select bind:value={s.kind} aria-label={`Income type ${i + 1}`}>
             <option value="">Job</option>
             <option value="pension">Pension or annuity</option>
+            <option value="public_pension">Government pension (federal, state or local)</option>
             <option value="other">Rent or other taxable</option>
           </select>
         </label>
