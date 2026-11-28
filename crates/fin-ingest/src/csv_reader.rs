@@ -16,6 +16,13 @@ fn find(headers: &[String], names: &[&str]) -> Option<usize> {
     headers.iter().position(|h| names.iter().any(|n| h == n))
 }
 
+/// Like `find`, but the earliest name in `names` wins wherever its column is.
+fn find_preferred(headers: &[String], names: &[&str]) -> Option<usize> {
+    names
+        .iter()
+        .find_map(|n| headers.iter().position(|h| h == n))
+}
+
 fn columns(headers: &[String]) -> Result<Cols, IngestError> {
     let h: Vec<String> = headers
         .iter()
@@ -48,7 +55,8 @@ fn columns(headers: &[String]) -> Result<Cols, IngestError> {
     }
     Ok(Cols {
         date,
-        desc: find(
+        // Chase checking puts a "Details" column (DEBIT/CREDIT) before "Description".
+        desc: find_preferred(
             &h,
             &[
                 "description",
@@ -242,6 +250,18 @@ mod tests {
     fn preamble_and_blank_footer_are_skipped() {
         let t = parse("Account: Checking 4821\nGenerated 10/31/2026\nDate,Description,Amount\n10/01/2026,A,1.00\n,,\n").unwrap();
         assert_eq!(t.len(), 1);
+    }
+
+    #[test]
+    fn the_description_column_wins_over_a_details_column_before_it() {
+        // Chase checking: "Details" holds DEBIT/CREDIT, the merchant is under "Description".
+        let t = parse(
+            "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #\n\
+             DEBIT,10/01/2026,STARBUCKS STORE 5531,-4.50,DEBIT_CARD,995.50,,\n",
+        )
+        .unwrap();
+        assert_eq!(t[0].payee, "STARBUCKS STORE 5531");
+        assert_eq!(t[0].amount.cents(), -450);
     }
 
     #[test]
