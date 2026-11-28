@@ -219,3 +219,52 @@ fn netting_a_pair_is_all_or_nothing() {
         "half a pair was netted"
     );
 }
+
+#[test]
+fn cash_flow_follows_split_parts_and_leaves_out_transfer_parts() {
+    let db = Db::open_in_memory().unwrap();
+    let a = db.add_account("Checking", "checking", None, None).unwrap();
+    // $100 at the store, $40 of it really cash moved to savings.
+    let shop = db
+        .add_txn(&row(a, d(2026, 10, 5), -10_000, "Store", Some("Groceries")))
+        .unwrap()
+        .unwrap();
+    db.set_splits(
+        shop,
+        &[("Groceries".into(), -6_000), ("Transfer".into(), -4_000)],
+    )
+    .unwrap();
+    // A line filed as a transfer that was partly a real purchase.
+    let mixed = db
+        .add_txn(&row(a, d(2026, 10, 6), -5_000, "Venmo", Some("Transfer")))
+        .unwrap()
+        .unwrap();
+    db.set_splits(
+        mixed,
+        &[("Transfer".into(), -3_000), ("Dining".into(), -2_000)],
+    )
+    .unwrap();
+    // A line filed as a transfer, all of it, still counts for nothing.
+    db.add_txn(&row(
+        a,
+        d(2026, 10, 7),
+        -9_000,
+        "To savings",
+        Some("Transfer"),
+    ))
+    .unwrap();
+    let oct = PeriodKey::containing(Grain::Month, d(2026, 10, 1));
+    let by_cat: i64 = db
+        .category_totals(oct, Metric::Spending)
+        .unwrap()
+        .iter()
+        .map(|(_, m)| m.cents())
+        .sum();
+    assert_eq!(by_cat, 8_000);
+    let t = db
+        .totals(d(2026, 10, 1), d(2026, 10, 31), Grain::Month)
+        .unwrap()
+        .remove(0);
+    assert_eq!(t.spending.cents(), by_cat);
+    assert_eq!((t.income.cents(), t.count), (0, 2));
+}

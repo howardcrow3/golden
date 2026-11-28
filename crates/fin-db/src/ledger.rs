@@ -553,9 +553,19 @@ impl Db {
     /// Periods with no activity are returned as zeros so charts have no gaps.
     pub fn totals(&self, from: NaiveDate, to: NaiveDate, grain: Grain) -> Result<Vec<PeriodTotal>> {
         let col = grain_col(grain);
+        // A split line counts by its parts, as in `category_totals`: Transfer parts are money
+        // moved between your own accounts and count for nothing, the rest count.
         let sql = format!(
-            "SELECT {col}, coalesce(sum(CASE WHEN cents>0 THEN cents END),0), coalesce(sum(CASE WHEN cents<0 THEN cents END),0), count(*)
-             FROM txn WHERE day BETWEEN ?1 AND ?2 AND {NOT_TRANSFER} GROUP BY {col}"
+            "SELECT k, coalesce(sum(CASE WHEN cents>0 THEN cents END),0), coalesce(sum(CASE WHEN cents<0 THEN cents END),0), count(DISTINCT id)
+             FROM (
+               SELECT t.id AS id, t.{col} AS k, t.cents AS cents FROM txn t
+                WHERE t.day BETWEEN ?1 AND ?2 AND {NOT_TRANSFER}
+                  AND NOT EXISTS (SELECT 1 FROM split s WHERE s.txn_id=t.id)
+               UNION ALL
+               SELECT t.id, t.{col}, s.cents FROM split s JOIN txn t ON t.id=s.txn_id
+                JOIN category c ON c.id=s.category_id
+                WHERE t.day BETWEEN ?1 AND ?2 AND t.netted = 0 AND c.name <> 'Transfer'
+             ) GROUP BY k"
         );
         let mut st = self.conn.prepare(&sql)?;
         let mut found: std::collections::HashMap<String, (i64, i64, i64)> = Default::default();
