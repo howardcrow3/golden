@@ -1137,6 +1137,7 @@ export async function dafBunching(
 /** City and county income taxes the plan knows (mirrors the engine's list). */
 export const LOCALITIES: { key: string; name: string; state: string }[] = [
   { key: "nyc", name: "New York City (resident)", state: "NY" },
+  { key: "yonkers", name: "Yonkers (resident surcharge)", state: "NY" },
   { key: "philadelphia", name: "Philadelphia (resident wage tax)", state: "PA" },
   { key: "pittsburgh", name: "Pittsburgh (resident)", state: "PA" },
   { key: "columbus", name: "Columbus, Ohio", state: "OH" },
