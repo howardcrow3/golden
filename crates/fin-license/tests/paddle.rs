@@ -88,6 +88,17 @@ fn malformed_headers_are_refused() {
 }
 
 #[test]
+fn extreme_timestamps_are_stale_not_a_crash() {
+    for ts in [i64::MIN, i64::MAX] {
+        assert_eq!(
+            verify_signature(&format!("ts={ts};h1=00"), b"{}", SECRET, NOW, 300),
+            Err(WebhookError::Stale),
+            "{ts}"
+        );
+    }
+}
+
+#[test]
 fn a_rotated_secret_sends_two_signatures_and_either_may_match() {
     let body = b"{}";
     let old = sign("old-secret", NOW, body);
