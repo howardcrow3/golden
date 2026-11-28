@@ -2,7 +2,7 @@
 //!
 //! Each paystub applied to the plan records what that job withholds per year. This compares the
 //! total with an estimate of the year's tax on the household's taxable pay (gross minus
-//! pre-tax retirement saving), so a person can fix a W-4 before April instead of after. It
+//! pre-tax retirement and HSA saving), so a person can fix a W-4 before April instead of after. It
 //! checks every ongoing income source; if any lacks a paystub it says which, rather than
 //! guessing. It looks at wages only, so other income (interest, gains) is not in the estimate.
 use crate::App;
@@ -91,7 +91,7 @@ impl App {
             .collect();
         let wages: i64 = jobs
             .iter()
-            .map(|s| (s.annual_cents - s.contribution_cents).max(0))
+            .map(|s| (s.annual_cents - s.contribution_cents - s.hsa_cents).max(0))
             .sum();
         let mut missing = vec![];
         let (mut fed, mut state) = (0i64, 0i64);
