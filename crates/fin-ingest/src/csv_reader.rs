@@ -101,15 +101,18 @@ pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
         return Err(IngestError::Empty);
     }
     // Skip any preamble lines until one looks like a header (contains "date" and has a comma).
+    // Byte offsets come from split_inclusive so "\r\n" line endings are counted in full.
     let mut start = 0usize;
-    for (i, line) in text.lines().enumerate() {
+    let mut offset = 0usize;
+    for line in text.split_inclusive('\n') {
         let l = line.to_ascii_lowercase();
         if l.contains("date") && (l.contains(',') || l.contains(';') || l.contains('\t')) {
-            start = text.lines().take(i).map(|x| x.len() + 1).sum();
+            start = offset;
             break;
         }
+        offset += line.len();
     }
-    let body = &text[start.min(text.len())..];
+    let body = &text[start..];
     let delimiter = sniff_delimiter(body.lines().next().unwrap_or(""));
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(delimiter)
@@ -239,6 +242,16 @@ mod tests {
     fn preamble_and_blank_footer_are_skipped() {
         let t = parse("Account: Checking 4821\nGenerated 10/31/2026\nDate,Description,Amount\n10/01/2026,A,1.00\n,,\n").unwrap();
         assert_eq!(t.len(), 1);
+    }
+
+    #[test]
+    fn a_preamble_in_a_windows_file_is_skipped() {
+        let t = parse(
+            "Account: Checking 4821\r\nGenerated 10/31/2026\r\nAs of today\r\nDate;Description;Amount\r\n10/01/2026;Rent;-1.234,56\r\n",
+        )
+        .unwrap();
+        assert_eq!(t.len(), 1);
+        assert_eq!(t[0].amount.cents(), -123_456);
     }
 
     #[test]
