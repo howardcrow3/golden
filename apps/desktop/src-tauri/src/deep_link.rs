@@ -53,7 +53,10 @@ fn activate(app: &AppHandle, token: &str) -> LinkResult {
 fn dispatch(app: &AppHandle, urls: Vec<String>) {
     show_main_window(app);
     // Coming back from a bank's sign-in page: hand the token to the screen, which finishes linking.
-    if let Some(done) = fin_plaid::link::parse_return(&urls) {
+    // Only a return that carries the `state` of the sign-in this copy started is accepted.
+    let pending = app.state::<crate::bank::PendingLink>();
+    if let Some(done) = fin_plaid::link::parse_return(&urls, &pending.expected()) {
+        pending.finish();
         let _ = app.emit(crate::bank::LINK_EVENT, done);
         return;
     }

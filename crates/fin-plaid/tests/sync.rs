@@ -249,8 +249,8 @@ mod link_tests {
     #[test]
     fn page_url_has_one_slash_and_an_encoded_token() {
         assert_eq!(
-            page_url("https://x.lambda-url.us-east-1.on.aws/", "link-1 a"),
-            "https://x.lambda-url.us-east-1.on.aws/link?token=link-1%20a"
+            page_url("https://x.lambda-url.us-east-1.on.aws/", "link-1 a", "s 1"),
+            "https://x.lambda-url.us-east-1.on.aws/link?token=link-1%20a&state=s%201"
         );
     }
 
@@ -258,23 +258,49 @@ mod link_tests {
     fn a_finished_sign_in_is_read_from_the_link() {
         let urls = vec![
             "golden://activate?key=abc".to_string(),
-            "golden://plaid?public_token=public-sandbox-1&institution=First%20Platypus%20Bank"
+            "golden://plaid?public_token=public-sandbox-1&institution=First%20Platypus%20Bank&state=abc123"
                 .to_string(),
         ];
-        let r = parse_return(&urls).unwrap();
+        let r = parse_return(&urls, "abc123").unwrap();
         assert_eq!(r.public_token, "public-sandbox-1");
         assert_eq!(r.institution, "First Platypus Bank");
     }
 
     #[test]
     fn missing_institution_gets_a_default_and_missing_token_is_ignored() {
-        let r = parse_return(&["golden://plaid?public_token=p".into()]).unwrap();
+        let r = parse_return(&["golden://plaid?public_token=p&state=s".into()], "s").unwrap();
         assert_eq!(r.institution, "Bank");
-        assert!(parse_return(&["golden://plaid?institution=x".into()]).is_none());
-        assert!(parse_return(&["golden://plaid?public_token=".into()]).is_none());
-        assert!(parse_return(&["golden://plaid".into()]).is_none());
-        assert!(parse_return(&["https://evil.example/plaid?public_token=p".into()]).is_none());
-        assert!(parse_return(&[]).is_none());
+        assert!(parse_return(&["golden://plaid?institution=x&state=s".into()], "s").is_none());
+        assert!(parse_return(&["golden://plaid?public_token=&state=s".into()], "s").is_none());
+        assert!(parse_return(&["golden://plaid".into()], "s").is_none());
+        assert!(parse_return(
+            &["https://evil.example/plaid?public_token=p&state=s".into()],
+            "s"
+        )
+        .is_none());
+        assert!(parse_return(&[], "s").is_none());
+    }
+
+    #[test]
+    fn a_return_without_the_right_state_is_refused() {
+        // A web page that was not started from this app can't link its own bank here.
+        let forged = "golden://plaid?public_token=attacker&institution=Evil".to_string();
+        assert!(parse_return(std::slice::from_ref(&forged), "abc").is_none());
+        assert!(parse_return(&[format!("{forged}&state=wrong")], "abc").is_none());
+        assert!(parse_return(&[format!("{forged}&state=")], "abc").is_none());
+        // With no sign-in under way, nothing is accepted, even an empty state.
+        assert!(parse_return(&[format!("{forged}&state=")], "").is_none());
+        assert!(parse_return(&[forged], "").is_none());
+        assert!(parse_return(&["golden://plaid?public_token=p&state=abc".into()], "abc").is_some());
+    }
+
+    #[test]
+    fn each_state_is_different_and_url_safe() {
+        let a = new_state();
+        let b = new_state();
+        assert_ne!(a, b);
+        assert_eq!(a.len(), 32);
+        assert!(a.bytes().all(|c| c.is_ascii_hexdigit()));
     }
 }
 
