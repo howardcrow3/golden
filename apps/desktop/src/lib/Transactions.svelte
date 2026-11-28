@@ -1,6 +1,6 @@
 <script lang="ts">
   import { localToday } from "./localDate";
-  import { categoryChoices, exportBackup, exportTransactions, listTransactions, restoreBackup, setCategory, setNoteTags, setSplits, type Invoke, type TxnRow } from "./api";
+  import { categoryChoices, exportBackup, exportTransactions, exportTransactionsXlsx, listTransactions, restoreBackup, setCategory, setNoteTags, setSplits, type Invoke, type TxnRow } from "./api";
   import CategorySuggest from "./CategorySuggest.svelte";
   import { formatCents } from "./money";
   import { splitLeftCents, splitToParts, type SplitDraft } from "./splitMath";
@@ -56,11 +56,11 @@
     load();
   });
 
-  async function exportCsv() {
+  async function exportCsv(kind: "csv" | "xlsx" = "csv") {
     note = "";
     try {
       const [from, to] = range();
-      const path = await exportTransactions(from, to, invoke);
+      const path = kind === "xlsx" ? await exportTransactionsXlsx(from, to, invoke) : await exportTransactions(from, to, invoke);
       note = `Exported to ${path}`;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -209,7 +209,8 @@
   <label class="check"><input type="checkbox" bind:checked={onlyTodo} /> Only lines that need a category</label>
   <label class="check"><input type="checkbox" bind:checked={remember} /> Remember this merchant for next time</label>
   <label class="check">Search <input type="search" bind:value={query} placeholder="payee, category, amount…" aria-label="Search transactions" /></label>
-  <button type="button" onclick={exportCsv}>Export CSV</button>
+  <button type="button" onclick={() => exportCsv()}>Export CSV</button>
+  <button type="button" onclick={() => exportCsv("xlsx")}>Export Excel</button>
   <button type="button" onclick={backup}>Back up everything</button>
   <label class="check">Restore from backup <input type="file" accept=".json" aria-label="Backup file" onchange={restore} /></label>
 </div>

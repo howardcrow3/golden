@@ -503,6 +503,10 @@ export async function setSplits(id: number, parts: { category: string; cents: nu
 export async function exportTransactions(from: string, to: string, invoke?: Invoke): Promise<string> {
   return (await (await resolve(invoke))("export_transactions", { from, to })) as string;
 }
+/** An Excel workbook of the same lines, with amounts as numbers. */
+export async function exportTransactionsXlsx(from: string, to: string, invoke?: Invoke): Promise<string> {
+  return (await (await resolve(invoke))("export_transactions_xlsx", { from, to })) as string;
+}
 
 /** Save a report, table or data file into the Exports folder; returns where it went. */
 export async function saveReport(

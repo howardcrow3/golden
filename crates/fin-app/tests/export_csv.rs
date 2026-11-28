@@ -76,3 +76,33 @@ fn bad_dates_are_an_error() {
         .transactions_csv("10/01/2026", "2026-10-31")
         .is_err());
 }
+
+#[test]
+fn the_excel_export_has_number_amounts_and_safe_text() {
+    let app = loaded();
+    let book = app.transactions_xlsx("2026-10-01", "2026-10-31").unwrap();
+    assert_eq!(&book[..2], b"PK");
+    // Parts are stored uncompressed, so the sheet's XML can be read straight from the bytes.
+    let text = String::from_utf8_lossy(&book);
+    assert!(text.contains("<sheet name=\"Transactions\""));
+    assert!(text.contains("<v>5000</v>"), "amounts are numbers");
+    assert!(text.contains("<v>-15.49</v>"));
+    assert!(
+        text.contains(">=HYPERLINK(&quot;evil&quot;)</t>"),
+        "kept as text"
+    );
+    assert!(!text.contains("<f>"));
+    assert!(text.contains(">SMITH, JONES &amp; CO</t>"));
+    // Written to a new file each time, even after the trial.
+    app.db().set_setting("first_run", "2026-01-01").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let a = app
+        .export_transactions_xlsx(dir.path(), "2026-10-01", "2026-10-31")
+        .unwrap();
+    let b = app
+        .export_transactions_xlsx(dir.path(), "2026-10-01", "2026-10-31")
+        .unwrap();
+    assert_ne!(a, b);
+    assert!(a.to_string_lossy().ends_with(".xlsx"));
+    assert!(b.to_string_lossy().ends_with("(2).xlsx"));
+}
