@@ -2660,30 +2660,30 @@
      0.058
     ],
     [
-     2739900,
+     2740000,
      0.0675
     ],
     [
-     6484900,
+     6485000,
      0.0715
     ]
    ],
-   "std_single": 1365000,
-   "std_joint": 2730000,
+   "std_single": 2100000,
+   "std_joint": 4200000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Standard deduction and exemption phase-outs are not modelled. Follows the federal extra standard deduction at 65.",
+   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Follows the federal extra standard deduction at 65. 2026 rates, standard deduction ($15,700 single, $31,400 joint, $23,550 head of household) and $5,300 exemption from the May 2026 revised rate schedule. The standard deduction fades out over $100,000 to $175,000 single and $200,050 to $350,050 joint (2025 worksheet figures; heads of household use the single range here), leaving the exemption. The exemption phase-out over about $333,000 and the 2% surcharge over $1 million are not modelled, and the extra deduction at 65 is not faded with the rest.",
    "joint_brackets": [
     [
      0,
      0.058
     ],
     [
-     5484900,
+     5485000,
      0.0675
     ],
     [
-     12974900,
+     12975000,
      0.0715
     ]
    ],
@@ -2704,7 +2704,30 @@
    },
    "military": {},
    "aged_extra_single": 205000,
-   "aged_extra_joint": 165000
+   "aged_extra_joint": 165000,
+   "head_brackets": [
+    [
+     0,
+     0.058
+    ],
+    [
+     4110000,
+     0.0675
+    ],
+    [
+     9730000,
+     0.0715
+    ]
+   ],
+   "std_head": 2885000,
+   "std_phase_down": {
+    "start_single": 10000000,
+    "end_single": 17500000,
+    "floor_single": 530000,
+    "start_joint": 20005000,
+    "end_joint": 35005000,
+    "floor_joint": 1060000
+   }
   },
   "MI": {
    "name": "Michigan",
