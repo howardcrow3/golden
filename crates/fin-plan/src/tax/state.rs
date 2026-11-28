@@ -628,16 +628,27 @@ pub struct MilitaryRetirement {
     /// The household ceiling is reduced by the Social Security benefits received (Idaho).
     #[serde(default)]
     pub less_social_security: bool,
+    /// Only retirees this old or younger qualify (Colorado: 54); zero means no limit.
+    #[serde(default)]
+    pub max_age: u8,
+    /// The amount falls to nothing over `width` of federal AGI above the start, with the share
+    /// kept rounded to two places (Vermont: full to $125,000, none from $175,000).
+    #[serde(default)]
+    pub phaseout: Option<ExclusionPhaseout>,
+    /// When above zero the state gives a credit of this share of the amount instead of leaving
+    /// it out of income (Utah: 4.5%).
+    #[serde(default)]
+    pub credit_rate: f64,
 }
 
 impl MilitaryRetirement {
     /// The military pay left out for a return.
-    pub fn excluded(&self, fs: FilingStatus, inc: &RetirementIncome) -> Money {
+    pub fn excluded(&self, fs: FilingStatus, federal_agi: Money, inc: &RetirementIncome) -> Money {
         let zero = Money::ZERO;
         let mut out = zero;
         for (i, &pay) in inc.military.iter().enumerate() {
             let age = inc.ages.get(i).copied().unwrap_or(0);
-            if age < self.min_age as i32 {
+            if age < self.min_age as i32 || (self.max_age > 0 && age > self.max_age as i32) {
                 continue;
             }
             let mut cut = pay.max(zero);
@@ -657,6 +668,16 @@ impl MilitaryRetirement {
                 cap = (cap - inc.social_security.max(zero)).max(zero);
             }
             out = out.min(cap);
+        }
+        if let Some(p) = &self.phaseout {
+            let start = if fs == FilingStatus::MarriedJoint {
+                p.start_joint
+            } else {
+                p.start_single
+            };
+            let over = (federal_agi - start).max(zero).cents() as f64;
+            let keep = (1.0 - over / p.width.cents().max(1) as f64).max(0.0);
+            out = out.mul_rate((keep * 100.0).round() / 100.0);
         }
         out.min(inc.pension.max(zero))
     }
@@ -976,14 +997,23 @@ impl StateTaxYear {
         let before_ss = (federal_agi - ss).max(Money::ZERO);
         // Military pay the state exempts comes out first and is not counted again by the
         // pension rules below.
-        let military_cut = r
+        let mut military_cut = r
             .military
             .as_ref()
-            .map_or(Money::ZERO, |m| m.excluded(fs, ret));
+            .map_or(Money::ZERO, |m| m.excluded(fs, federal_agi, ret));
         let mut rest = ret.clone();
         rest.pension = (rest.pension - military_cut).max(Money::ZERO);
         rest.public_pension = rest.public_pension.min(rest.pension);
         let ret = &rest;
+        let military_credit = match &r.military {
+            Some(m) if m.credit_rate > 0.0 => {
+                // A credit instead: the pay stays in income (and out of the pension rules).
+                let c = military_cut.mul_rate(m.credit_rate);
+                military_cut = Money::ZERO;
+                c
+            }
+            _ => Money::ZERO,
+        };
         income = (income - military_cut).max(Money::ZERO);
         if let Some(a) = &r.age_allowance {
             // The allowance is cut by the other modifications above it: Social Security and
@@ -1035,6 +1065,9 @@ impl StateTaxYear {
             (Some(rule), true) => rule.credit(fs, income, ss),
             _ => Money::ZERO,
         };
+        // Utah allows the Social Security and military credits together, or the birth-year
+        // retirement credit instead of both.
+        credit += military_credit;
         if let Some(c) = &r.birth_year_credit {
             // One or the other: the household takes whichever is larger.
             credit = credit.max(c.total(fs, federal_agi, &ret.birth_years));
@@ -1648,6 +1681,37 @@ mod tests {
             go("MO", single, 80_000, 0, 10_000, &[30_000], &[66]),
             plain("MO", single, 70_000)
         );
+    }
+
+    #[test]
+    fn vermont_colorado_and_utah_military_rules() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |c: &str, agi: i64, pension: i64, mil: i64, age: i32| {
+            let r = RetirementIncome {
+                military: vec![m(mil)],
+                ..ret(pension, 0, &[age])
+            };
+            y.income_tax_with_retirement(c, single, m(agi), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |c: &str, inc: i64| y.income_tax(c, single, m(inc)).unwrap();
+        // Vermont: all of it up to $125,000 of AGI.
+        assert_eq!(go("VT", 120_000, 40_000, 40_000, 60), plain("VT", 80_000));
+        // At $150,000, half ((175,000 - 150,000) / 50,000).
+        assert_eq!(go("VT", 150_000, 40_000, 40_000, 60), plain("VT", 130_000));
+        // At $163,000 the share rounds to 0.24.
+        assert_eq!(
+            go("VT", 163_000, 40_000, 40_000, 60),
+            plain("VT", 163_000 - 9_600)
+        );
+        // From $175,000 none.
+        assert_eq!(go("VT", 180_000, 40_000, 40_000, 60), plain("VT", 180_000));
+        // Colorado: $15,000 at 54 or younger.
+        assert_eq!(go("CO", 80_000, 30_000, 30_000, 50), plain("CO", 65_000));
+        // Utah: a credit of 4.5% of the pay, the pay stays in income.
+        let ut = go("UT", 80_000, 30_000, 30_000, 50);
+        assert_eq!(ut, plain("UT", 80_000) - m(1_350));
     }
 
     #[test]
