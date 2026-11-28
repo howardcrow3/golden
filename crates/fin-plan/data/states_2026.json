@@ -2438,16 +2438,18 @@
      0.038
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Iowa exempts retirement income for anyone 55 or older (2023 law).",
+   "notes": "Iowa exempts retirement income for anyone 55 or older (2023 law). Iowa starts from federal taxable income, so the federal $16,100 / $32,200 standard deduction applies, plus a $40 personal credit per filer. 2026 figure from the Tax Foundation's 2026 state income tax table.",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
     "min_age": 55
-   }
+   },
+   "credit_single": 4000,
+   "credit_joint": 8000
   },
   "ID": {
    "name": "Idaho",
@@ -2455,6 +2457,10 @@
    "brackets": [
     [
      0,
+     0.0
+    ],
+    [
+     481100,
      0.053
     ]
    ],
@@ -2462,7 +2468,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The 2025 rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), which is not modelled; the zero bracket is close to the amount the standard deduction replaces. The enhanced senior deduction is not modelled. Military retired pay is deducted from age 62 up to $48,216 (single) / $72,324 (joint), less Social Security received (Form 39R line 8); the CSRS, Idaho police and firefighter pensions that share the deduction, and the disability route at any age, are not modelled. Following the federal standard deduction, the additional amount at 65 ($2,050 single, $1,650 each married in 2026) carries over.",
+   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), the 2025 amounts. The enhanced senior deduction is not modelled. Military retired pay is deducted from age 62 up to $48,216 (single) / $72,324 (joint), less Social Security received (Form 39R line 8); the CSRS, Idaho police and firefighter pensions that share the deduction, and the disability route at any age, are not modelled. Following the federal standard deduction, the additional amount at 65 ($2,050 single, $1,650 each married in 2026) carries over.",
    "military": {
     "min_age": 62,
     "cap_single": 4821600,
@@ -2470,7 +2476,17 @@
     "less_social_security": true
    },
    "aged_extra_single": 205000,
-   "aged_extra_joint": 165000
+   "aged_extra_joint": 165000,
+   "joint_brackets": [
+    [
+     0,
+     0.0
+    ],
+    [
+     962200,
+     0.053
+    ]
+   ]
   },
   "IL": {
    "name": "Illinois",
@@ -2481,11 +2497,11 @@
      0.0495
     ]
    ],
-   "std_single": 285000,
-   "std_joint": 570000,
+   "std_single": 292500,
+   "std_joint": 585000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)). Checked against the 2025 IL-1040 instructions: the personal exemption is $2,850 per person ($5,700 joint), used here as the deduction. Adds $1,000 for each filer 65 or older. No exemption when federal AGI is over $250,000 (single) / $500,000 (joint); the $1,000 at 65 is still given there, a small overstatement.",
+   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)). Checked against the 2025 IL-1040 instructions: the personal exemption, $2,925 per person for 2026 ($2,850 in 2025; Tax Foundation 2026 table), is used here as the deduction. Adds $1,000 for each filer 65 or older. No exemption when federal AGI is over $250,000 (single) / $500,000 (joint); the $1,000 at 65 is still given there, a small overstatement.",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
@@ -2572,11 +2588,11 @@
      0.035
     ]
    ],
-   "std_single": 327000,
-   "std_joint": 327000,
+   "std_single": 336000,
+   "std_joint": 336000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,270 (2025; the 2026 figure is not yet published). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check.",
+   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,360 for 2026 (Tax Foundation 2026 table; $3,270 in 2025). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2596,11 +2612,11 @@
      0.03
     ]
    ],
-   "std_single": 1250000,
-   "std_joint": 2500000,
+   "std_single": 1287500,
+   "std_joint": 2575000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Louisiana exempts up to $12,000 of pension, annuity and IRA distributions for each person 65 or older (IT-540 instructions, code 06E). Federal, state and teacher retirement benefits are fully exempt in Louisiana; enter them as a government pension.",
+   "notes": "Louisiana exempts up to $12,000 of pension, annuity and IRA distributions for each person 65 or older (IT-540 instructions, code 06E). Federal, state and teacher retirement benefits are fully exempt in Louisiana; enter them as a government pension. Standard deduction $12,875 / $25,750. 2026 figure from the Tax Foundation's 2026 state income tax table.",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2622,7 +2638,7 @@
      0.05
     ],
     [
-     100000000,
+     108315000,
      0.09
     ]
    ],
@@ -2630,7 +2646,7 @@
    "std_joint": 880000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "5% plus 4% surtax over $1M; the $4,400 ($8,800 joint) personal exemption stands in for the standard deduction."
+   "notes": "5% plus a 4% surtax over $1,083,150 (the 2025 indexed threshold; 2026 not confirmed); the $4,400 ($8,800 joint) personal exemption stands in for the standard deduction."
   },
   "MD": {
    "name": "Maryland",
@@ -2835,11 +2851,11 @@
      0.0425
     ]
    ],
-   "std_single": 580000,
-   "std_joint": 1160000,
+   "std_single": 590000,
+   "std_joint": 1180000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The 2025 rate is 4.25% and the exemption $5,800. From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Not modelled: the +$15,000 for Social Security exempt public work, unlimited public pensions for people born before 1946, and their $14,688 / $29,376 interest and dividend subtraction.",
+   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The rate is 4.25% and the 2026 exemption $5,900 (Tax Foundation 2026 table; $5,800 in 2025). From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Not modelled: the +$15,000 for Social Security exempt public work, unlimited public pensions for people born before 1946, and their $14,688 / $29,376 interest and dividend subtraction.",
    "retirement": {
     "min_age": 0,
     "household": {
@@ -3031,6 +3047,10 @@
    "brackets": [
     [
      0,
+     0.0
+    ],
+    [
+     1000000,
      0.04
     ]
    ],
@@ -3038,7 +3058,7 @@
    "std_joint": 1660000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 Form 80-100 instructions: Social Security and retirement income from federal, state, military and private retirement systems are exempt in total, so pensions are left out at any age; withdrawals taxed as early distributions are not, so IRA and 401(k) withdrawals are left out from age 60 (59 and a half).",
+   "notes": "Checked against the 2025 Form 80-100 instructions: Social Security and retirement income from federal, state, military and private retirement systems are exempt in total, so pensions are left out at any age; withdrawals taxed as early distributions are not, so IRA and 401(k) withdrawals are left out from age 60 (59 and a half). The first $10,000 of taxable income is taxed at 0% and the rest at 4.0% (2026).",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
