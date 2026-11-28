@@ -319,8 +319,11 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         };
 
         // Money needed after tax; withdrawals are grossed up by iterating (tax depends on withdrawals).
-        let retired = wages == Money::ZERO;
-        let portfolio = acc.total();
+        // A pension, an annuity or rental income is not a wage: its owner is still retired.
+        let retired = wages - exempt == Money::ZERO;
+        // The portfolio at the start of the year: the required distribution was already moved
+        // out of the pre-tax account above, but it is still the household's money.
+        let portfolio = acc.total() + rmd;
         if retired {
             match input.spending_rule {
                 SpendingRule::Fixed => {}
@@ -593,15 +596,13 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 depleted = Some(year);
             }
         } else {
-            // Surplus is saved: pre-tax contributions plus leftover cash to the taxable account.
-            acc.traditional += contrib - hsa_total;
-            acc.roth += hsa_total;
+            // Surplus is saved: leftover cash to the taxable account.
             acc.taxable += -gap;
         }
-        if contrib > Money::ZERO && gap > Money::ZERO {
-            acc.traditional += contrib - hsa_total;
-            acc.roth += hsa_total;
-        }
+        // Pre-tax contributions came out of pay, so they are saved whether or not the year
+        // also drew on savings.
+        acc.traditional += contrib - hsa_total;
+        acc.roth += hsa_total;
         acc.traditional += match_total;
 
         if i == 0 {
@@ -1424,5 +1425,81 @@ mod income_kind_tests {
         // The match adds to the plan's money; the HSA saves taxes and keeps the money.
         assert!(b.rows[0].end_balance > a.rows[0].end_balance);
         assert!(b.rows[0].income_tax <= a.rows[0].income_tax);
+    }
+}
+
+#[cfg(test)]
+mod review_tests {
+    use super::fixtures::couple;
+    use super::*;
+
+    #[test]
+    fn pre_tax_contributions_are_kept_in_a_year_that_draws_on_savings() {
+        // One year, a big one-off cost that savings cover: the 401(k) contribution was taken
+        // out of pay, so it must still land in the pre-tax account.
+        let mut i = couple();
+        i.horizon_age = 50;
+        i.one_time_costs = vec![OneTimeCost {
+            year: 2026,
+            amount: Money::from_dollars(30_000),
+        }];
+        let p = project(&i, &|_| 0.0);
+        assert_eq!(p.rows.len(), 1);
+        assert!(p.rows[0].withdrawals > Money::ZERO);
+        assert_eq!(
+            p.final_accounts.traditional,
+            Money::from_dollars(600_000 + 23_500)
+        );
+    }
+
+    #[test]
+    fn a_pension_does_not_stop_retirement_spending_rules() {
+        let mut i = couple();
+        i.streams[0].start_year = 2000;
+        i.streams[0].end_year = 2000;
+        i.streams.push(IncomeStream {
+            label: "pension".into(),
+            person: 0,
+            annual_gross: Money::from_dollars(10_000),
+            start_year: 2026,
+            end_year: 2100,
+            traditional_contribution: Money::ZERO,
+            self_employed: false,
+            payroll_exempt: true,
+            pension: true,
+            employer_match: Money::ZERO,
+            hsa: Money::ZERO,
+        });
+        i.spending_rule = SpendingRule::PercentOfPortfolio {
+            rate: 0.04,
+            floor: Money::ZERO,
+        };
+        let p = project(&i, &|_| 0.0);
+        // 4% of the $900,000 portfolio, not the fixed $110,000.
+        assert_eq!(p.rows[0].spending, Money::from_dollars(36_000));
+    }
+
+    #[test]
+    fn percent_of_portfolio_counts_the_required_distribution_still_in_the_account() {
+        // Age 80: a required distribution comes out first, but it is part of the portfolio the
+        // spending rule is a percent of.
+        let mut i = couple();
+        i.people[0].birth_date = fin_core::NaiveDate::from_ymd_opt(1946, 6, 15).unwrap();
+        i.streams.clear();
+        i.social_security.clear();
+        i.accounts = Accounts {
+            cash: Money::ZERO,
+            taxable: Money::ZERO,
+            taxable_gain_share: 0.0,
+            traditional: Money::from_dollars(1_000_000),
+            roth: Money::ZERO,
+        };
+        i.spending_rule = SpendingRule::PercentOfPortfolio {
+            rate: 0.04,
+            floor: Money::ZERO,
+        };
+        let p = project(&i, &|_| 0.0);
+        assert!(p.rows[0].rmd > Money::ZERO);
+        assert_eq!(p.rows[0].spending, Money::from_dollars(40_000));
     }
 }

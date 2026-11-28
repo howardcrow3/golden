@@ -150,8 +150,11 @@ pub fn yearly_costs(
         let sale_year = start_year + s;
         let price = h.value;
         let fees = price.mul_rate(h.selling_cost);
-        let gain = price - fees - h.basis;
-        let tax = taxable_gain_tax(fs, gain);
+        // The gain is taxed in the dollars of the sale year: the basis and the exclusion are
+        // fixed amounts, while the price has kept pace with inflation since today.
+        let nominal_price = price.mul_rate((1.0 + INFLATION).powi(s));
+        let nominal_gain = nominal_price - nominal_price.mul_rate(h.selling_cost) - h.basis;
+        let tax = real(taxable_gain_tax(fs, nominal_gain), s);
         let owed_then = real(
             balance_after(h.mortgage_balance, h.mortgage_rate, payoff, s),
             s,
@@ -256,6 +259,23 @@ mod tests {
         let proceeds = -at(&v, 2030);
         assert!(
             proceeds > Money::from_dollars(400_000) && proceeds < Money::from_dollars(460_000),
+            "{proceeds:?}"
+        );
+    }
+
+    #[test]
+    fn a_late_sale_taxes_the_nominal_gain_over_the_fixed_exclusion() {
+        // No loan, no fees, single. Sold in 20 years the home fetches 600k * 1.025^20 = ~983k
+        // in that year's dollars, a ~683k gain over the 300k paid: ~433k is taxed, ~65k of tax
+        // then, ~39.7k in today's dollars. The exclusion and the basis are not indexed.
+        let mut h = home();
+        h.mortgage_balance = Money::ZERO;
+        h.selling_cost = 0.0;
+        h.sell_year = Some(2046);
+        let v = yearly_costs(&h, FilingStatus::Single, 2026, 2060);
+        let proceeds = -at(&v, 2046);
+        assert!(
+            proceeds > Money::from_dollars(558_000) && proceeds < Money::from_dollars(562_000),
             "{proceeds:?}"
         );
     }

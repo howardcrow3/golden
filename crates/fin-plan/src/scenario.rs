@@ -53,7 +53,10 @@ pub fn resolve_with(
     }
     // Real spending drifts by `spending_change` a year after the first year; the engine takes one
     // flat figure, so use the average over the horizon.
-    let years = (r.horizon_age - 50).max(1) as f64;
+    let age_now = plan.people.first().map_or(50, |p| {
+        p.age_on(fin_core::NaiveDate::from_ymd_opt(plan.start_year, 12, 31).unwrap())
+    });
+    let years = (r.horizon_age - age_now).max(1) as f64;
     let avg = (1.0 + r.spending_change).powf(years / 2.0);
     plan.annual_spending = plan.annual_spending.mul_rate(avg);
     Ok((plan, r))
@@ -206,6 +209,21 @@ mod tests {
         let ret = rows.iter().find(|r| r.key == "real_return").unwrap();
         assert!(ret.high_final > ret.low_final);
         assert_eq!(rows[0].key, "real_return"); // return assumptions dominate a long horizon
+    }
+
+    #[test]
+    fn spending_drift_averages_over_the_years_actually_left() {
+        // Primary is 50 at the end of 2026 in the fixture; make them 70. Horizon 95 leaves 25
+        // years of drift after the first, so the average sits 12.5 years in.
+        let mut base = couple();
+        base.people[0].birth_date = fin_core::NaiveDate::from_ymd_opt(1956, 6, 15).unwrap();
+        let mut picks = Picks::new();
+        picks.insert("spending_change".into(), "Declines".into());
+        let (plan, _) = resolve(&base, &Assumptions::defaults(), &picks).unwrap();
+        assert_eq!(
+            plan.annual_spending,
+            base.annual_spending.mul_rate(0.99f64.powf(12.5))
+        );
     }
 
     #[test]
