@@ -210,3 +210,29 @@ fn the_prompt_offers_balances_rules_and_orders() {
         assert!(p.contains(&format!("\"kind\":\"{k}\"")), "{k}");
     }
 }
+
+#[test]
+fn income_changes_from_the_model_are_checked() {
+    let h = household();
+    let y = fin_core::Datelike::year(&today());
+    let ok = format!(
+        r#"{{"changes":[{{"kind":"income","label":"Military retired pay","person":0,"cents":3000000,"incomeKind":"military_pension","startYear":{y}}}]}}"#
+    );
+    let changes = parse_reply(&ok, &h, today()).unwrap();
+    assert!(
+        matches!(&changes[0], Change::Income { income_kind, .. } if income_kind == "military_pension")
+    );
+    // A missing start year is fine.
+    let no_start = r#"{"changes":[{"kind":"income","label":"Pension","person":0,"cents":100,"incomeKind":"pension"}]}"#;
+    assert!(parse_reply(no_start, &h, today()).is_some());
+    for bad in [
+        r#"{"changes":[{"kind":"income","label":"Pension","person":0,"cents":100,"incomeKind":"lottery"}]}"#.to_string(),
+        r#"{"changes":[{"kind":"income","label":"Pension","person":9,"cents":100,"incomeKind":"pension"}]}"#.to_string(),
+        r#"{"changes":[{"kind":"income","label":"Pension","person":0,"cents":0,"incomeKind":"pension"}]}"#.to_string(),
+        format!(r#"{{"changes":[{{"kind":"income","label":"Pension","person":0,"cents":100,"incomeKind":"pension","startYear":{}}}]}}"#, y - 5),
+    ] {
+        assert!(parse_reply(&bad, &h, today()).is_none(), "{bad}");
+    }
+    let p = ModelInterpreter::prompt("a pension", &h, today());
+    assert!(p.contains("\"kind\":\"income\"") && p.contains("military_pension"));
+}

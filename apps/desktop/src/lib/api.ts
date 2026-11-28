@@ -438,7 +438,15 @@ export type Change =
   | { kind: "plannedCost"; label: string; cents: number; year: number }
   | { kind: "setBalance"; account: "cash" | "taxable" | "traditional" | "roth"; cents: number }
   | { kind: "spendingRule"; rule: "fixed" | "guardrails" | "percent" | "vpw" }
-  | { kind: "withdrawalOrder"; order: "standard" | "traditional_first" | "roth_first" | "blended" };
+  | { kind: "withdrawalOrder"; order: "standard" | "traditional_first" | "roth_first" | "blended" }
+  | {
+      kind: "income";
+      label: string;
+      person: number;
+      cents: number;
+      incomeKind: "pension" | "public_pension" | "military_pension" | "other";
+      startYear: number | null;
+    };
 
 export interface WhatIfReply {
   understood: boolean;

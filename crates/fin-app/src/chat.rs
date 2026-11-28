@@ -47,7 +47,20 @@ pub enum Change {
     /// Which accounts are drawn first: "standard", "traditional_first", "roth_first" or "blended".
     #[serde(rename_all = "camelCase")]
     WithdrawalOrder { order: String },
+    /// A new lasting income without payroll tax, by kind ("pension", "public_pension",
+    /// "military_pension" or "other"), from `start_year` (or the kind's usual start) for life.
+    #[serde(rename_all = "camelCase")]
+    Income {
+        label: String,
+        person: usize,
+        cents: i64,
+        income_kind: String,
+        #[serde(default)]
+        start_year: Option<i32>,
+    },
 }
+
+pub const INCOME_KINDS: [&str; 4] = ["pension", "public_pension", "military_pension", "other"];
 
 pub const ACCOUNTS: [&str; 4] = ["cash", "taxable", "traditional", "roth"];
 pub const SPENDING_RULES: [&str; 4] = ["fixed", "guardrails", "percent", "vpw"];
@@ -105,6 +118,17 @@ impl Change {
             Change::SpendingRule { rule } => format!("Use {}", spending_rule_words(rule)),
             Change::WithdrawalOrder { order } => {
                 format!("Draw accounts in this order: {}", order_words(order))
+            }
+            Change::Income {
+                label,
+                person,
+                cents,
+                start_year,
+                ..
+            } => {
+                let name = h.people.get(*person).map_or("Someone", |p| p.name.as_str());
+                let from = start_year.map_or(String::new(), |y| format!(" from {y}"));
+                format!("{name}: {label} of ${} a year{from}", group(*cents / 100))
             }
             Change::PlannedCost {
                 label, cents, year, ..
@@ -174,6 +198,32 @@ impl Change {
                     return Err("Choose a withdrawal order from the list.".into());
                 }
                 h.withdrawal_order = order.clone();
+            }
+            Change::Income {
+                label,
+                person,
+                cents,
+                income_kind,
+                start_year,
+            } => {
+                if *person >= h.people.len() {
+                    return Err("No such person.".into());
+                }
+                if !INCOME_KINDS.contains(&income_kind.as_str()) {
+                    return Err("Choose an income type from the list.".into());
+                }
+                h.streams.push(StreamRow {
+                    label: label.clone(),
+                    person: *person,
+                    annual_cents: *cents,
+                    self_employed: false,
+                    kind: Some(income_kind.clone()),
+                    employer_match_cents: 0,
+                    hsa_cents: 0,
+                    start_year: *start_year,
+                    end_year: None,
+                    contribution_cents: 0,
+                });
             }
             Change::PlannedCost { label, cents, year } => h.events.push(EventRow {
                 label: label.clone(),
@@ -444,6 +494,70 @@ fn planned_costs(t: &str, today: NaiveDate) -> Vec<Change> {
         .collect()
 }
 
+/// A new pension-like income: "a pension of $2,000 a month", "$30k a year of military retired
+/// pay", "a state pension of $40,000 a year from 2032".
+fn income_stream(t: &str, person: usize, today: NaiveDate) -> Option<Change> {
+    let (kind, label) = if t.contains("military")
+        && ["retired pay", "retirement pay", "pension", "retirement"]
+            .iter()
+            .any(|w| t.contains(w))
+    {
+        ("military_pension", "Military retired pay")
+    } else if [
+        "government pension",
+        "state pension",
+        "federal pension",
+        "public pension",
+        "teacher pension",
+        "teachers pension",
+        "teacher's pension",
+        "teachers' pension",
+        "city pension",
+        "county pension",
+    ]
+    .iter()
+    .any(|w| t.contains(w))
+    {
+        ("public_pension", "Government pension")
+    } else if t.contains("pension") {
+        ("pension", "Pension")
+    } else if t.contains("annuity") {
+        ("pension", "Annuity")
+    } else {
+        return None;
+    };
+    let year_like = |c: i64| (today.year()..=today.year() + 60).contains(&((c / 100) as i32));
+    let cents = money_tokens(t).into_iter().next().or_else(|| {
+        ["pension of ", "annuity of ", "pay of ", "pension ", "get "]
+            .iter()
+            .find_map(|m| amount_after(t, m))
+            .filter(|c| !year_like(*c))
+    })?;
+    let monthly = t.contains("a month") || t.contains("per month") || t.contains("monthly");
+    let cents = if monthly { cents * 12 } else { cents };
+    if cents <= 0 {
+        return None;
+    }
+    let start_year = [
+        "from ",
+        "starting ",
+        "starting in ",
+        "beginning ",
+        "beginning in ",
+        "in ",
+    ]
+    .iter()
+    .find_map(|m| number_after(t, m))
+    .filter(|y| (today.year()..=today.year() + 60).contains(y));
+    Some(Change::Income {
+        label: label.into(),
+        person,
+        cents,
+        income_kind: kind.into(),
+        start_year,
+    })
+}
+
 /// "a 5% raise", "raise of 3.5%", "give me a 10 percent raise" as basis points.
 fn raise_bp(t: &str) -> Option<i32> {
     if !t.contains("raise") {
@@ -514,7 +628,13 @@ impl Interpreter for RuleInterpreter {
             changes.push(Change::Raise { person, bp });
         }
 
-        let planned = planned_costs(&t, today);
+        let income = income_stream(&t, person, today);
+        let planned = if income.is_some() {
+            vec![]
+        } else {
+            planned_costs(&t, today)
+        };
+        changes.extend(income);
         let has_planned = !planned.is_empty();
         changes.extend(planned);
 
@@ -741,7 +861,7 @@ impl WhatIfPrep {
     }
 }
 
-const HELP: &str = "I couldn't turn that into a change yet. Try things like: \"what if I retire at 65\", \"spend $80k a year\", \"what if the market crashes\", \"claim Social Security at 70\", \"move to Florida\", \"a bonus of $100k in 2028\", \"a 5% raise\", \"buy a house for $400k in 2030\", \"college costs $30k a year from 2036 to 2040\" or \"an inheritance of $200k in 2032\".";
+const HELP: &str = "I couldn't turn that into a change yet. Try things like: \"what if I retire at 65\", \"spend $80k a year\", \"what if the market crashes\", \"claim Social Security at 70\", \"move to Florida\", \"a bonus of $100k in 2028\", \"a 5% raise\", \"a pension of $2,000 a month\", \"buy a house for $400k in 2030\", \"college costs $30k a year from 2036 to 2040\" or \"an inheritance of $200k in 2032\".";
 
 impl App {
     /// Swap in a different interpreter (for example one backed by a language model).

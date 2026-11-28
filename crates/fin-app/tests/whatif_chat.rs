@@ -305,3 +305,73 @@ fn a_spending_cap_is_not_a_plan_horizon() {
         }]
     );
 }
+
+#[test]
+fn new_pensions_and_military_pay_become_lasting_income() {
+    let inc = |label: &str, cents: i64, kind: &str, start: Option<i32>| Change::Income {
+        label: label.into(),
+        person: 0,
+        cents,
+        income_kind: kind.into(),
+        start_year: start,
+    };
+    assert_eq!(
+        interpret("what if I get a pension of $2,000 a month"),
+        vec![inc("Pension", 2_400_000, "pension", None)]
+    );
+    assert_eq!(
+        interpret("add $30k a year of military retired pay"),
+        vec![inc(
+            "Military retired pay",
+            3_000_000,
+            "military_pension",
+            None
+        )]
+    );
+    assert_eq!(
+        interpret("a state pension of $40,000 a year starting in 2032"),
+        vec![inc(
+            "Government pension",
+            4_000_000,
+            "public_pension",
+            Some(2032)
+        )]
+    );
+    // An annuity from a year: not a planned cost in that year.
+    assert_eq!(
+        interpret("an annuity of $12k a year from 2030"),
+        vec![inc("Annuity", 1_200_000, "pension", Some(2030))]
+    );
+    // No amount, no change; and a year is not an amount.
+    assert!(interpret("what about a pension").is_empty());
+    assert!(interpret("pension in 2030").is_empty());
+}
+
+#[test]
+fn an_income_change_adds_a_stream_of_its_kind() {
+    let mut h = Household::sample();
+    let n = h.streams.len();
+    let c = Change::Income {
+        label: "Military retired pay".into(),
+        person: 0,
+        cents: 3_000_000,
+        income_kind: "military_pension".into(),
+        start_year: None,
+    };
+    assert!(c
+        .describe(&h)
+        .contains("Military retired pay of $30,000 a year"));
+    c.apply(&mut h).unwrap();
+    let s = h.streams.last().unwrap();
+    assert_eq!(h.streams.len(), n + 1);
+    assert_eq!(s.kind.as_deref(), Some("military_pension"));
+    assert_eq!(s.end_year, None);
+    let bad = Change::Income {
+        label: "x".into(),
+        person: 0,
+        cents: 1,
+        income_kind: "lottery".into(),
+        start_year: None,
+    };
+    assert!(bad.apply(&mut h).is_err());
+}
