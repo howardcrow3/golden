@@ -100,6 +100,7 @@ fn month_end(d: NaiveDate) -> NaiveDate {
 impl App {
     /// Save today's projected path and net worth as the starting point, replacing any earlier one.
     pub fn start_progress_tracking(&self) -> Result<(), String> {
+        self.require_edit()?;
         let today = (self.clock)();
         let h = self.household()?;
         let (plan, picks) = self.plan(today)?;
@@ -118,6 +119,7 @@ impl App {
     }
 
     pub fn stop_progress_tracking(&self) -> Result<(), String> {
+        self.require_edit()?;
         self.db.set_setting(KEY, "").map_err(|e| e.to_string())
     }
 
