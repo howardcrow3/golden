@@ -107,6 +107,10 @@ pub struct StateRules {
     /// Without it heads of household use `std_single`.
     #[serde(default)]
     pub std_head: Option<Money>,
+    /// Personal exemption per filer by income band (Ohio): `(income up to, amount)` in
+    /// ascending order; over the last band there is none. Replaces `std_single` / `std_joint`.
+    #[serde(default)]
+    pub exemption_steps: Option<Vec<(Money, Money)>>,
     /// The standard deduction shrinks as income rises (Alabama).
     #[serde(default)]
     pub std_phase_down: Option<StdPhaseDown>,
@@ -187,6 +191,10 @@ pub struct StateRules {
     pub aged_extra_single: Money,
     #[serde(default)]
     pub aged_extra_joint: Money,
+    /// A tax credit for each person 65 or older (California's senior exemption credit,
+    /// Kentucky's personal tax credit).
+    #[serde(default)]
+    pub aged_credit: Money,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -202,6 +210,10 @@ pub struct RetirementExclusion {
     /// (New York, Louisiana, Kansas).
     #[serde(default)]
     pub public_pension_full: bool,
+    /// Government pensions are exempt in full when someone on the return was born before this
+    /// year (Michigan: before 1946); the household cap then covers only the rest.
+    #[serde(default)]
+    pub public_pension_full_born_before: i32,
     /// Otherwise, government pensions up to this much a person are left out, apart from the
     /// other caps and with no income limit (Missouri: the $47,633 top Social Security benefit;
     /// West Virginia: $2,000).
@@ -866,7 +878,7 @@ impl RetirementExclusion {
     pub fn public_excluded(&self, inc: &RetirementIncome) -> Money {
         let zero = Money::ZERO;
         let public = inc.public_pension.max(zero).min(inc.pension.max(zero));
-        if self.public_pension_full {
+        if self.public_pension_full || self.public_full_by_birth(inc) {
             return public;
         }
         if self.public_pension_cap <= zero {
@@ -878,6 +890,11 @@ impl RetirementExclusion {
             cut -= inc.ss_subtracted.max(zero);
         }
         cut.max(zero)
+    }
+
+    fn public_full_by_birth(&self, inc: &RetirementIncome) -> bool {
+        let before = self.public_pension_full_born_before;
+        before > 0 && inc.birth_years.iter().any(|&y| y > 0 && y < before)
     }
 
     /// The household-level exclusion for a return with `income` (before the exclusion).
@@ -911,7 +928,12 @@ impl RetirementExclusion {
         } else {
             inc.distributions.max(Money::ZERO)
         };
-        let base = (inc.pension.max(Money::ZERO) + dist).min(cap);
+        let mut pension = inc.pension.max(Money::ZERO);
+        if self.public_full_by_birth(inc) {
+            // Left out in full by `public_excluded`.
+            pension -= inc.public_pension.max(Money::ZERO).min(pension);
+        }
+        let base = (pension + dist).min(cap);
         if income <= h.full_to {
             return base;
         }
@@ -1218,6 +1240,7 @@ impl StateTaxYear {
         // Utah allows the Social Security and military credits together, or the birth-year
         // retirement credit instead of both.
         credit += military_credit;
+        credit += Money::from_cents(r.aged_credit.cents() * aged_n);
         if let Some(c) = &r.birth_year_credit {
             // One or the other: the household takes whichever is larger.
             credit = credit.max(c.total(fs, federal_agi, &ret.birth_years));
@@ -1287,6 +1310,20 @@ impl StateTaxYear {
             (true, _, _) => r.std_joint,
             (false, true, Some(h)) => h,
             _ => r.std_single,
+        };
+        let std = match &r.exemption_steps {
+            Some(steps) => {
+                let each = steps
+                    .iter()
+                    .find(|(upto, _)| income <= *upto)
+                    .map_or(Money::ZERO, |(_, a)| *a);
+                if joint {
+                    each + each
+                } else {
+                    each
+                }
+            }
+            None => std,
         };
         let std = match &r.std_phase_down {
             Some(p) => p.apply(joint, std, income),
@@ -1794,6 +1831,42 @@ mod tests {
     }
 
     #[test]
+    fn ohio_exemption_steps_down_with_income() {
+        let y = StateTaxYear::y2026();
+        let r = y.rules("OH").unwrap();
+        let rate = r.brackets.0[1].rate;
+        let floor = r.brackets.0[1].floor;
+        let tax = |fs, inc: i64| y.income_tax("OH", fs, m(inc)).unwrap();
+        let want = |taxable: i64| (m(taxable) - floor).max(Money::ZERO).mul_rate(rate);
+        let single = FilingStatus::Single;
+        assert_eq!(tax(single, 40_000), want(40_000 - 2_400));
+        assert_eq!(tax(single, 40_001), want(40_001 - 2_150));
+        assert_eq!(tax(single, 80_001), want(80_001 - 1_900));
+        assert_eq!(tax(single, 750_000), want(750_000));
+        // Joint: two exemptions, on the same income bands.
+        assert_eq!(
+            tax(FilingStatus::MarriedJoint, 60_000),
+            want(60_000 - 4_300)
+        );
+    }
+
+    #[test]
+    fn california_and_kentucky_give_a_credit_at_65() {
+        let y = StateTaxYear::y2026();
+        let go = |c: &str, fs, ages: &[i32]| {
+            y.income_tax_with_retirement(c, fs, m(80_000), Money::ZERO, &ret(0, 0, ages))
+                .unwrap()
+        };
+        let joint = FilingStatus::MarriedJoint;
+        for (c, each) in [("CA", 158), ("KY", 40)] {
+            let plain = y.income_tax(c, joint, m(80_000)).unwrap();
+            assert_eq!(go(c, joint, &[60, 62]), plain, "{c}");
+            assert_eq!(go(c, joint, &[66, 62]), plain - m(each), "{c}");
+            assert_eq!(go(c, joint, &[66, 70]), plain - m(2 * each), "{c}");
+        }
+    }
+
+    #[test]
     fn states_add_an_extra_deduction_at_65() {
         let y = StateTaxYear::y2026();
         let go = |c: &str, fs: FilingStatus, agi: i64, ages: &[i32]| {
@@ -1833,8 +1906,8 @@ mod tests {
         );
         // Other states do not add it.
         assert_eq!(
-            go("CA", single, 80_000, &[70]),
-            y.income_tax("CA", single, m(80_000)).unwrap()
+            go("NC", single, 80_000, &[70]),
+            y.income_tax("NC", single, m(80_000)).unwrap()
         );
     }
 
@@ -2046,7 +2119,7 @@ mod tests {
         // Kansas: government pensions out, everything else taxed.
         assert_eq!(go("KS", 80_000, 40_000, 30_000, 0, 66), plain("KS", 50_000));
         // A state without the rule treats it like any pension.
-        assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 66), plain("CA", 80_000));
+        assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 64), plain("CA", 80_000));
     }
 
     #[test]
@@ -2087,7 +2160,7 @@ mod tests {
         );
         // California has no such rule.
         assert_eq!(
-            go("CA", single, 80_000, 0, 30_000, &[30_000], &[66]),
+            go("CA", single, 80_000, 0, 30_000, &[30_000], &[64]),
             plain("CA", single, 80_000)
         );
         // Idaho: nothing before 62.
@@ -2416,6 +2489,27 @@ mod tests {
     }
 
     #[test]
+    fn michigan_leaves_out_all_public_pensions_for_people_born_before_1946() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |public: i64, private: i64, born: i32| {
+            let r = RetirementIncome {
+                birth_years: vec![born],
+                public_pension: m(public),
+                ..ret(public + private, 0, &[2026 - born])
+            };
+            y.income_tax_with_retirement("MI", single, m(150_000), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("MI", single, m(inc)).unwrap();
+        // Born 1944: a $90,000 state pension is out in full, and $30,000 private
+        // pension still fits under the $65,897 cap.
+        assert_eq!(go(90_000, 30_000, 1944), plain(150_000 - 120_000));
+        // Born 1950: the same pensions share the one $65,897 cap.
+        assert_eq!(go(90_000, 30_000, 1950), plain(150_000 - 65_897));
+    }
+
+    #[test]
     fn michigan_older_tiers_can_take_a_standard_deduction_instead() {
         let y = StateTaxYear::y2026();
         let single = FilingStatus::Single;
@@ -2579,7 +2673,8 @@ mod tests {
     #[test]
     fn a_state_without_a_rule_taxes_everything() {
         let y = StateTaxYear::y2026();
-        let r = ret(20_000, 30_000, &[70]);
+        // Age 64, so California's senior credit stays out of it.
+        let r = ret(20_000, 30_000, &[64]);
         let plain = y
             .income_tax_with_ss("CA", FilingStatus::Single, m(50_000), Money::ZERO)
             .unwrap();

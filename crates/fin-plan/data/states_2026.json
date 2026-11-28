@@ -167,7 +167,7 @@
    "std_joint": 1180000,
    "joint_multiplier": 2.0,
    "approximate": false,
-   "notes": "2026 rate schedules, standard deduction ($5,900 single, $11,800 joint and head of household) and personal exemption credits ($158 / $316) from FTB Tax News, October 2026. Includes the 1% mental health surcharge on taxable income over $1 million for every filing status. Not modelled: the extra $158 senior exemption credit at 65 and the exemption credit phase-out at high incomes.",
+   "notes": "2026 rate schedules, standard deduction ($5,900 single, $11,800 joint and head of household) and personal exemption credits ($158 / $316) from FTB Tax News, October 2026. Includes the 1% mental health surcharge on taxable income over $1 million for every filing status. Each person 65 or older gets a further $158 senior exemption credit. Not modelled: the exemption credit phase-out at high incomes.",
    "joint_brackets": [
     [
      0,
@@ -254,7 +254,8 @@
    ],
    "std_head": 1180000,
    "credit_single": 15800,
-   "credit_joint": 31600
+   "credit_joint": 31600,
+   "aged_credit": 15800
   },
   "CO": {
    "name": "Colorado",
@@ -2592,7 +2593,7 @@
    "std_joint": 336000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,360 for 2026 (Tax Foundation 2026 table; $3,270 in 2025). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check.",
+   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,360 for 2026 (Tax Foundation 2026 table; $3,270 in 2025). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check. Each person 65 or older gets a $40 personal tax credit (Schedule ITC).",
    "retirement": {
     "min_age": 0,
     "caps": [
@@ -2601,7 +2602,8 @@
       "cap": 3111000
      }
     ]
-   }
+   },
+   "aged_credit": 4000
   },
   "LA": {
    "name": "Louisiana",
@@ -2855,7 +2857,7 @@
    "std_joint": 1180000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The rate is 4.25% and the 2026 exemption $5,900 (Tax Foundation 2026 table; $5,800 in 2025). From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Not modelled: the +$15,000 for Social Security exempt public work, unlimited public pensions for people born before 1946, and their $14,688 / $29,376 interest and dividend subtraction.",
+   "notes": "Checked against the 2025 MI-1040 booklet, Schedule 1 and Form 4884. The rate is 4.25% and the 2026 exemption $5,900 (Tax Foundation 2026 table; $5,800 in 2025). From 2026 the retirement and pension subtraction phases in to 100% for people born after 1945 and before 1967: up to $65,897 (single) / $131,794 (joint), the 2025 limit (it is indexed each year), less military and railroad benefits. When the older person was born 1946 to 1952 (Tier 2) the $20,000 / $40,000 Michigan Standard Deduction on all income is used instead when larger; for 1953 to 1958 (Tier 3) it is cut by taxable Social Security and the exemptions (Schedule 1 lines 25 and 26, Worksheet 2). Assumed: these choices carry on into 2026. Government pensions are left out in full when someone was born before 1946, with the cap covering only private pensions and withdrawals. Not modelled: the +$15,000 for Social Security exempt public work and, for people born before 1946, the $14,688 / $29,376 interest and dividend subtraction.",
    "retirement": {
     "min_age": 0,
     "household": {
@@ -2865,7 +2867,8 @@
      "cap_separate": 6589700,
      "full_to": 10000000000000,
      "steps": []
-    }
+    },
+    "public_pension_full_born_before": 1946
    },
    "birth_year_deductions": [
     {
@@ -3525,7 +3528,7 @@
    "std_joint": 430000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 IT 1040 booklet. Social Security is left out. Personal exemptions are $2,150 each here (the 2025 amount for income of $40,001 to $80,000; it is $2,400 below and $1,900 above). Retirement income credit (up to $200) and the $50 senior credit apply when income less exemptions is under $100,000; the test here uses income less taxable Social Security. The 2025 top rate of 3.125% over $100,000 and the 2026 flat rate are as in the table.",
+   "notes": "Checked against the 2025 IT 1040 booklet. Social Security is left out. Personal exemptions follow the 2025 income bands: $2,400 each up to $40,000, $2,150 to $80,000, $1,900 to $749,999 and none from $750,000. Retirement income credit (up to $200) and the $50 senior credit apply when income less exemptions is under $100,000; the test here uses income less taxable Social Security. The 2025 top rate of 3.125% over $100,000 and the 2026 flat rate are as in the table.",
    "retirement_credit": {
     "income_limit": 10000000,
     "steps": [
@@ -3557,7 +3560,21 @@
     "senior_age": 65,
     "senior_credit": 5000
    },
-   "military": {}
+   "military": {},
+   "exemption_steps": [
+    [
+     4000000,
+     240000
+    ],
+    [
+     8000000,
+     215000
+    ],
+    [
+     74999900,
+     190000
+    ]
+   ]
   },
   "OK": {
    "name": "Oklahoma",
