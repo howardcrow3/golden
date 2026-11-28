@@ -128,6 +128,14 @@ pub struct RetirementExclusion {
     /// (New York, Louisiana, Kansas).
     #[serde(default)]
     pub public_pension_full: bool,
+    /// Otherwise, government pensions up to this much a person are left out, apart from the
+    /// other caps and with no income limit (Missouri: the $47,633 top Social Security benefit;
+    /// West Virginia: $2,000).
+    #[serde(default)]
+    pub public_pension_cap: Money,
+    /// The public cap is reduced by the Social Security the state left out (Missouri).
+    #[serde(default)]
+    pub public_less_ss_subtracted: bool,
     /// Pre-tax account distributions are exempt in full once someone reaches `min_age`.
     #[serde(default)]
     pub distributions_full: bool,
@@ -628,10 +636,10 @@ impl RetirementExclusion {
         let mut out = zero;
         let mut left_p = pension;
         let mut left_d = dist;
-        if self.public_pension_full {
-            let public = inc.public_pension.max(zero).min(left_p);
-            out += public;
-            left_p -= public;
+        if self.public_pension_full || self.public_pension_cap > zero {
+            // Government pensions have their own rule (`public_excluded`) and do not use the
+            // caps below.
+            left_p -= inc.public_pension.max(zero).min(left_p);
         }
         if eligible {
             if self.pension_full {
@@ -666,6 +674,24 @@ impl RetirementExclusion {
             left_p + left_d
         };
         out + cap.min(pool)
+    }
+
+    /// The government pension left out, outside the caps and any income phase-out.
+    pub fn public_excluded(&self, inc: &RetirementIncome) -> Money {
+        let zero = Money::ZERO;
+        let public = inc.public_pension.max(zero).min(inc.pension.max(zero));
+        if self.public_pension_full {
+            return public;
+        }
+        if self.public_pension_cap <= zero {
+            return zero;
+        }
+        let n = inc.ages.len().max(1) as i64;
+        let mut cut = public.min(Money::from_cents(self.public_pension_cap.cents() * n));
+        if self.public_less_ss_subtracted {
+            cut -= inc.ss_subtracted.max(zero);
+        }
+        cut.max(zero)
     }
 
     /// The household-level exclusion for a return with `income` (before the exclusion).
@@ -892,7 +918,12 @@ impl StateTaxYear {
         }
         let before_ss = (federal_agi - ss).max(Money::ZERO);
         if let Some(a) = &r.age_allowance {
-            let sub = (ss - ss_in_state).max(Money::ZERO);
+            // The allowance is cut by the other modifications above it: Social Security and
+            // government pensions (West Virginia Schedule M lines 29 to 34).
+            let mut sub = (ss - ss_in_state).max(Money::ZERO);
+            if let Some(x) = &r.retirement {
+                sub += x.public_excluded(ret);
+            }
             income = (income - a.total(sub, &ret.ages)).max(Money::ZERO);
         }
         let mut ret_cut = Money::ZERO;
@@ -917,7 +948,7 @@ impl StateTaxYear {
                     cut = cut.mul_rate(1.0 - share);
                 }
             }
-            ret_cut = cut + x.household_excluded(fs, before, &ret);
+            ret_cut = cut + x.household_excluded(fs, before, &ret) + x.public_excluded(&ret);
         }
         let joint = fs == FilingStatus::MarriedJoint;
         for d in r.birth_year_deductions.iter().filter(|d| d.applies(ret)) {
@@ -1476,6 +1507,38 @@ mod tests {
         assert_eq!(go("KS", 80_000, 40_000, 30_000, 0, 66), plain("KS", 50_000));
         // A state without the rule treats it like any pension.
         assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 66), plain("CA", 80_000));
+    }
+
+    #[test]
+    fn missouri_and_west_virginia_cap_government_pensions_their_own_way() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |c: &str, agi: i64, ss: i64, pension: i64, public: i64, age: i32| {
+            let r = RetirementIncome {
+                public_pension: m(public),
+                ..ret(pension, 0, &[age])
+            };
+            y.income_tax_with_retirement(c, single, m(agi), m(ss), &r)
+                .unwrap()
+        };
+        let plain = |c: &str, inc: i64| y.income_tax(c, single, m(inc)).unwrap();
+        // Missouri: a $60,000 state pension, no benefits: $47,633 out, and no income limit.
+        assert_eq!(
+            go("MO", 100_000, 0, 60_000, 60_000, 66),
+            plain("MO", 100_000 - 47_633)
+        );
+        // Taxable benefits of $10,000 come out on their own and cut the public cap by as much.
+        assert_eq!(
+            go("MO", 110_000, 10_000, 60_000, 60_000, 66),
+            plain("MO", 100_000 - 37_633)
+        );
+        // The same pension from a private employer gets only the $6,000 private cap, which has
+        // phased out at this income.
+        assert_eq!(go("MO", 100_000, 0, 60_000, 0, 66), plain("MO", 100_000));
+        // West Virginia: $2,000 of a government pension at 60, and at 66 the $8,000 senior
+        // allowance is cut by that $2,000, so $8,000 in all.
+        assert_eq!(go("WV", 50_000, 0, 20_000, 20_000, 60), plain("WV", 48_000));
+        assert_eq!(go("WV", 50_000, 0, 20_000, 20_000, 66), plain("WV", 42_000));
     }
 
     #[test]
