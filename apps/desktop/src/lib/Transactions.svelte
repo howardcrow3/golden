@@ -93,7 +93,8 @@
     error = "";
     try {
       const r = await restoreBackup(await readBytes(f), invoke);
-      note = `Restored ${r.added} transactions (${r.skippedDuplicates} were already here)` +
+      note = `Restored ${r.added} transactions (${r.skippedDuplicates} were already here` +
+        (r.skippedClosed ? `, ${r.skippedClosed} left out because their month is closed` : "") + `)` +
         (r.settingsRestored.length ? ` and your ${r.settingsRestored.join(", ").replace("user_rules", "category rules")}.` : ".");
       await load();
     } catch (err) {
