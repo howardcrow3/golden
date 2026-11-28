@@ -6,10 +6,12 @@ import Settings from "./Settings.svelte";
 afterEach(cleanup);
 
 describe("Settings modal", () => {
-  it("opens from the sidebar, switches tabs and closes", async () => {
+  it("opens from the account menu, which lists every category at once", async () => {
     render(App);
     expect(screen.queryByRole("dialog")).toBeNull();
-    await fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    await fireEvent.click(screen.getByTestId("account"));
+    for (const name of ["Licence", "Privacy", "Terms", "About"]) expect(screen.getByRole("menuitem", { name })).toBeTruthy();
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Licence" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Licence" }).getAttribute("aria-selected")).toBe("true");
     await fireEvent.click(screen.getByRole("tab", { name: "About" }));
