@@ -33,7 +33,7 @@
    "std_joint": 1150000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 Form 40 booklet. Pensions from defined benefit plans (federal, state, military and employer plans under IRC 414(j)) are left out; IRA and 401(k) distributions are taxed. Social Security is not taxed. The standard deduction here is the amount for lower incomes combined with the personal exemption; the booklet cuts it as income rises (joint from $8,500 to $5,000 over $35,500), which is not modelled.",
+   "notes": "Checked against the 2025 Form 40 booklet. Pensions from defined benefit plans (federal, state, military and employer plans under IRC 414(j)) are left out; IRA and 401(k) distributions are taxed. Social Security is not taxed. The standard deduction here is the amount for lower incomes combined with the personal exemption ($3,000 + $1,500 single; $8,500 + $3,000 joint). The booklet's table cuts it from AGI $26,000 to $35,500 (to $2,500 single and $5,000 joint); the data follows that as a straight line (std_phase_down).",
    "joint_brackets": [
     [
      0,
@@ -51,6 +51,14 @@
    "retirement": {
     "pension_full": true,
     "min_age": 0
+   },
+   "std_phase_down": {
+    "start_single": 2600000,
+    "end_single": 3550000,
+    "floor_single": 400000,
+    "start_joint": 2600000,
+    "end_joint": 3550000,
+    "floor_joint": 800000
    }
   },
   "AR": {
@@ -227,7 +235,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint); above that the federally taxable amount is used (the state caps it at 25% of benefits, so this errs high). The $75,000 / $100,000 thresholds are checked against the 2025 CT-1040 instructions (Line 41, Rev. 12/25). The partial exemption above the line (Social Security Benefit Adjustment Worksheet) was not read.",
+   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint); above that the federally taxable amount is used (the state caps it at 25% of benefits, so this errs high). The $75,000 / $100,000 thresholds are checked against the 2025 CT-1040 instructions (Line 41, Rev. 12/25). Above the line, the 2025 Social Security Benefit Adjustment Worksheet leaves only 25% of the lesser of total benefits and line 9 of the federal worksheet in income; that needs total benefits, which the state calculation does not get, so the full federally taxable amount is used here (errs high).",
    "joint_brackets": [
     [
      0,
