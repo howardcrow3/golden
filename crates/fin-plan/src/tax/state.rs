@@ -297,6 +297,10 @@ pub struct SocialSecurityRule {
     pub credit_rate: f64,
     #[serde(default)]
     pub credit_phaseout_rate: f64,
+    /// Over the `exempt_agi` line the exempt share falls in a straight line to nothing across
+    /// this much more income (Vermont: $10,000; Minnesota: 10% per $4,000, so $40,000).
+    #[serde(default)]
+    pub phaseout_width: Money,
 }
 
 impl SocialSecurityRule {
@@ -348,6 +352,15 @@ impl SocialSecurityRule {
                 .count() as i64;
             let left = taxable_ss.cents() * (ages.len() as i64 - ok) / ages.len() as i64;
             return Money::from_cents(left);
+        }
+        if limit > Money::ZERO
+            && self.phaseout_width > Money::ZERO
+            && agi < limit + self.phaseout_width
+        {
+            // Part of the benefits is still left out, less the further income is over the line.
+            let into = (agi - limit).max(Money::ZERO).cents() as f64;
+            let share = into / self.phaseout_width.cents() as f64;
+            return taxable_ss.mul_rate(share.clamp(0.0, 1.0));
         }
         let per_person = ages
             .iter()
@@ -891,6 +904,25 @@ mod tests {
     }
 
     #[test]
+    fn vermont_and_minnesota_phase_the_benefit_exemption_out_over_the_line() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |c: &str, agi: i64, ben: i64| {
+            y.income_tax_with_retirement(c, single, m(agi), m(ben), &ret(0, 0, &[70]))
+                .unwrap()
+        };
+        let plain = |c: &str, inc: i64| y.income_tax(c, single, m(inc)).unwrap();
+        // Vermont: all of it out under $55,000, half at $60,000, none from $65,000.
+        assert_eq!(go("VT", 55_000, 20_000), plain("VT", 35_000));
+        assert_eq!(go("VT", 60_000, 20_000), plain("VT", 50_000));
+        assert_eq!(go("VT", 65_000, 20_000), plain("VT", 65_000));
+        // Minnesota: 10% less is left out for each $4,000 over $84,490.
+        assert_eq!(go("MN", 84_490, 20_000), plain("MN", 64_490));
+        assert_eq!(go("MN", 104_490, 20_000), plain("MN", 94_490));
+        assert_eq!(go("MN", 124_490, 20_000), plain("MN", 124_490));
+    }
+
+    #[test]
     fn colorado_and_montana_subtract_part_of_the_benefits() {
         let y = StateTaxYear::y2026();
         let t = |c: &str, fs, ben: i64, ages: &[i32]| {
@@ -902,9 +934,10 @@ mod tests {
             .income_tax("CO", FilingStatus::Single, m(100_000 - 30_000))
             .unwrap();
         assert_eq!(t("CO", FilingStatus::Single, 30_000, &[66]), co);
-        // Montana: $5,500 deduction for a single filer.
+        // Montana's 2025 Form 2 has no Social Security subtraction (only Tier I railroad
+        // benefits), so the federally taxable amount stays in.
         let mt = y
-            .income_tax("MT", FilingStatus::Single, m(100_000 - 5_500))
+            .income_tax("MT", FilingStatus::Single, m(100_000))
             .unwrap();
         assert_eq!(t("MT", FilingStatus::Single, 30_000, &[66]), mt);
     }
