@@ -78,11 +78,16 @@ impl App {
     pub fn withholding_check(&self) -> Result<WithholdingCheck, String> {
         let h = self.household()?;
         let recorded = load(self)?;
-        // Ongoing pay only: one-time amounts (a bonus) have their own withholding rules.
+        // Ongoing pay from a job only: one-time amounts (a bonus) have their own withholding
+        // rules, and pensions, rent and business income come with no paystub.
         let jobs: Vec<_> = h
             .streams
             .iter()
             .filter(|s| s.start_year.is_none() && s.end_year.is_none() && s.annual_cents > 0)
+            .filter(|s| {
+                let kind = s.kind.as_deref().unwrap_or("").trim().to_ascii_lowercase();
+                matches!(kind.as_str(), "" | "wages") && !s.self_employed
+            })
             .collect();
         let wages: i64 = jobs
             .iter()
