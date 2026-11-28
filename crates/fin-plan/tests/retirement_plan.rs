@@ -131,3 +131,29 @@ fn taxes_are_positive_every_working_year_and_balance_never_negative() {
         }
     }
 }
+
+#[test]
+fn alabama_takes_the_years_federal_tax_off_state_income() {
+    use fin_plan::tax::state::RetirementIncome;
+    use fin_plan::tax::StateTaxYear;
+    // In 2026 wages cover spending, so the return is the same in both states and the difference
+    // in income tax is Alabama's tax alone.
+    let al = project_constant(&household(120_000, "AL"), 0.04);
+    let tx = project_constant(&household(120_000, "TX"), 0.04);
+    let (a, t) = (&al.rows[0], &tx.rows[0]);
+    assert_eq!(a.agi, t.agi);
+    let al_tax = a.income_tax - t.income_tax;
+    let ret = RetirementIncome {
+        ages: vec![56, 54],
+        ..Default::default()
+    };
+    let without = StateTaxYear::y2026()
+        .income_tax_with_retirement("AL", FilingStatus::MarriedJoint, a.agi, Money::ZERO, &ret)
+        .unwrap();
+    // The federal tax on about $200,000 is well over $10,000, and Alabama's top rate is 5%.
+    assert!(al_tax > Money::ZERO);
+    assert!(
+        without - al_tax > Money::from_dollars(500),
+        "{without:?} {al_tax:?}"
+    );
+}
