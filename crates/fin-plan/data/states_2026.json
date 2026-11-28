@@ -3266,7 +3266,7 @@
    "std_joint": 1605000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. NYC and Yonkers taxes are not included. New York excludes up to $20,000 of pension and annuity income per person aged 59 and a half or more (modelled from 60). The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Pensions from New York State, its local governments and the federal government are fully exempt (IT-201-I, line 26); a government pension entered in Golden is treated that way, and pensions from other states' governments should be entered as ordinary pensions.",
+   "notes": "Includes the benefit recapture for AGI over $107,650 (IT-201-I 2025 tax computation worksheets). Rates are the 2026 schedule; recapture amounts are derived from them. New York City tax and the Yonkers surcharge (16.75% of state tax) are added when chosen as the city tax. New York excludes up to $20,000 of pension and annuity income per person aged 59 and a half or more (modelled from 60). The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Pensions from New York State, its local governments and the federal government are fully exempt (IT-201-I, line 26); a government pension entered in Golden is treated that way, and pensions from other states' governments should be entered as ordinary pensions.",
    "joint_brackets": [
     [
      0,

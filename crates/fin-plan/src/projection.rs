@@ -418,7 +418,13 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 .with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
                 .unwrap_or((Money::ZERO, Money::ZERO));
             let lt = locality.map_or(Money::ZERO, |l| {
-                crate::local::tax(l, input.filing, employee_wages + se_net, st_taxable)
+                crate::local::tax_with_state(
+                    l,
+                    input.filing,
+                    employee_wages + se_net,
+                    st_taxable,
+                    st,
+                )
             });
             f.income_tax + st + lt
         };
@@ -1600,6 +1606,19 @@ mod income_kind_tests {
         let mut i = retired_couple("PA");
         i.locality = Some("philadelphia".into());
         assert_eq!(first_year(&i).income_tax, pa.income_tax);
+        // Yonkers adds 16.75% of the New York tax: compare with Texas to isolate the state's.
+        let ny = first_year(&retired_couple("NY"));
+        let tx = first_year(&retired_couple("TX"));
+        let mut i = retired_couple("NY");
+        i.locality = Some("yonkers".into());
+        let yk = first_year(&i);
+        let want = (ny.income_tax - tx.income_tax).mul_rate(0.1675);
+        // Paying it takes a larger withdrawal, which is taxed too, so the rise is a little more.
+        let extra = yk.income_tax - ny.income_tax;
+        assert!(
+            extra >= want && extra < want.mul_rate(1.5),
+            "{extra:?} {want:?}"
+        );
         // A locality from another state is ignored.
         let mut i = retired_couple("TX");
         i.locality = Some("howard_md".into());

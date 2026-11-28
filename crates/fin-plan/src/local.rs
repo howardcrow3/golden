@@ -9,6 +9,8 @@
 //! top rate only).
 //! Indiana's 92 county rates are from Departmental Notice #1 (effective Oct. 1, 2026); the
 //! county tax is on the same income as the state tax.
+//! Yonkers' resident surcharge is 16.75% of the New York State tax, its rate since 2015; check it
+//! against the IT-201-I Yonkers worksheet each year.
 //! New York City's bracket thresholds and the Ohio and Michigan rates are the usual published
 //! figures that still need checking against an official page; re-check them each year.
 use fin_core::Money;
@@ -21,6 +23,8 @@ pub enum Base {
     Earned,
     /// Everything that is taxable income.
     Taxable,
+    /// A share of the state income tax (Yonkers' resident surcharge).
+    StateTax,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -39,6 +43,13 @@ pub const LOCALITIES: &[Locality] = &[
         state: "NY",
         rate: 0.03876,
         base: Base::Taxable,
+    },
+    Locality {
+        key: "yonkers",
+        name: "Yonkers (resident surcharge)",
+        state: "NY",
+        rate: 0.1675,
+        base: Base::StateTax,
     },
     Locality {
         key: "philadelphia",
@@ -943,8 +954,20 @@ fn frederick(fs: FilingStatus, taxable: Money) -> Money {
 }
 
 /// The tax for a year. `earned` is wages and self-employment; `taxable` is taxable income
-/// after the state's deductions (use what the plan knows; it is approximate).
+/// after the state's deductions (use what the plan knows; it is approximate). A surcharge on
+/// the state tax is nothing here; use `tax_with_state`.
 pub fn tax(loc: &Locality, fs: FilingStatus, earned: Money, taxable: Money) -> Money {
+    tax_with_state(loc, fs, earned, taxable, Money::ZERO)
+}
+
+/// As `tax`, with the year's state income tax for surcharges on it.
+pub fn tax_with_state(
+    loc: &Locality,
+    fs: FilingStatus,
+    earned: Money,
+    taxable: Money,
+    state_tax: Money,
+) -> Money {
     match loc.key {
         "nyc" => return nyc(fs, taxable),
         "anne_arundel_md" => return anne_arundel(fs, taxable),
@@ -954,6 +977,7 @@ pub fn tax(loc: &Locality, fs: FilingStatus, earned: Money, taxable: Money) -> M
     let base = match loc.base {
         Base::Earned => earned,
         Base::Taxable => taxable,
+        Base::StateTax => state_tax,
     };
     base.max(Money::ZERO).mul_rate(loc.rate)
 }
@@ -1029,6 +1053,14 @@ mod tests {
             d(1_650)
         );
         assert_eq!(t("frederick_md", FilingStatus::Single, 200_000), d(6_400));
+    }
+
+    #[test]
+    fn yonkers_charges_a_share_of_the_state_tax() {
+        let y = find("yonkers").unwrap();
+        let f = FilingStatus::Single;
+        assert_eq!(tax_with_state(y, f, d(0), d(80_000), d(4_000)), d(670));
+        assert_eq!(tax(y, f, d(80_000), d(80_000)), Money::ZERO);
     }
 
     #[test]
