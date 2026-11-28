@@ -552,8 +552,10 @@ impl Household {
                 },
             )
         };
-        let local_costs = match self.locality.as_deref().filter(|k| !k.is_empty()) {
-            None => vec![],
+        // City and county taxes are figured inside the projection, on the year's wages and
+        // state taxable income (pensions and withdrawals included).
+        let locality = match self.locality.as_deref().filter(|k| !k.is_empty()) {
+            None => None,
             Some(key) => {
                 let loc = fin_plan::local::find(key)
                     .ok_or_else(|| format!("Unknown city or county tax: {key}."))?;
@@ -563,25 +565,7 @@ impl Household {
                         loc.name, loc.state, self.state
                     ));
                 }
-                let std = fin_plan::tax::FederalTaxYear::y2026().standard_deduction(filing);
-                let streams_ref = &streams;
-                (year..=year + 95 - people.first().map_or(40, |p| age_in(p, today)))
-                    .filter_map(|y| {
-                        let earned = streams_ref
-                            .iter()
-                            .filter(|s| s.start_year <= y && y <= s.end_year)
-                            .map(|s| s.annual_gross)
-                            .fold(Money::ZERO, |a, b| a + b);
-                        let t = fin_plan::local::tax(
-                            loc,
-                            filing,
-                            earned,
-                            (earned - std).max(Money::ZERO),
-                        );
-                        (t > Money::ZERO)
-                            .then_some(fin_plan::projection::OneTimeCost { year: y, amount: t })
-                    })
-                    .collect::<Vec<_>>()
+                Some(loc.key.to_string())
             }
         };
         let health_costs = if self.health {
@@ -673,7 +657,6 @@ impl Household {
                 costs.extend(health_costs);
                 costs.extend(home_costs);
                 costs.extend(family_costs);
-                costs.extend(local_costs);
                 costs
             },
             horizon_age: 95,
@@ -683,6 +666,7 @@ impl Household {
             medicare: self.medicare,
             charity: Money::from_cents(self.giving_cents.max(0)),
             traditional_split,
+            locality,
         })
     }
 }

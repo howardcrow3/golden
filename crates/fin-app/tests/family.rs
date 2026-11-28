@@ -58,13 +58,23 @@ fn old_saved_households_without_children_still_load() {
 }
 
 #[test]
-fn a_city_tax_adds_yearly_costs_while_earning() {
+fn a_city_tax_is_added_to_income_tax_while_earning() {
+    use fin_plan::projection::project_constant;
     let mut h = Household::sample();
     h.state = "PA".into();
+    let without = project_constant(&h.plan_input(today()).unwrap(), 0.04);
     h.locality = Some("philadelphia".into());
     let p = h.plan_input(today()).unwrap();
-    let first = p.one_time_costs.iter().find(|c| c.year == 2026).unwrap();
-    assert!(first.amount.cents() > 0);
+    assert_eq!(p.locality.as_deref(), Some("philadelphia"));
+    let with = project_constant(&p, 0.04);
+    // Philadelphia's 3.735% wage tax on the first year's wages.
+    let wages = with.rows[0].earned;
+    let extra = with.rows[0].income_tax - without.rows[0].income_tax;
+    assert!(wages > fin_core::Money::ZERO);
+    assert!(
+        (extra.cents() - wages.mul_rate(0.03735).cents()).abs() <= 100,
+        "{extra:?}"
+    );
 }
 
 #[test]

@@ -190,7 +190,7 @@
       <label>City or county tax
         <select bind:value={f.locality} aria-label="City or county tax">
           <option value="">None</option>
-          {#each LOCALITIES.filter((l) => l.state === f!.state.trim().toUpperCase()) as l}
+          {#each LOCALITIES.filter((l) => l.state === f!.state.trim().toUpperCase()).sort((a, b) => a.name.localeCompare(b.name)) as l}
             <option value={l.key}>{l.name}</option>
           {/each}
         </select>

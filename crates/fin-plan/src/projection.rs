@@ -150,6 +150,8 @@ pub struct PlanInput {
     /// to 1). Required distributions start at each owner's own age and the early-withdrawal
     /// penalty follows each owner's age. Empty means the primary person owns all of it.
     pub traditional_split: Vec<f64>,
+    /// A city or county income tax (a key from `local::LOCALITIES`) in the household's state.
+    pub locality: Option<String>,
 }
 
 impl PlanInput {
@@ -315,6 +317,11 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
 
         // Tax on income that does not depend on withdrawals.
         let employee_wages = wages - se_net - exempt;
+        let locality = input
+            .locality
+            .as_deref()
+            .and_then(crate::local::find)
+            .filter(|l| l.state.eq_ignore_ascii_case(&input.state));
         let mut se = crate::tax::federal::SelfEmploymentTax {
             tax: Money::ZERO,
             deduction: Money::ZERO,
@@ -407,10 +414,13 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     .collect(),
                 federal_tax: f.income_tax,
             };
-            let st = states
-                .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
-                .unwrap_or(Money::ZERO);
-            f.income_tax + st
+            let (st, st_taxable) = states
+                .with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
+                .unwrap_or((Money::ZERO, Money::ZERO));
+            let lt = locality.map_or(Money::ZERO, |l| {
+                crate::local::tax(l, input.filing, employee_wages + se_net, st_taxable)
+            });
+            f.income_tax + st + lt
         };
 
         // Money needed after tax; withdrawals are grossed up by iterating (tax depends on withdrawals).
@@ -842,6 +852,7 @@ pub(crate) mod fixtures {
             medicare: false,
             charity: Money::ZERO,
             traditional_split: vec![],
+            locality: None,
         }
     }
 }
@@ -1574,6 +1585,28 @@ mod income_kind_tests {
         // Illinois taxes none of the pre-tax withdrawals, so only the federal tax remains.
         assert_eq!(il.income_tax, tx.income_tax);
         assert!(first_year(&retired_couple("CA")).income_tax > il.income_tax);
+    }
+
+    #[test]
+    fn county_tax_reaches_retirement_withdrawals_but_a_wage_tax_does_not() {
+        // Maryland retirees drawing on an IRA pay county tax on Maryland taxable income.
+        let md = first_year(&retired_couple("MD"));
+        let mut i = retired_couple("MD");
+        i.locality = Some("howard_md".into());
+        let county = first_year(&i);
+        assert!(county.income_tax > md.income_tax);
+        // Philadelphia's tax is on wages only, so retirees pay none of it.
+        let pa = first_year(&retired_couple("PA"));
+        let mut i = retired_couple("PA");
+        i.locality = Some("philadelphia".into());
+        assert_eq!(first_year(&i).income_tax, pa.income_tax);
+        // A locality from another state is ignored.
+        let mut i = retired_couple("TX");
+        i.locality = Some("howard_md".into());
+        assert_eq!(
+            first_year(&i).income_tax,
+            first_year(&retired_couple("TX")).income_tax
+        );
     }
 
     #[test]

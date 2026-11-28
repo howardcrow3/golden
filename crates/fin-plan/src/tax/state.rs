@@ -1073,6 +1073,20 @@ impl StateTaxYear {
         taxable_ss: Money,
         ret: &RetirementIncome,
     ) -> Option<Money> {
+        self.with_retirement(code, fs, federal_agi, taxable_ss, ret)
+            .map(|(tax, _)| tax)
+    }
+
+    /// As `income_tax_with_retirement`, also giving the state taxable income (after the
+    /// standard deduction or exemption), which county taxes are figured on (Maryland, Indiana).
+    pub fn with_retirement(
+        &self,
+        code: &str,
+        fs: FilingStatus,
+        federal_agi: Money,
+        taxable_ss: Money,
+        ret: &RetirementIncome,
+    ) -> Option<(Money, Money)> {
         let r = self.rules(code)?;
         let ss = taxable_ss.max(Money::ZERO);
         let ss_in_state = match (&r.social_security, r.taxes_social_security) {
@@ -1178,7 +1192,7 @@ impl StateTaxYear {
         let fed_cut = r.federal_tax_deduction.as_ref().map_or(Money::ZERO, |d| {
             d.amount(fs, income, federal_agi, ret.federal_tax)
         });
-        let tax = self.tax_less(code, fs, income, fed_cut)?;
+        let (tax, taxable) = self.tax_and_taxable(code, fs, income, fed_cut)?;
         let mut credit = match (&r.social_security, r.taxes_social_security) {
             (Some(rule), true) => rule.credit(fs, income, ss),
             _ => Money::ZERO,
@@ -1209,7 +1223,7 @@ impl StateTaxYear {
                     &ret.ages,
                 )
             });
-        Some((tax - credit - rc - lirc).max(Money::ZERO))
+        Some(((tax - credit - rc - lirc).max(Money::ZERO), taxable))
     }
 
     /// State income tax on `federal_agi`-like income for a resident of `code`.
@@ -1221,9 +1235,20 @@ impl StateTaxYear {
     /// As `income_tax`, with `less` also taken off taxable income (but not off the income that
     /// the standard deduction, exemption and recapture rules look at).
     fn tax_less(&self, code: &str, fs: FilingStatus, income: Money, less: Money) -> Option<Money> {
+        self.tax_and_taxable(code, fs, income, less).map(|(t, _)| t)
+    }
+
+    /// The tax and the taxable income it was figured on.
+    fn tax_and_taxable(
+        &self,
+        code: &str,
+        fs: FilingStatus,
+        income: Money,
+        less: Money,
+    ) -> Option<(Money, Money)> {
         let r = self.rules(code)?;
         if r.kind == StateKind::None {
-            return Some(Money::ZERO);
+            return Some((Money::ZERO, Money::ZERO));
         }
         let joint = fs == FilingStatus::MarriedJoint;
         if let Some(t) = &r.agi_tables {
@@ -1234,7 +1259,10 @@ impl StateTaxYear {
                 (_, true, _, Some(j)) => j,
                 _ => &r.brackets,
             };
-            return Some(t.tax(fs, income, table.tax(taxable)).max(Money::ZERO));
+            return Some((
+                t.tax(fs, income, table.tax(taxable)).max(Money::ZERO),
+                taxable,
+            ));
         }
         let std = if joint { r.std_joint } else { r.std_single };
         let std = match &r.std_phase_down {
@@ -1279,7 +1307,7 @@ impl StateTaxYear {
                 tax = tax.max(income.mul_rate(f.rate));
             }
         }
-        Some((tax - credit).max(Money::ZERO))
+        Some(((tax - credit).max(Money::ZERO), taxable))
     }
 }
 
