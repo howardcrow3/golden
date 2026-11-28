@@ -49,6 +49,18 @@ pub enum Metric {
     Income,
 }
 
+/// What makes an imported row the same as one already stored; `#n` is appended per copy.
+fn import_key(t: &NewTxn) -> String {
+    format!(
+        "{}|{}|{}|{}|{}",
+        t.account.0,
+        t.day,
+        t.amount.cents(),
+        t.payee,
+        t.memo
+    )
+}
+
 fn grain_col(g: Grain) -> &'static str {
     match g {
         Grain::Week => "week_key",
@@ -156,14 +168,7 @@ impl Db {
             Some(c) => Some(self.category_id(c)?),
             None => None,
         };
-        let key = format!(
-            "{}|{}|{}|{}|{}",
-            t.account.0,
-            t.day,
-            t.amount.cents(),
-            t.payee,
-            t.memo
-        );
+        let key = import_key(t);
         let n = self.conn.execute(
             "INSERT OR IGNORE INTO txn(account_id, day, week_key, month_key, quarter_key, year_key, cents, payee, memo, category_id, stream, dedupe_key)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
@@ -211,14 +216,7 @@ impl Db {
         let dedupes: Vec<String> = rows
             .iter()
             .map(|t| {
-                let key = format!(
-                    "{}|{}|{}|{}|{}",
-                    t.account.0,
-                    t.day,
-                    t.amount.cents(),
-                    t.payee,
-                    t.memo
-                );
+                let key = import_key(t);
                 let seq = seen.entry(key.clone()).or_insert(0);
                 let dedupe = format!("{key}#{seq}");
                 *seq += 1;
@@ -320,6 +318,19 @@ impl Db {
         }
         tx.commit()?;
         Ok(summary)
+    }
+
+    /// The stored row for the `copy`-th identical `t` (counting from 0) of an `import_batch`, if
+    /// it was added then or by an earlier import of the same rows.
+    pub fn imported_id(&self, t: &NewTxn, copy: usize) -> Result<Option<i64>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT id FROM txn WHERE dedupe_key=?1",
+                [format!("{}#{copy}", import_key(t))],
+                |r| r.get(0),
+            )
+            .optional()?)
     }
 
     /// Transactions from earlier imports near the dates of `rows`, each of which may stand for

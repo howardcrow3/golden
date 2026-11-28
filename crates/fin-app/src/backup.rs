@@ -45,17 +45,30 @@ impl App {
             .txns_between(parse_day("1900-01-01")?, parse_day("2200-01-01")?)
             .map_err(|e| e.to_string())?;
         txns.sort_by(|a, b| a.day.cmp(&b.day).then(a.id.cmp(&b.id)));
+        let extras = self.db.txn_extras().map_err(|e| e.to_string())?;
+        let splits = self.db.all_splits().map_err(|e| e.to_string())?;
         let transactions: Vec<Value> = txns
             .into_iter()
             .map(|t| {
-                json!({
+                let mut row = json!({
                     "day": t.day.format("%Y-%m-%d").to_string(),
                     "account": names.get(&t.account.0).cloned().unwrap_or_default(),
                     "payee": t.payee,
                     "memo": t.memo,
                     "amountCents": t.amount.cents(),
                     "category": t.category,
-                })
+                });
+                if let Some((note, tags)) = extras.get(&t.id) {
+                    row["note"] = json!(note);
+                    row["tags"] = json!(tags);
+                }
+                if let Some(parts) = splits.get(&t.id) {
+                    row["splits"] = parts
+                        .iter()
+                        .map(|(c, n)| json!({"category": c, "cents": n}))
+                        .collect();
+                }
+                row
             })
             .collect();
         let mut settings = serde_json::Map::new();
@@ -163,6 +176,7 @@ impl App {
             });
         }
         let summary = self.db.import_batch(&rows).map_err(|e| e.to_string())?;
+        self.restore_txn_extras(&v, &rows)?;
         // A refund and its purchase are paired after every import; a restore is one too, or
         // both would count again in income and spending.
         self.mark_refunds()?;
@@ -187,6 +201,58 @@ impl App {
             skipped_duplicates: summary.skipped,
             settings_restored: restored,
         })
+    }
+}
+
+impl App {
+    /// Put back each restored transaction's note, tags and split. Like settings, they are only
+    /// filled in where the transaction here has none, so restoring twice changes nothing.
+    fn restore_txn_extras(&self, v: &Value, rows: &[NewTxn]) -> Result<(), String> {
+        let have_extras = self.db.txn_extras().map_err(|e| e.to_string())?;
+        let have_splits = self.db.all_splits().map_err(|e| e.to_string())?;
+        let mut copies: std::collections::HashMap<(i64, String, i64, &str, &str), usize> =
+            Default::default();
+        let saved = v["transactions"].as_array().into_iter().flatten();
+        for (t, row) in saved.zip(rows) {
+            let n = copies
+                .entry((
+                    row.account.0,
+                    row.day.to_string(),
+                    row.amount.cents(),
+                    row.payee.as_str(),
+                    row.memo.as_str(),
+                ))
+                .or_insert(0);
+            let copy = *n;
+            *n += 1;
+            let note = t["note"].as_str().unwrap_or_default();
+            let tags = t["tags"].as_str().unwrap_or_default();
+            let parts: Vec<(String, i64)> = t["splits"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|p| Some((p["category"].as_str()?.to_string(), p["cents"].as_i64()?)))
+                .collect();
+            if note.is_empty() && tags.is_empty() && parts.is_empty() {
+                continue;
+            }
+            // A row matched to a differently described one already here keeps what it has.
+            let Some(id) = self.db.imported_id(row, copy).map_err(|e| e.to_string())? else {
+                continue;
+            };
+            if (!note.is_empty() || !tags.is_empty()) && !have_extras.contains_key(&id) {
+                self.db
+                    .set_txn_note_tags(id, note, tags)
+                    .map_err(|e| e.to_string())?;
+            }
+            let adds_up = parts.len() >= 2
+                && parts.iter().map(|(_, c)| *c).sum::<i64>() == row.amount.cents()
+                && parts.iter().all(|(c, _)| !c.trim().is_empty());
+            if adds_up && !have_splits.contains_key(&id) {
+                self.db.set_splits(id, &parts).map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
     }
 }
 

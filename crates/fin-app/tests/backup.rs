@@ -190,6 +190,44 @@ fn restore_keeps_a_refund_cancelling_its_purchase() {
     assert_eq!(nov(&fresh), (300_000, 0));
 }
 
+fn smith(app: &App) -> fin_app::transactions::TxnRow {
+    app.transactions("2019-01-01", "2026-12-31", false)
+        .unwrap()
+        .into_iter()
+        .find(|t| t.payee == "SMITH, JONES & CO")
+        .unwrap()
+}
+
+#[test]
+fn restore_brings_back_notes_tags_and_splits() {
+    use fin_app::transactions::SplitPart;
+    let mut src = loaded();
+    let id = smith(&src).id;
+    src.set_note_tags(id, "lawyer, paid in full", "legal, Tax")
+        .unwrap();
+    let parts = vec![
+        SplitPart {
+            category: "Legal".into(),
+            cents: -800,
+        },
+        SplitPart {
+            category: "Postage".into(),
+            cents: -250,
+        },
+    ];
+    src.set_splits(id, parts.clone()).unwrap();
+    let text = src.backup_json().unwrap();
+    let mut fresh = blank();
+    fresh.restore_backup(&text).unwrap();
+    let back = smith(&fresh);
+    assert_eq!(back.note, "lawyer, paid in full");
+    assert_eq!(back.tags, vec!["legal", "tax"]);
+    assert_eq!(back.splits, parts);
+    // Restoring again changes nothing.
+    fresh.restore_backup(&text).unwrap();
+    assert_eq!(smith(&fresh).splits, parts);
+}
+
 #[test]
 fn backup_carries_every_setting_the_person_made() {
     let src = loaded();
