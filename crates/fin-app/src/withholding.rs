@@ -2,7 +2,7 @@
 //!
 //! Each paystub applied to the plan records what that job withholds per year. This compares the
 //! total with an estimate of the year's tax on the household's taxable pay (gross minus
-//! pre-tax retirement saving), so a person can fix a W-4 before April instead of after. It
+//! pre-tax retirement and HSA saving), so a person can fix a W-4 before April instead of after. It
 //! checks every ongoing income source; if any lacks a paystub it says which, rather than
 //! guessing. It looks at wages only, so other income (interest, gains) is not in the estimate.
 use crate::App;
@@ -78,15 +78,20 @@ impl App {
     pub fn withholding_check(&self) -> Result<WithholdingCheck, String> {
         let h = self.household()?;
         let recorded = load(self)?;
-        // Ongoing pay only: one-time amounts (a bonus) have their own withholding rules.
+        // Ongoing pay from a job only: one-time amounts (a bonus) have their own withholding
+        // rules, and pensions, rent and business income come with no paystub.
         let jobs: Vec<_> = h
             .streams
             .iter()
             .filter(|s| s.start_year.is_none() && s.end_year.is_none() && s.annual_cents > 0)
+            .filter(|s| {
+                let kind = s.kind.as_deref().unwrap_or("").trim().to_ascii_lowercase();
+                matches!(kind.as_str(), "" | "wages") && !s.self_employed
+            })
             .collect();
         let wages: i64 = jobs
             .iter()
-            .map(|s| (s.annual_cents - s.contribution_cents).max(0))
+            .map(|s| (s.annual_cents - s.contribution_cents - s.hsa_cents).max(0))
             .sum();
         let mut missing = vec![];
         let (mut fed, mut state) = (0i64, 0i64);

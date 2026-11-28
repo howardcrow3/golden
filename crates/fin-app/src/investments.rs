@@ -5,6 +5,17 @@ use fin_plan::investments::{checkup, Checkup, Class, Holding, Risk};
 
 const KEY: &str = "investments.holdings";
 
+/// The checks `save_holdings` makes, so a caller can run them before changing anything else.
+pub(crate) fn check_holdings(holdings: &[Holding]) -> Result<(), String> {
+    if holdings.len() > 200 {
+        return Err("Keep it to 200 holdings or fewer.".into());
+    }
+    if holdings.iter().any(|h| h.name.trim().is_empty()) {
+        return Err("Give every holding a name.".into());
+    }
+    Ok(())
+}
+
 impl App {
     pub fn holdings(&self) -> Result<Vec<Holding>, String> {
         match self.db.get_setting(KEY).map_err(|e| e.to_string())? {
@@ -15,12 +26,7 @@ impl App {
 
     pub fn save_holdings(&self, holdings: &[Holding]) -> Result<(), String> {
         self.require_edit()?;
-        if holdings.len() > 200 {
-            return Err("Keep it to 200 holdings or fewer.".into());
-        }
-        if holdings.iter().any(|h| h.name.trim().is_empty()) {
-            return Err("Give every holding a name.".into());
-        }
+        check_holdings(holdings)?;
         self.db
             .set_setting(
                 KEY,

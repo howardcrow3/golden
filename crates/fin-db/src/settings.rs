@@ -23,18 +23,20 @@ impl Db {
     /// (the trial start and licence, so erasing data can't reset the trial). Categories are kept:
     /// they are names, not personal data.
     pub fn erase_personal_data(&self, keep: &[&str]) -> Result<()> {
-        self.conn.execute_batch(
+        // All or nothing: a failure part-way must not leave half the data erased.
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute_batch(
             "DELETE FROM txn; DELETE FROM bank_account; DELETE FROM account; DELETE FROM person; DELETE FROM document;",
         )?;
-        let mut stmt = self.conn.prepare("SELECT key FROM setting")?;
+        let mut stmt = tx.prepare("SELECT key FROM setting")?;
         let keys: Vec<String> = stmt
             .query_map([], |r| r.get(0))?
             .collect::<std::result::Result<_, rusqlite::Error>>()?;
         drop(stmt);
         for k in keys.iter().filter(|k| !keep.contains(&k.as_str())) {
-            self.conn
-                .execute("DELETE FROM setting WHERE key=?1", params![k])?;
+            tx.execute("DELETE FROM setting WHERE key=?1", params![k])?;
         }
+        tx.commit()?;
         Ok(())
     }
 

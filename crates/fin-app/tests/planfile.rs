@@ -62,3 +62,22 @@ fn a_newer_file_is_refused_and_an_invalid_household_does_not_save() {
     assert!(c.import_plan_file(&v.to_string()).is_err());
     assert_eq!(c.household().unwrap(), before);
 }
+
+#[test]
+fn a_file_with_bad_holdings_leaves_the_household_untouched() {
+    let a = App::in_memory().unwrap();
+    let mut h = Household::sample();
+    h.spending_cents = 1_234_500;
+    a.save_household(&h).unwrap();
+    let mut v: serde_json::Value = serde_json::from_str(&a.export_plan_file().unwrap()).unwrap();
+    let mut nameless = holding();
+    nameless.name = "  ".into();
+    v["holdings"] = serde_json::to_value(vec![nameless]).unwrap();
+
+    let b = App::in_memory().unwrap();
+    let before = b.household().unwrap();
+    assert!(b.import_plan_file(&v.to_string()).is_err());
+    // Everything is checked before anything changes: the household was not replaced.
+    assert_eq!(b.household().unwrap(), before);
+    assert!(!b.household_is_saved().unwrap());
+}

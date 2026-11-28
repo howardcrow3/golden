@@ -167,3 +167,103 @@ fn restore_is_blocked_after_the_trial() {
     app.db().set_setting("first_run", "2026-01-01").unwrap();
     assert!(app.restore_backup(&text).is_err());
 }
+
+#[test]
+fn restore_keeps_a_refund_cancelling_its_purchase() {
+    let mut src = blank();
+    src.import_statement(
+        b"Date,Description,Amount\n11/01/2026,ACME PAYROLL,3000.00\n11/03/2026,TARGET #1234,-80.00\n11/10/2026,TARGET RETURN,80.00\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    let nov = |a: &App| {
+        let m = a
+            .cash_flow(d(2026, 11, 1), d(2026, 11, 30), "month")
+            .unwrap()
+            .remove(0);
+        (m.income_cents, m.spending_cents)
+    };
+    assert_eq!(nov(&src), (300_000, 0));
+    let mut fresh = blank();
+    fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert_eq!(nov(&fresh), (300_000, 0));
+}
+
+fn smith(app: &App) -> fin_app::transactions::TxnRow {
+    app.transactions("2019-01-01", "2026-12-31", false)
+        .unwrap()
+        .into_iter()
+        .find(|t| t.payee == "SMITH, JONES & CO")
+        .unwrap()
+}
+
+#[test]
+fn restore_brings_back_notes_tags_and_splits() {
+    use fin_app::transactions::SplitPart;
+    let mut src = loaded();
+    let id = smith(&src).id;
+    src.set_note_tags(id, "lawyer, paid in full", "legal, Tax")
+        .unwrap();
+    let parts = vec![
+        SplitPart {
+            category: "Legal".into(),
+            cents: -800,
+        },
+        SplitPart {
+            category: "Postage".into(),
+            cents: -250,
+        },
+    ];
+    src.set_splits(id, parts.clone()).unwrap();
+    let text = src.backup_json().unwrap();
+    let mut fresh = blank();
+    fresh.restore_backup(&text).unwrap();
+    let back = smith(&fresh);
+    assert_eq!(back.note, "lawyer, paid in full");
+    assert_eq!(back.tags, vec!["legal", "tax"]);
+    assert_eq!(back.splits, parts);
+    // Restoring again changes nothing.
+    fresh.restore_backup(&text).unwrap();
+    assert_eq!(smith(&fresh).splits, parts);
+}
+
+#[test]
+fn backup_carries_every_setting_the_person_made() {
+    let src = loaded();
+    src.save_watch_lists(vec![fin_app::watchlists::WatchList {
+        name: "Coffee".into(),
+        query: "coffee".into(),
+    }])
+    .unwrap();
+    src.save_holdings(&[fin_plan::investments::Holding {
+        name: "Total market".into(),
+        value_cents: 5_000_000,
+        class: fin_plan::investments::Class::Stock,
+        expense_bp: 3,
+        single_stock: false,
+    }])
+    .unwrap();
+    src.close_month("2026-10").unwrap();
+    // Tracking that was stopped is stored as an empty value.
+    src.stop_progress_tracking().unwrap();
+    let mut fresh = blank();
+    fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert_eq!(fresh.watch_lists().unwrap(), src.watch_lists().unwrap());
+    assert_eq!(fresh.holdings().unwrap(), src.holdings().unwrap());
+    assert_eq!(fresh.closed_months().unwrap(), vec!["2026-10".to_string()]);
+    assert_eq!(fresh.progress().unwrap(), None);
+}
+
+#[test]
+fn restore_keeps_what_kind_of_holding_each_one_is() {
+    let src = blank();
+    src.add_holding("2019 Honda Civic", "Vehicle", 1_200_000)
+        .unwrap();
+    let mut fresh = blank();
+    fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert_eq!(
+        fresh.balance_sheet().unwrap().assets,
+        src.balance_sheet().unwrap().assets
+    );
+}

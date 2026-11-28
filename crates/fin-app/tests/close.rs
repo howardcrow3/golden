@@ -81,6 +81,34 @@ fn closing_locks_the_month_and_reopening_unlocks_it() {
 }
 
 #[test]
+fn a_remembered_rule_does_not_recategorize_lines_in_a_closed_month() {
+    let mut a = app();
+    a.import_statement(OCT.as_bytes(), "Checking", "checking")
+        .unwrap();
+    a.import_statement(
+        b"Date,Description,Amount\n11/03/2026,MYSTERY VENDOR,-7.00\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    a.close_month("2026-10").unwrap();
+    let before = a.categories_str("2026-10-01", "month", false).unwrap();
+    let nov = a.transactions("2026-11-01", "2026-11-30", true).unwrap();
+    let id = nov.iter().find(|t| t.payee == "MYSTERY VENDOR").unwrap().id;
+    a.set_category(id, "Hobbies", true).unwrap();
+    // The closed October line keeps no category and October's totals are unchanged.
+    assert_eq!(
+        a.categories_str("2026-10-01", "month", false).unwrap(),
+        before
+    );
+    assert!(a
+        .transactions("2026-10-01", "2026-10-31", true)
+        .unwrap()
+        .iter()
+        .any(|t| t.payee == "MYSTERY VENDOR"));
+}
+
+#[test]
 fn rejects_a_bad_month() {
     let a = app();
     assert!(a.month_close_check("October").is_err());

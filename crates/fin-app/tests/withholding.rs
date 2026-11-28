@@ -112,6 +112,51 @@ fn one_time_amounts_are_left_out() {
 }
 
 #[test]
+fn pensions_rent_and_business_income_are_not_wages() {
+    let a = single_person_app(0, "TX");
+    a.apply_paystub(STUB, 0).unwrap();
+    let wages = a.withholding_check().unwrap();
+    let mut h = a.household().unwrap();
+    for (label, kind, self_employed) in [
+        ("Pension", Some("pension"), false),
+        ("Rental", Some("other"), false),
+        ("Consulting", None, true),
+    ] {
+        h.streams.push(fin_app::household::StreamRow {
+            self_employed,
+            kind: kind.map(String::from),
+            employer_match_cents: 0,
+            hsa_cents: 0,
+            label: label.into(),
+            person: 0,
+            annual_cents: 3_000_000,
+            start_year: None,
+            end_year: None,
+            contribution_cents: 0,
+        });
+    }
+    a.save_household(&h).unwrap();
+    let c = a.withholding_check().unwrap();
+    // None of these has a paystub to apply, and none is pay from a job.
+    assert!(c.missing.is_empty(), "{:?}", c.missing);
+    assert_eq!(c.taxable_wages_cents, wages.taxable_wages_cents);
+}
+
+#[test]
+fn pre_tax_hsa_saving_is_not_taxable_pay() {
+    let a = single_person_app(0, "TX");
+    a.apply_paystub(STUB, 0).unwrap();
+    let before = a.withholding_check().unwrap().taxable_wages_cents;
+    let mut h = a.household().unwrap();
+    h.streams[0].hsa_cents = 400_000;
+    a.save_household(&h).unwrap();
+    assert_eq!(
+        a.withholding_check().unwrap().taxable_wages_cents,
+        before - 400_000
+    );
+}
+
+#[test]
 fn state_withholding_uses_the_households_state() {
     let a = single_person_app(0, "NC");
     a.apply_paystub(

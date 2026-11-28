@@ -79,3 +79,27 @@ fn erase_personal_data_keeps_named_settings_and_removes_documents() {
     assert_eq!(db.get_setting("note").unwrap(), None);
     assert!(db.list_documents("").unwrap().is_empty());
 }
+
+#[test]
+fn an_erase_that_fails_part_way_erases_nothing() {
+    let db = Db::open_in_memory().unwrap();
+    db.add_account("Checking", "checking", None, None).unwrap();
+    db.add_document(&doc("a.pdf", "W-2", "2026-01-01", "x"))
+        .unwrap();
+    db.set_setting("household", "{}").unwrap();
+    // Stand in for a failure (disk full, I/O error) after the first deletes have run.
+    db.connection()
+        .execute_batch(
+            "CREATE TRIGGER fail_erase BEFORE DELETE ON setting
+             BEGIN SELECT RAISE(ABORT, 'disk full'); END;",
+        )
+        .unwrap();
+    assert!(db.erase_personal_data(&[]).is_err());
+    let n: i64 = db
+        .connection()
+        .query_row("SELECT count(*) FROM account", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(n, 1, "accounts were deleted though the erase failed");
+    assert_eq!(db.list_documents("").unwrap().len(), 1);
+    assert_eq!(db.get_setting("household").unwrap().as_deref(), Some("{}"));
+}

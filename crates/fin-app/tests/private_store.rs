@@ -63,4 +63,23 @@ mod encrypted {
             .unwrap();
         assert!(err.contains("key"));
     }
+
+    #[test]
+    fn a_missing_key_is_not_replaced_by_a_new_one_in_the_keychain() {
+        use fin_app::keystore::KeyStore;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("golden.db");
+        drop(open_private(&path, &MemoryKeyStore::default()).unwrap());
+        let store = MemoryKeyStore::default();
+        assert!(open_private(&path, &store).is_err());
+        // A failed open must not write a fresh key: it could never open this file, and it
+        // would sit where the real key belongs (or overwrite it when the keychain syncs).
+        assert_eq!(store.get().unwrap(), None);
+        // Opening again still explains that the key is missing.
+        let again = open_private(&path, &store).err().unwrap();
+        assert!(
+            again.contains("missing from the system keychain"),
+            "{again}"
+        );
+    }
 }
