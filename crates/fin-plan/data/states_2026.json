@@ -92,11 +92,11 @@
      0.025
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Arizona's standard deduction follows the federal amount (its filing thresholds in the 2025 Form 140 instructions are the federal $15,750 / $31,500). The deduction amounts themselves were not printed in the text we could read."
   },
   "CA": {
    "name": "California",
@@ -2325,11 +2325,11 @@
      0.053
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 1610000,
+   "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": ""
+   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The 2025 rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), which is not modelled; the zero bracket is close to the amount the standard deduction replaces. The enhanced senior deduction is not modelled."
   },
   "IL": {
    "name": "Illinois",
@@ -2340,11 +2340,11 @@
      0.0495
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 285000,
+   "std_joint": 570000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)).",
+   "notes": "Illinois exempts retirement income from qualified plans, IRAs and pensions entirely (35 ILCS 5/203(a)(2)(F)). Checked against the 2025 IL-1040 instructions: the personal exemption is $2,850 per person ($5,700 joint), used here as the deduction. Not modelled: $1,000 more for each filer 65 or older or blind, and no exemption when federal AGI is over $250,000 (single) / $500,000 (joint).",
    "retirement": {
     "pension_full": true,
     "distributions_full": true,
@@ -2404,11 +2404,11 @@
      0.035
     ]
    ],
-   "std_single": 0,
-   "std_joint": 0,
+   "std_single": 327000,
+   "std_joint": 327000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Kentucky excludes up to $31,110 of pension and retirement account income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Checked against the 2025 Form 740 packet: standard deduction $3,270 (2025; the 2026 figure is not yet published). Joint filers get one deduction here, which may overstate tax slightly. The 2025 rate is 4%; the 2026 rate of 3.5% is kept from the earlier check.",
    "retirement": {
     "min_age": 0,
     "caps": [

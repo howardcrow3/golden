@@ -981,6 +981,26 @@ mod tests {
     }
 
     #[test]
+    fn flat_tax_states_take_their_deduction_or_exemption_first() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        // Illinois: 4.95% after the $2,850 exemption.
+        assert_eq!(
+            y.income_tax("IL", single, m(52_850)).unwrap(),
+            m(50_000).mul_rate(0.0495)
+        );
+        // Arizona and Idaho follow the federal standard deduction, Kentucky has its own.
+        assert!(
+            y.income_tax("AZ", single, m(60_000)).unwrap() < m(60_000).mul_rate(0.025) - m(300)
+        );
+        assert!(y.income_tax("ID", single, m(60_000)).unwrap() < m(60_000).mul_rate(0.053));
+        assert_eq!(
+            y.income_tax("KY", single, m(53_270)).unwrap(),
+            m(50_000).mul_rate(0.035)
+        );
+    }
+
+    #[test]
     fn alabama_leaves_pensions_out_but_taxes_ira_withdrawals() {
         let y = StateTaxYear::y2026();
         let single = FilingStatus::Single;
@@ -1295,7 +1315,8 @@ mod tests {
         );
         assert_eq!(
             y.income_tax("IL", FilingStatus::Single, m(100_000)),
-            Some(m(4_950))
+            // 4.95% after the $2,850 exemption.
+            Some(m(97_150).mul_rate(0.0495))
         );
     }
 
