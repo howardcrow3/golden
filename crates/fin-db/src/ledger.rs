@@ -208,43 +208,74 @@ impl Db {
             let it = st.query_map([], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?;
             it.collect::<std::result::Result<_, rusqlite::Error>>()?
         };
-        for t in rows {
-            let key = format!(
-                "{}|{}|{}|{}|{}",
-                t.account.0,
-                t.day,
-                t.amount.cents(),
-                t.payee,
-                t.memo
-            );
-            let seq = seen.entry(key.clone()).or_insert(0);
-            let dedupe = format!("{key}#{seq}");
-            *seq += 1;
+        let dedupes: Vec<String> = rows
+            .iter()
+            .map(|t| {
+                let key = format!(
+                    "{}|{}|{}|{}|{}",
+                    t.account.0,
+                    t.day,
+                    t.amount.cents(),
+                    t.payee,
+                    t.memo
+                );
+                let seq = seen.entry(key.clone()).or_insert(0);
+                let dedupe = format!("{key}#{seq}");
+                *seq += 1;
+                dedupe
+            })
+            .collect();
+        // Which incoming rows are already stored. Exact copies are settled first, then
+        // same-day near copies, then ones a day or two off (nearest first), so a looser match
+        // never takes the stored row that another incoming row is a closer copy of; otherwise
+        // a genuinely new purchase listed earlier in the file could be skipped in its place.
+        let mut skip = vec![false; rows.len()];
+        for (i, dedupe) in dedupes.iter().enumerate() {
             let exact: Option<i64> = tx
-                .query_row("SELECT id FROM txn WHERE dedupe_key=?1", [&dedupe], |r| {
+                .query_row("SELECT id FROM txn WHERE dedupe_key=?1", [dedupe], |r| {
                     r.get(0)
                 })
                 .optional()?;
             if let Some(id) = exact {
                 existing.retain(|e| e.id != id);
+                skip[i] = true;
+            }
+        }
+        for same_day in [true, false] {
+            for (i, t) in rows.iter().enumerate() {
+                if skip[i] {
+                    continue;
+                }
+                let near = existing
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, e)| {
+                        e.account == t.account.0
+                            && e.cents == t.amount.cents()
+                            && if same_day {
+                                e.day == t.day
+                            } else {
+                                (e.day - t.day).num_days().abs() <= crate::dupes::NEAR_DAYS
+                                    && spans
+                                        .get(&e.account)
+                                        .is_some_and(|(lo, hi)| t.day >= *lo && t.day <= *hi)
+                            }
+                            && crate::dupes::same_payee(&e.payee, &t.payee)
+                    })
+                    .min_by_key(|(_, e)| (e.day - t.day).num_days().abs())
+                    .map(|(j, _)| j);
+                if let Some(j) = near {
+                    existing.remove(j);
+                    skip[i] = true;
+                }
+            }
+        }
+        for (i, t) in rows.iter().enumerate() {
+            if skip[i] {
                 summary.skipped += 1;
                 continue;
             }
-            let near = existing.iter().position(|e| {
-                e.account == t.account.0
-                    && e.cents == t.amount.cents()
-                    && (e.day == t.day
-                        || ((e.day - t.day).num_days().abs() <= crate::dupes::NEAR_DAYS
-                            && spans
-                                .get(&e.account)
-                                .is_some_and(|(lo, hi)| t.day >= *lo && t.day <= *hi)))
-                    && crate::dupes::same_payee(&e.payee, &t.payee)
-            });
-            if let Some(i) = near {
-                existing.remove(i);
-                summary.skipped += 1;
-                continue;
-            }
+            let dedupe = &dedupes[i];
             let cat: Option<i64> = match &t.category {
                 Some(c) => {
                     let existing: Option<i64> = tx

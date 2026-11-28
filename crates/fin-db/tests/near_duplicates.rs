@@ -98,6 +98,56 @@ fn different_amounts_accounts_or_merchants_are_kept() {
 }
 
 #[test]
+fn a_newer_purchase_listed_first_is_not_taken_for_an_older_one() {
+    let (mut db, a) = setup();
+    // The first download, taken on the 15th, has Tuesday's coffee.
+    db.import_batch(&[
+        row(a, "2026-10-01", -100, "Other"),
+        row(a, "2026-10-14", -450, "Starbucks"),
+        row(a, "2026-10-15", -900, "Lunch"),
+    ])
+    .unwrap();
+    // A later download lists newest first and adds Wednesday's coffee.
+    let s = db
+        .import_batch(&[
+            row(a, "2026-10-15", -450, "Starbucks"),
+            row(a, "2026-10-15", -900, "Lunch"),
+            row(a, "2026-10-14", -450, "Starbucks"),
+            row(a, "2026-10-01", -100, "Other"),
+        ])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (1, 3));
+    assert_eq!(count(&db), 4);
+}
+
+#[test]
+fn a_same_day_copy_is_matched_before_a_neighbouring_day() {
+    let (mut db, a) = setup();
+    db.import_batch(&[
+        row(a, "2026-10-01", -100, "Other"),
+        row(a, "2026-10-14", -450, "STARBUCKS 55"),
+        row(a, "2026-10-20", -100, "Other"),
+    ])
+    .unwrap();
+    // Another format of the same account, with a second coffee the day after.
+    let s = db
+        .import_batch(&[
+            row(a, "2026-10-15", -450, "Starbucks Store"),
+            row(a, "2026-10-14", -450, "Starbucks Store"),
+        ])
+        .unwrap();
+    assert_eq!((s.added, s.skipped), (1, 1));
+    let days: Vec<String> = db
+        .txns_between(d("2026-10-14"), d("2026-10-15"))
+        .unwrap()
+        .iter()
+        .map(|t| t.day.to_string())
+        .collect();
+    assert_eq!(days.len(), 2);
+    assert!(days.contains(&"2026-10-15".to_string()), "{days:?}");
+}
+
+#[test]
 fn reimporting_the_same_file_still_adds_nothing() {
     let (mut db, a) = setup();
     let rows = [
