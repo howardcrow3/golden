@@ -113,6 +113,9 @@ pub struct StateRules {
     /// Security credit when larger (Utah's $450 retirement credit).
     #[serde(default)]
     pub birth_year_credit: Option<BirthYearCredit>,
+    /// Military retirement pay left out of income, apart from the other retirement rules.
+    #[serde(default)]
+    pub military: Option<MilitaryRetirement>,
     /// True when the schedule is simplified; the UI labels these as estimates.
     pub approximate: bool,
     pub notes: String,
@@ -608,6 +611,57 @@ impl BirthYearCredit {
     }
 }
 
+/// Military retirement pay the state leaves out. With no ceilings set it is all out.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct MilitaryRetirement {
+    /// Each retiree must be at least this old (Idaho: 62).
+    #[serde(default)]
+    pub min_age: u8,
+    /// At most this much for each retiree (New Mexico: $30,000); zero means no ceiling.
+    #[serde(default)]
+    pub per_person_cap: Money,
+    /// A household ceiling by filing status (Idaho: $48,216 and $72,324); zero means none.
+    #[serde(default)]
+    pub cap_single: Money,
+    #[serde(default)]
+    pub cap_joint: Money,
+    /// The household ceiling is reduced by the Social Security benefits received (Idaho).
+    #[serde(default)]
+    pub less_social_security: bool,
+}
+
+impl MilitaryRetirement {
+    /// The military pay left out for a return.
+    pub fn excluded(&self, fs: FilingStatus, inc: &RetirementIncome) -> Money {
+        let zero = Money::ZERO;
+        let mut out = zero;
+        for (i, &pay) in inc.military.iter().enumerate() {
+            let age = inc.ages.get(i).copied().unwrap_or(0);
+            if age < self.min_age as i32 {
+                continue;
+            }
+            let mut cut = pay.max(zero);
+            if self.per_person_cap > zero {
+                cut = cut.min(self.per_person_cap);
+            }
+            out += cut;
+        }
+        let cap = if fs == FilingStatus::MarriedJoint {
+            self.cap_joint
+        } else {
+            self.cap_single
+        };
+        if cap > zero {
+            let mut cap = cap;
+            if self.less_social_security {
+                cap = (cap - inc.social_security.max(zero)).max(zero);
+            }
+            out = out.min(cap);
+        }
+        out.min(inc.pension.max(zero))
+    }
+}
+
 /// Retirement income in a year, for the state's exclusion.
 #[derive(Debug, Clone, Default)]
 pub struct RetirementIncome {
@@ -625,6 +679,9 @@ pub struct RetirementIncome {
     pub ages: Vec<i32>,
     /// Their years of birth, in the same order; empty when not known.
     pub birth_years: Vec<i32>,
+    /// Military retirement pay of each of them, in the same order (part of `pension`, and not
+    /// of `public_pension`); empty when there is none.
+    pub military: Vec<Money>,
 }
 
 impl RetirementExclusion {
@@ -917,10 +974,21 @@ impl StateTaxYear {
             income = (income - a.total(fs, federal_agi, &ret.ages)).max(Money::ZERO);
         }
         let before_ss = (federal_agi - ss).max(Money::ZERO);
+        // Military pay the state exempts comes out first and is not counted again by the
+        // pension rules below.
+        let military_cut = r
+            .military
+            .as_ref()
+            .map_or(Money::ZERO, |m| m.excluded(fs, ret));
+        let mut rest = ret.clone();
+        rest.pension = (rest.pension - military_cut).max(Money::ZERO);
+        rest.public_pension = rest.public_pension.min(rest.pension);
+        let ret = &rest;
+        income = (income - military_cut).max(Money::ZERO);
         if let Some(a) = &r.age_allowance {
             // The allowance is cut by the other modifications above it: Social Security and
             // government pensions (West Virginia Schedule M lines 29 to 34).
-            let mut sub = (ss - ss_in_state).max(Money::ZERO);
+            let mut sub = (ss - ss_in_state).max(Money::ZERO) + military_cut;
             if let Some(x) = &r.retirement {
                 sub += x.public_excluded(ret);
             }
@@ -1076,6 +1144,7 @@ mod tests {
             federal_agi: Money::ZERO,
             ages: ages.to_vec(),
             birth_years: Vec::new(),
+            military: Vec::new(),
         }
     }
 
@@ -1507,6 +1576,78 @@ mod tests {
         assert_eq!(go("KS", 80_000, 40_000, 30_000, 0, 66), plain("KS", 50_000));
         // A state without the rule treats it like any pension.
         assert_eq!(go("CA", 80_000, 40_000, 40_000, 0, 66), plain("CA", 80_000));
+    }
+
+    #[test]
+    fn military_retired_pay_follows_each_states_rule() {
+        let y = StateTaxYear::y2026();
+        let go = |c: &str,
+                  fs: FilingStatus,
+                  agi: i64,
+                  ss: i64,
+                  pension: i64,
+                  mil: &[i64],
+                  ages: &[i32]| {
+            let r = RetirementIncome {
+                social_security: m(ss),
+                military: mil.iter().map(|&d| m(d)).collect(),
+                ..ret(pension, 0, ages)
+            };
+            y.income_tax_with_retirement(c, fs, m(agi), Money::ZERO, &r)
+                .unwrap()
+        };
+        let single = FilingStatus::Single;
+        let joint = FilingStatus::MarriedJoint;
+        let plain = |c: &str, fs: FilingStatus, inc: i64| y.income_tax(c, fs, m(inc)).unwrap();
+        // Missouri: all of it, at any age.
+        assert_eq!(
+            go("MO", single, 80_000, 0, 30_000, &[30_000], &[45]),
+            plain("MO", single, 50_000)
+        );
+        // California has no such rule.
+        assert_eq!(
+            go("CA", single, 80_000, 0, 30_000, &[30_000], &[66]),
+            plain("CA", single, 80_000)
+        );
+        // Idaho: nothing before 62.
+        assert_eq!(
+            go("ID", single, 80_000, 0, 30_000, &[30_000], &[61]),
+            plain("ID", single, 80_000)
+        );
+        // At 62, up to $48,216.
+        assert_eq!(
+            go("ID", single, 80_000, 0, 30_000, &[30_000], &[62]),
+            plain("ID", single, 50_000)
+        );
+        // Less the Social Security received, taxed or not.
+        assert_eq!(
+            go("ID", single, 80_000, 30_000, 30_000, &[30_000], &[62]),
+            plain("ID", single, 80_000 - 18_216)
+        );
+        // New Mexico: $30,000 for each retiree.
+        assert_eq!(
+            go(
+                "NM",
+                joint,
+                120_000,
+                0,
+                50_000,
+                &[40_000, 10_000],
+                &[50, 50]
+            ),
+            plain("NM", joint, 80_000)
+        );
+        // Maine: military pay is out on its own, and the $48,216 cap still covers the other
+        // $20,000 of pension (not counted twice).
+        assert_eq!(
+            go("ME", single, 60_000, 0, 50_000, &[30_000], &[66]),
+            plain("ME", single, 10_000)
+        );
+        // The military pay cannot be more than the pension it is part of.
+        assert_eq!(
+            go("MO", single, 80_000, 0, 10_000, &[30_000], &[66]),
+            plain("MO", single, 70_000)
+        );
     }
 
     #[test]

@@ -45,6 +45,8 @@ pub struct StreamRow {
     /// annuity (starts when the person retires, lasts for life, no payroll tax) or "other" for
     /// rent and similar taxable income (starts now, no payroll tax). "public_pension" is a
     /// pension from government work (federal, state or local), which some states exempt.
+    /// "military_pension" is military retired pay (starts now unless a start year is given),
+    /// which many states exempt on their own terms.
     #[serde(default)]
     pub kind: Option<String>,
     /// Employer match per year, added to the pre-tax account while working.
@@ -437,7 +439,7 @@ impl Household {
             let kind = s.kind.as_deref().unwrap_or("").trim().to_ascii_lowercase();
             let exempt = match kind.as_str() {
                 "" | "wages" => false,
-                "pension" | "public_pension" | "other" => true,
+                "pension" | "public_pension" | "military_pension" | "other" => true,
                 other => return Err(format!("Unknown income type \"{other}\".")),
             };
             if s.employer_match_cents < 0 || s.hsa_cents < 0 || s.contribution_cents < 0 {
@@ -445,7 +447,8 @@ impl Household {
             }
             let (default_start, default_end) = match kind.as_str() {
                 "pension" | "public_pension" => (retire_year[s.person], year + 100),
-                "other" => (year, year + 100),
+                // Military retirees often draw retired pay while still working elsewhere.
+                "military_pension" | "other" => (year, year + 100),
                 _ => (year, retire_year[s.person]),
             };
             let start = s.start_year.unwrap_or(default_start);
@@ -466,8 +469,12 @@ impl Household {
                 },
                 self_employed: s.self_employed && !exempt,
                 payroll_exempt: exempt,
-                pension: kind == "pension" || kind == "public_pension",
+                pension: matches!(
+                    kind.as_str(),
+                    "pension" | "public_pension" | "military_pension"
+                ),
                 public_pension: kind == "public_pension",
+                military_pension: kind == "military_pension",
                 employer_match: if exempt {
                     Money::ZERO
                 } else {

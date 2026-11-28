@@ -43,6 +43,8 @@ pub struct IncomeStream {
     pub pension: bool,
     /// A government pension (federal, state or local). Some states exempt these in full.
     pub public_pension: bool,
+    /// Military retirement pay. Many states exempt it on its own terms.
+    pub military_pension: bool,
     /// Employer match per year while working, added to the pre-tax account (not income to you).
     pub employer_match: Money,
     /// Pre-tax HSA saving per year, kept as tax-free money for medical costs.
@@ -261,6 +263,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let mut exempt = Money::ZERO;
         let mut pension = Money::ZERO;
         let mut public_pension = Money::ZERO;
+        let mut military = vec![Money::ZERO; input.people.len()];
         // Each person has their own Social Security wage base.
         let mut person_wages = vec![Money::ZERO; input.people.len()];
         let mut person_se = vec![Money::ZERO; input.people.len()];
@@ -281,6 +284,8 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     pension += s.annual_gross;
                     if s.public_pension {
                         public_pension += s.annual_gross;
+                    } else if s.military_pension {
+                        military[slot] += s.annual_gross;
                     }
                 }
                 contrib += s.traditional_contribution + s.hsa;
@@ -381,6 +386,17 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     .filter(|p| !p.is_dependent)
                     .map(|p| p.birth_date.year())
                     .collect(),
+                military: if military.iter().any(|m| *m > Money::ZERO) {
+                    input
+                        .people
+                        .iter()
+                        .zip(&military)
+                        .filter(|(p, _)| !p.is_dependent)
+                        .map(|(_, m)| *m)
+                        .collect()
+                } else {
+                    Vec::new()
+                },
             };
             let st = states
                 .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
@@ -799,6 +815,7 @@ pub(crate) mod fixtures {
                 payroll_exempt: false,
                 pension: false,
                 public_pension: false,
+                military_pension: false,
                 employer_match: Money::ZERO,
                 hsa: Money::ZERO,
             }],
@@ -1563,6 +1580,7 @@ mod income_kind_tests {
             payroll_exempt: pension,
             pension,
             public_pension: false,
+            military_pension: false,
             employer_match: Money::ZERO,
             hsa: Money::ZERO,
         };
@@ -1629,6 +1647,7 @@ mod review_tests {
             payroll_exempt: true,
             pension: true,
             public_pension: false,
+            military_pension: false,
             employer_match: Money::ZERO,
             hsa: Money::ZERO,
         });
