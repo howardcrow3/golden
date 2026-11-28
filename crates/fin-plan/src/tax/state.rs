@@ -12,6 +12,36 @@ pub enum StateKind {
     Progressive,
 }
 
+/// A standard deduction that falls in a straight line from `std` at `start` income to `floor`
+/// at `end` income (the state's own table steps; the line follows it closely).
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct StdPhaseDown {
+    pub start_single: Money,
+    pub end_single: Money,
+    pub floor_single: Money,
+    pub start_joint: Money,
+    pub end_joint: Money,
+    pub floor_joint: Money,
+}
+
+impl StdPhaseDown {
+    fn apply(&self, joint: bool, std: Money, income: Money) -> Money {
+        let (start, end, floor) = if joint {
+            (self.start_joint, self.end_joint, self.floor_joint)
+        } else {
+            (self.start_single, self.end_single, self.floor_single)
+        };
+        if end <= start || income <= start {
+            return std;
+        }
+        if income >= end {
+            return floor.min(std);
+        }
+        let share = (income - start).cents() as f64 / (end - start).cents() as f64;
+        std - (std - floor.min(std)).mul_rate(share)
+    }
+}
+
 /// How one state taxes ordinary income.
 #[derive(Debug, Clone, Deserialize)]
 pub struct StateRules {
@@ -20,6 +50,9 @@ pub struct StateRules {
     pub brackets: BracketTable,
     pub std_single: Money,
     pub std_joint: Money,
+    /// The standard deduction shrinks as income rises (Alabama).
+    #[serde(default)]
+    pub std_phase_down: Option<StdPhaseDown>,
     pub joint_multiplier: f64,
     /// Explicit joint-filer brackets, when the state publishes them. Used
     /// instead of scaling the single brackets by `joint_multiplier`.
@@ -735,7 +768,12 @@ impl StateTaxYear {
             };
             return Some(t.tax(fs, income, table.tax(taxable)).max(Money::ZERO));
         }
-        let taxable = (income - if joint { r.std_joint } else { r.std_single }).max(Money::ZERO);
+        let std = if joint { r.std_joint } else { r.std_single };
+        let std = match &r.std_phase_down {
+            Some(p) => p.apply(joint, std, income),
+            None => std,
+        };
+        let taxable = (income - std).max(Money::ZERO);
         let table = if let (true, Some(jb)) = (joint, r.joint_brackets.as_ref()) {
             jb.clone()
         } else if joint && r.joint_multiplier != 1.0 {
@@ -1031,6 +1069,22 @@ mod tests {
             y.income_tax("KY", single, m(53_270)).unwrap(),
             m(50_000).mul_rate(0.035)
         );
+    }
+
+    #[test]
+    fn alabama_cuts_its_standard_deduction_as_income_rises() {
+        let y = StateTaxYear::y2026();
+        let p = y.rules("AL").unwrap().std_phase_down.clone().unwrap();
+        // Single: $4,500 (deduction plus exemption) up to $26,000, $4,000 from $35,500.
+        assert_eq!(p.apply(false, m(4_500), m(20_000)), m(4_500));
+        assert_eq!(p.apply(false, m(4_500), m(35_500)), m(4_000));
+        assert_eq!(p.apply(false, m(4_500), m(90_000)), m(4_000));
+        // Joint: $11,500 down to $8,000, half way between at $30,750.
+        assert_eq!(p.apply(true, m(11_500), m(30_750)), m(9_750));
+        // The tax follows: inside the phase-down each extra dollar also loses some deduction.
+        let single = FilingStatus::Single;
+        let at = |inc: i64| y.income_tax("AL", single, m(inc)).unwrap();
+        assert!(at(30_500) - at(30_000) > at(40_500) - at(40_000));
     }
 
     #[test]
