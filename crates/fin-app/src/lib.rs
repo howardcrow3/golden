@@ -9,6 +9,7 @@ pub mod backup;
 pub mod balance;
 pub mod bank;
 pub mod budget;
+mod card_signs;
 pub mod chat;
 pub mod close;
 pub mod connections;
@@ -208,7 +209,7 @@ impl App {
         if account.is_empty() {
             return Err("Give the account a name.".into());
         }
-        let parsed = fin_ingest::read_statement(bytes).map_err(|e| e.to_string())?;
+        let mut parsed = fin_ingest::read_statement(bytes).map_err(|e| e.to_string())?;
         for t in &parsed {
             self.ensure_open(t.day)?;
         }
@@ -216,6 +217,11 @@ impl App {
             .db
             .find_or_add_account(account, kind)
             .map_err(|e| e.to_string())?;
+        if self.card_csv_reversed(bytes, acct, &parsed)? {
+            for t in &mut parsed {
+                t.amount = -t.amount;
+            }
+        }
         let mut uncategorized = 0;
         let rows: Vec<NewTxn> = parsed
             .iter()

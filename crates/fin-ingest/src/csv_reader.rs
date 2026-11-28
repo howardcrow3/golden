@@ -102,25 +102,86 @@ fn normalize_amount(raw: &str, decimal_comma: bool) -> String {
     s
 }
 
+/// The text from the header row on, skipping any preamble lines until one looks like a header
+/// (contains "date" and a delimiter). Byte offsets come from split_inclusive so "\r\n" line
+/// endings are counted in full.
+fn from_header(text: &str) -> &str {
+    let mut offset = 0usize;
+    for line in text.split_inclusive('\n') {
+        let l = line.to_ascii_lowercase();
+        if l.contains("date") && (l.contains(',') || l.contains(';') || l.contains('\t')) {
+            return &text[offset..];
+        }
+        offset += line.len();
+    }
+    text
+}
+
+/// What a CSV's header row says about how its amounts are signed.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct SignLayout {
+    /// One signed Amount column with no Type column to say the direction (split Debit and
+    /// Credit columns already say which way each line went).
+    pub single_amount: bool,
+    /// The header is one a card issuer known to print charges as positive amounts uses:
+    /// American Express ("Card Member", "Appears On Your Statement As") or Discover
+    /// ("Trans. Date", "Post Date" and "Category").
+    pub reversed_issuer: bool,
+}
+
+/// Read the header row of a CSV statement for clues to its sign convention.
+pub fn sign_layout(text: &str) -> Option<SignLayout> {
+    let body = from_header(text);
+    let header = body.lines().next()?;
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(sniff_delimiter(header))
+        .flexible(true)
+        .trim(csv::Trim::All)
+        .from_reader(body.as_bytes());
+    let h: Vec<String> = rdr
+        .headers()
+        .ok()?
+        .iter()
+        .map(|s| s.trim().to_ascii_lowercase())
+        .collect();
+    let cols = columns(&h).ok()?;
+    let has = |n: &str| h.iter().any(|x| x == n);
+    let amex = has("card member") || has("appears on your statement as");
+    let discover = has("trans. date") && has("post date") && has("category");
+    Some(SignLayout {
+        single_amount: cols.amount.is_some() && cols.kind.is_none(),
+        reversed_issuer: amex || discover,
+    })
+}
+
+/// A card's payment or credit line: "AUTOPAY PAYMENT - THANK YOU", "STATEMENT CREDIT".
+fn is_payment_line(payee: &str) -> bool {
+    let u = payee.to_ascii_uppercase();
+    u.split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|w| matches!(w, "PAYMENT" | "AUTOPAY" | "CREDIT"))
+        || u.contains("THANK YOU")
+}
+
+/// Do these card lines run the other way round, charges positive and payments negative? Only
+/// when the signal is clear: there is at least one payment or credit line and every one is
+/// negative, while at least two other lines exist and three in four of them are positive.
+pub fn card_signs_reversed(txns: &[ParsedTxn]) -> bool {
+    let (payments, others): (Vec<&ParsedTxn>, Vec<&ParsedTxn>) =
+        txns.iter().partition(|t| is_payment_line(&t.payee));
+    let positive = others.iter().filter(|t| t.amount > Money::ZERO).count();
+    !payments.is_empty()
+        && payments.iter().all(|t| t.amount < Money::ZERO)
+        && others.len() >= 2
+        && positive * 4 >= others.len() * 3
+}
+
 /// Parse a bank CSV with a header row. Handles single signed Amount columns, split
 /// Debit/Credit columns, a leading preamble before the header, and quoted fields.
 pub fn parse(text: &str) -> Result<Vec<ParsedTxn>, IngestError> {
     if text.trim().is_empty() {
         return Err(IngestError::Empty);
     }
-    // Skip any preamble lines until one looks like a header (contains "date" and has a comma).
-    // Byte offsets come from split_inclusive so "\r\n" line endings are counted in full.
-    let mut start = 0usize;
-    let mut offset = 0usize;
-    for line in text.split_inclusive('\n') {
-        let l = line.to_ascii_lowercase();
-        if l.contains("date") && (l.contains(',') || l.contains(';') || l.contains('\t')) {
-            start = offset;
-            break;
-        }
-        offset += line.len();
-    }
-    let body = &text[start..];
+    let body = from_header(text);
     let delimiter = sniff_delimiter(body.lines().next().unwrap_or(""));
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(delimiter)
@@ -262,6 +323,42 @@ mod tests {
         .unwrap();
         assert_eq!(t[0].payee, "STARBUCKS STORE 5531");
         assert_eq!(t[0].amount.cents(), -450);
+    }
+
+    #[test]
+    fn card_sign_clues() {
+        let amex = sign_layout("Date,Description,Card Member,Account #,Amount\n").unwrap();
+        assert!(amex.single_amount && amex.reversed_issuer);
+        let discover = sign_layout("Trans. Date,Post Date,Description,Amount,Category\n").unwrap();
+        assert!(discover.single_amount && discover.reversed_issuer);
+        // Chase cards have a Category column too, but a Type column and their own header.
+        let chase =
+            sign_layout("Transaction Date,Post Date,Description,Category,Type,Amount,Memo\n")
+                .unwrap();
+        assert!(!chase.single_amount && !chase.reversed_issuer);
+        let split = sign_layout("Date,Description,Debit,Credit\n").unwrap();
+        assert!(!split.single_amount);
+
+        let rows = |text: &str| parse(text).unwrap();
+        // Charges positive, the payment negative: reversed.
+        assert!(card_signs_reversed(&rows(
+            "Date,Description,Amount\n10/01/2026,SHELL,41.00\n10/02/2026,CAFE,4.50\n10/03/2026,AUTOPAY PAYMENT - THANK YOU,-300.00\n"
+        )));
+        // Charges negative and the payment positive (most issuers): not reversed.
+        assert!(!card_signs_reversed(&rows(
+            "Date,Description,Amount\n10/01/2026,SHELL,-41.00\n10/02/2026,CAFE,-4.50\n10/03/2026,PAYMENT THANK YOU,300.00\n"
+        )));
+        // No payment line, or too few other lines: not clear enough.
+        assert!(!card_signs_reversed(&rows(
+            "Date,Description,Amount\n10/01/2026,SHELL,41.00\n10/02/2026,CAFE,4.50\n"
+        )));
+        assert!(!card_signs_reversed(&rows(
+            "Date,Description,Amount\n10/01/2026,SHELL,41.00\n10/03/2026,PAYMENT,-300.00\n"
+        )));
+        // Mostly negative other lines: a normal file with a reversed-looking payment.
+        assert!(!card_signs_reversed(&rows(
+            "Date,Description,Amount\n10/01/2026,SHELL,-41.00\n10/02/2026,CAFE,-4.50\n10/02/2026,BAR,5.00\n10/03/2026,PAYMENT,-300.00\n"
+        )));
     }
 
     #[test]
