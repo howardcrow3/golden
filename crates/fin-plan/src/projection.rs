@@ -397,6 +397,7 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                 } else {
                     Vec::new()
                 },
+                cap_reduction: Money::ZERO,
             };
             let st = states
                 .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)

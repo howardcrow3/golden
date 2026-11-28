@@ -620,6 +620,10 @@ pub struct MilitaryRetirement {
     /// At most this much for each retiree (New Mexico: $30,000); zero means no ceiling.
     #[serde(default)]
     pub per_person_cap: Money,
+    /// Per-retiree ceilings by age: each gets the cap of the highest `age` reached (Maryland:
+    /// $12,500, and $20,000 from 55).
+    #[serde(default)]
+    pub age_caps: Vec<AgeCap>,
     /// A household ceiling by filing status (Idaho: $48,216 and $72,324); zero means none.
     #[serde(default)]
     pub cap_single: Money,
@@ -639,6 +643,10 @@ pub struct MilitaryRetirement {
     /// it out of income (Utah: 4.5%).
     #[serde(default)]
     pub credit_rate: f64,
+    /// The military pay left out also uses up the general retirement caps (Arkansas's $6,000,
+    /// South Carolina's retirement deduction).
+    #[serde(default)]
+    pub reduces_retirement_caps: bool,
 }
 
 impl MilitaryRetirement {
@@ -654,6 +662,14 @@ impl MilitaryRetirement {
             let mut cut = pay.max(zero);
             if self.per_person_cap > zero {
                 cut = cut.min(self.per_person_cap);
+            }
+            if let Some(c) = self
+                .age_caps
+                .iter()
+                .filter(|c| age >= c.age as i32)
+                .max_by_key(|c| c.age)
+            {
+                cut = cut.min(c.cap);
             }
             out += cut;
         }
@@ -703,6 +719,8 @@ pub struct RetirementIncome {
     /// Military retirement pay of each of them, in the same order (part of `pension`, and not
     /// of `public_pension`); empty when there is none.
     pub military: Vec<Money>,
+    /// Taken off the retirement caps before they apply; set by the tax calculation.
+    pub cap_reduction: Money,
 }
 
 impl RetirementExclusion {
@@ -746,6 +764,7 @@ impl RetirementExclusion {
         if self.less_ss_subtracted {
             cap = (cap - inc.ss_subtracted.max(zero)).max(zero);
         }
+        cap = (cap - inc.cap_reduction.max(zero)).max(zero);
         let pool = if self.pension_only {
             left_p
         } else {
@@ -1004,6 +1023,12 @@ impl StateTaxYear {
         let mut rest = ret.clone();
         rest.pension = (rest.pension - military_cut).max(Money::ZERO);
         rest.public_pension = rest.public_pension.min(rest.pension);
+        if r.military
+            .as_ref()
+            .is_some_and(|m| m.reduces_retirement_caps)
+        {
+            rest.cap_reduction = military_cut;
+        }
         let ret = &rest;
         let military_credit = match &r.military {
             Some(m) if m.credit_rate > 0.0 => {
@@ -1178,6 +1203,7 @@ mod tests {
             ages: ages.to_vec(),
             birth_years: Vec::new(),
             military: Vec::new(),
+            cap_reduction: Money::ZERO,
         }
     }
 
@@ -1712,6 +1738,83 @@ mod tests {
         // Utah: a credit of 4.5% of the pay, the pay stays in income.
         let ut = go("UT", 80_000, 30_000, 30_000, 50);
         assert_eq!(ut, plain("UT", 80_000) - m(1_350));
+    }
+
+    #[test]
+    fn military_pay_in_the_other_states() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let joint = FilingStatus::MarriedJoint;
+        let go = |c: &str,
+                  fs: FilingStatus,
+                  agi: i64,
+                  pension: i64,
+                  dist: i64,
+                  mil: &[i64],
+                  ages: &[i32]| {
+            let r = RetirementIncome {
+                military: mil.iter().map(|&d| m(d)).collect(),
+                ..ret(pension, dist, ages)
+            };
+            y.income_tax_with_retirement(c, fs, m(agi), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |c: &str, fs: FilingStatus, inc: i64| y.income_tax(c, fs, m(inc)).unwrap();
+        // Full exemptions.
+        for c in ["AZ", "IN", "MN", "NE", "NJ", "NC", "ND", "OK", "WI"] {
+            assert_eq!(
+                go(c, single, 90_000, 40_000, 0, &[40_000], &[50]),
+                plain(c, single, 50_000),
+                "{c}"
+            );
+        }
+        // Arkansas: all of it, and it uses up the $6,000 retirement exemption.
+        assert_eq!(
+            go("AR", single, 90_000, 40_000, 10_000, &[40_000], &[50]),
+            plain("AR", single, 50_000)
+        );
+        // Military pay under $6,000 leaves the rest of it for IRA money.
+        assert_eq!(
+            go("AR", single, 90_000, 4_000, 10_000, &[4_000], &[50]),
+            plain("AR", single, 84_000)
+        );
+        // South Carolina: likewise with its $10,000 retirement deduction at 65.
+        assert_eq!(
+            go("SC", single, 90_000, 30_000, 20_000, &[8_000], &[66]),
+            plain("SC", single, 80_000)
+        );
+        // Georgia: $17,500 under 62; from 62 the general exclusion covers it.
+        assert_eq!(
+            go("GA", single, 90_000, 30_000, 0, &[30_000], &[50]),
+            plain("GA", single, 72_500)
+        );
+        assert_eq!(
+            go("GA", single, 90_000, 30_000, 0, &[30_000], &[63]),
+            plain("GA", single, 60_000)
+        );
+        // Maryland: $12,500 under 55, $20,000 from 55, each.
+        assert_eq!(
+            go(
+                "MD",
+                joint,
+                150_000,
+                60_000,
+                0,
+                &[30_000, 30_000],
+                &[50, 56]
+            ),
+            plain("MD", joint, 150_000 - 32_500)
+        );
+        // Virginia: up to $40,000 each.
+        assert_eq!(
+            go("VA", single, 90_000, 50_000, 0, &[50_000], &[50]),
+            plain("VA", single, 50_000)
+        );
+        // Delaware: $12,500 under 60.
+        assert_eq!(
+            go("DE", single, 90_000, 30_000, 0, &[30_000], &[50]),
+            plain("DE", single, 77_500)
+        );
     }
 
     #[test]
