@@ -85,6 +85,9 @@ pub struct RetirementExclusion {
     /// The caps are reduced by the Social Security benefits received (Maryland).
     #[serde(default)]
     pub less_social_security: bool,
+    /// The caps are reduced by the Social Security the state left out of income (Colorado).
+    #[serde(default)]
+    pub less_ss_subtracted: bool,
     /// A household ceiling that depends on filing status and shrinks as income rises (New Jersey).
     #[serde(default)]
     pub household: Option<HouseholdCap>,
@@ -158,6 +161,16 @@ pub struct SocialSecurityRule {
     pub deduction_single: Money,
     #[serde(default)]
     pub deduction_joint: Money,
+    /// People this old leave all their benefits out, whatever the income; younger people use
+    /// `caps` once income is over the `exempt_agi` line (Colorado).
+    #[serde(default)]
+    pub full_age: u8,
+    /// A credit of this share of the taxable benefits, cut by `credit_phaseout_rate` of the
+    /// income over the `exempt_agi` line (Utah). The benefits stay in state income.
+    #[serde(default)]
+    pub credit_rate: f64,
+    #[serde(default)]
+    pub credit_phaseout_rate: f64,
 }
 
 impl SocialSecurityRule {
@@ -169,6 +182,36 @@ impl SocialSecurityRule {
         } else {
             self.exempt_agi_single
         };
+        if self.credit_rate > 0.0 {
+            return taxable_ss;
+        }
+        if self.full_age > 0 {
+            let n = ages.len().max(1) as i64;
+            let share = Money::from_cents(taxable_ss.cents() / n);
+            let each = |a: i32| -> Money {
+                if a >= self.full_age as i32 {
+                    return Money::ZERO;
+                }
+                let cap = self
+                    .caps
+                    .iter()
+                    .filter(|c| a >= c.age as i32)
+                    .max_by_key(|c| c.age)
+                    .map(|c| c.cap);
+                match cap {
+                    Some(_) if limit > Money::ZERO && agi <= limit => Money::ZERO,
+                    Some(c) => (share - c).max(Money::ZERO),
+                    None => share,
+                }
+            };
+            if ages.is_empty() {
+                return taxable_ss;
+            }
+            return ages
+                .iter()
+                .map(|&a| each(a))
+                .fold(Money::ZERO, |x, y| x + y);
+        }
         if limit > Money::ZERO && agi <= limit {
             return Money::ZERO;
         }
@@ -189,6 +232,21 @@ impl SocialSecurityRule {
         };
         (taxable_ss - per_person - flat).max(Money::ZERO)
     }
+
+    /// The credit against tax for `taxable_ss` when income is `income` (Utah style).
+    pub fn credit(&self, fs: FilingStatus, income: Money, taxable_ss: Money) -> Money {
+        if self.credit_rate <= 0.0 {
+            return Money::ZERO;
+        }
+        let limit = if fs == FilingStatus::MarriedJoint {
+            self.exempt_agi_joint
+        } else {
+            self.exempt_agi_single
+        };
+        let over = (income - limit).max(Money::ZERO);
+        (taxable_ss.mul_rate(self.credit_rate) - over.mul_rate(self.credit_phaseout_rate))
+            .max(Money::ZERO)
+    }
 }
 
 /// Retirement income in a year, for the state's exclusion.
@@ -198,6 +256,8 @@ pub struct RetirementIncome {
     pub distributions: Money,
     /// Gross Social Security benefits received, taxable or not.
     pub social_security: Money,
+    /// Social Security the state left out of income; set by the tax calculation.
+    pub ss_subtracted: Money,
     /// Ages of the (adult) people on the return.
     pub ages: Vec<i32>,
 }
@@ -234,6 +294,9 @@ impl RetirementExclusion {
             .fold(zero, |a, b| a + b);
         if self.less_social_security {
             cap = (cap - inc.social_security.max(zero)).max(zero);
+        }
+        if self.less_ss_subtracted {
+            cap = (cap - inc.ss_subtracted.max(zero)).max(zero);
         }
         let pool = if self.pension_only {
             left_p
@@ -448,10 +511,17 @@ impl StateTaxYear {
         }
         if let Some(x) = &r.retirement {
             let before = (federal_agi - ss).max(Money::ZERO);
-            income =
-                (income - x.excluded(ret) - x.household_excluded(fs, before, ret)).max(Money::ZERO);
+            let mut ret = ret.clone();
+            ret.ss_subtracted = (ss - ss_in_state).max(Money::ZERO);
+            income = (income - x.excluded(&ret) - x.household_excluded(fs, before, &ret))
+                .max(Money::ZERO);
         }
-        self.income_tax(code, fs, income)
+        let tax = self.income_tax(code, fs, income)?;
+        let credit = match (&r.social_security, r.taxes_social_security) {
+            (Some(rule), true) => rule.credit(fs, income, ss),
+            _ => Money::ZERO,
+        };
+        Some((tax - credit).max(Money::ZERO))
     }
 
     /// State income tax on `federal_agi`-like income for a resident of `code`.
@@ -527,6 +597,7 @@ mod tests {
             pension: m(pension),
             distributions: m(dist),
             social_security: Money::ZERO,
+            ss_subtracted: Money::ZERO,
             ages: ages.to_vec(),
         }
     }
@@ -645,9 +716,9 @@ mod tests {
             y.income_tax_with_retirement(c, fs, m(100_000), m(ben), &ret(0, 0, ages))
                 .unwrap()
         };
-        // Colorado: $30,000 of benefits at 66 is cut by $24,000.
+        // Colorado: at 65 or older all of the benefits are left out.
         let co = y
-            .income_tax("CO", FilingStatus::Single, m(100_000 - 24_000))
+            .income_tax("CO", FilingStatus::Single, m(100_000 - 30_000))
             .unwrap();
         assert_eq!(t("CO", FilingStatus::Single, 30_000, &[66]), co);
         // Montana: $5,500 deduction for a single filer.
@@ -655,6 +726,56 @@ mod tests {
             .income_tax("MT", FilingStatus::Single, m(100_000 - 5_500))
             .unwrap();
         assert_eq!(t("MT", FilingStatus::Single, 30_000, &[66]), mt);
+    }
+
+    #[test]
+    fn colorado_at_55_to_64_depends_on_income_and_pensions_share_the_cap() {
+        let y = StateTaxYear::y2026();
+        let t = |fs, agi: i64, ben: i64, pen: i64, ages: &[i32]| {
+            y.income_tax_with_retirement("CO", fs, m(agi), m(ben), &ret(pen, 0, ages))
+                .unwrap()
+        };
+        let plain = |fs, inc: i64| y.income_tax("CO", fs, m(inc)).unwrap();
+        let single = FilingStatus::Single;
+        // 60: at $75,000 or less every benefit dollar goes; over it only $20,000 does.
+        assert_eq!(t(single, 75_000, 30_000, 0, &[60]), plain(single, 45_000));
+        assert_eq!(t(single, 80_000, 30_000, 0, &[60]), plain(single, 60_000));
+        // Joint limit is $95,000.
+        let joint = FilingStatus::MarriedJoint;
+        assert_eq!(t(joint, 95_000, 30_000, 0, &[60, 58]), plain(joint, 65_000));
+        // A pension at 66 with no benefits: $24,000 comes out.
+        assert_eq!(t(single, 100_000, 0, 50_000, &[66]), plain(single, 76_000));
+        // At 60: $20,000.
+        assert_eq!(t(single, 100_000, 0, 50_000, &[60]), plain(single, 80_000));
+        // Benefits subtracted use up the pension cap: $10,000 of benefits at 66 leaves $14,000.
+        assert_eq!(
+            t(single, 100_000, 10_000, 50_000, &[66]),
+            plain(single, 100_000 - 10_000 - 14_000)
+        );
+        // Benefits of $24,000 or more leave no pension subtraction.
+        assert_eq!(
+            t(single, 100_000, 30_000, 50_000, &[66]),
+            plain(single, 70_000)
+        );
+    }
+
+    #[test]
+    fn utah_gives_a_credit_for_benefits_that_fades_with_income() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, ben: i64| {
+            y.income_tax_with_retirement("UT", single, m(agi), m(ben), &ret(0, 0, &[70]))
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("UT", single, m(inc)).unwrap();
+        // Under the line the credit is 4.5% of the benefits.
+        assert_eq!(go(50_000, 20_000), plain(50_000) - m(900));
+        // Over it, 2.5% of the excess is taken back: $64,000 is $10,000 over.
+        assert_eq!(go(64_000, 20_000), plain(64_000) - m(900) + m(250));
+        // Never more than the tax itself.
+        assert_eq!(go(10_000, 10_000), Money::ZERO);
+        // No benefits, no credit.
+        assert_eq!(go(50_000, 0), plain(50_000));
     }
 
     #[test]

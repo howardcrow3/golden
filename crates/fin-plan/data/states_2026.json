@@ -158,9 +158,21 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Colorado subtracts up to $20,000 of Social Security per person aged 55 to 64 and $24,000 at 65 or more. Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Checked against the 2025 DR 0104 booklet and DR 0104AD. Social Security: a person 65 or older leaves all of it out; at 55 to 64 all of it if federal AGI is $75,000 or less (single) / $95,000 or less (joint), otherwise up to $20,000. Pension, annuity and IRA income: up to $24,000 a person at 65 or older and $20,000 at 55 to 64, less the Social Security subtracted. Benefits are split evenly between spouses, and the pension caps are pooled across the household, which can differ slightly from the form.",
    "taxes_social_security": true,
    "social_security": {
+    "exempt_agi_single": 7500000,
+    "exempt_agi_joint": 9500000,
+    "full_age": 65,
+    "caps": [
+     {
+      "age": 55,
+      "cap": 2000000
+     }
+    ]
+   },
+   "retirement": {
+    "min_age": 0,
     "caps": [
      {
       "age": 55,
@@ -170,7 +182,8 @@
       "age": 65,
       "cap": 2400000
      }
-    ]
+    ],
+    "less_ss_subtracted": true
    }
   },
   "CT": {
@@ -3371,11 +3384,13 @@
    "std_joint": 0,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Utah gives a credit that fully offsets tax on Social Security below $54,000 (single) / $90,000 (joint) AGI and phases out above; here it is all or nothing. Thresholds are from secondary sources and not yet checked against the official form.",
+   "notes": "Checked against the 2025 TC-40 instructions. Social Security stays in income and earns a credit of 4.5% of the taxable benefits, less 2.5% of income over $54,000 (single) / $90,000 (joint). The $450 retirement credit for people born before 1953 and the taxpayer credit are not modelled.",
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 5400000,
-    "exempt_agi_joint": 9000000
+    "exempt_agi_joint": 9000000,
+    "credit_rate": 0.045,
+    "credit_phaseout_rate": 0.025
    }
   },
   "VA": {
