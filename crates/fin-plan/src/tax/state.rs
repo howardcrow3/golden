@@ -647,6 +647,10 @@ pub struct MilitaryRetirement {
     /// South Carolina's retirement deduction).
     #[serde(default)]
     pub reduces_retirement_caps: bool,
+    /// A retiree whose own earned income is over this much may leave out this much more
+    /// (Georgia: $17,500); zero means no such extra.
+    #[serde(default)]
+    pub earned_extra: Money,
 }
 
 impl MilitaryRetirement {
@@ -661,7 +665,13 @@ impl MilitaryRetirement {
             }
             let mut cut = pay.max(zero);
             if self.per_person_cap > zero {
-                cut = cut.min(self.per_person_cap);
+                let mut cap = self.per_person_cap;
+                if self.earned_extra > zero
+                    && inc.earned.get(i).copied().unwrap_or(zero) > self.earned_extra
+                {
+                    cap += self.earned_extra;
+                }
+                cut = cut.min(cap);
             }
             if let Some(c) = self
                 .age_caps
@@ -721,6 +731,9 @@ pub struct RetirementIncome {
     pub military: Vec<Money>,
     /// Taken off the retirement caps before they apply; set by the tax calculation.
     pub cap_reduction: Money,
+    /// Each adult's own wages and self-employment income, in the same order as `ages`; empty
+    /// when not known.
+    pub earned: Vec<Money>,
 }
 
 impl RetirementExclusion {
@@ -1204,6 +1217,7 @@ mod tests {
             birth_years: Vec::new(),
             military: Vec::new(),
             cap_reduction: Money::ZERO,
+            earned: Vec::new(),
         }
     }
 
@@ -1815,6 +1829,26 @@ mod tests {
             go("DE", single, 90_000, 30_000, 0, &[30_000], &[50]),
             plain("DE", single, 77_500)
         );
+    }
+
+    #[test]
+    fn georgia_allows_more_military_pay_out_with_earned_income() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |earned: i64| {
+            let r = RetirementIncome {
+                military: vec![m(40_000)],
+                earned: vec![m(earned)],
+                ..ret(40_000, 0, &[50])
+            };
+            y.income_tax_with_retirement("GA", single, m(100_000), Money::ZERO, &r)
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("GA", single, m(inc)).unwrap();
+        // $17,500 without earnings over $17,500; $35,000 with them.
+        assert_eq!(go(0), plain(82_500));
+        assert_eq!(go(17_500), plain(82_500));
+        assert_eq!(go(60_000), plain(65_000));
     }
 
     #[test]

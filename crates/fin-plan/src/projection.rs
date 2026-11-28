@@ -398,6 +398,13 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
                     Vec::new()
                 },
                 cap_reduction: Money::ZERO,
+                earned: input
+                    .people
+                    .iter()
+                    .zip(person_wages.iter().zip(&person_se))
+                    .filter(|(p, _)| !p.is_dependent)
+                    .map(|(_, (w, se))| *w + *se)
+                    .collect(),
             };
             let st = states
                 .income_tax_with_retirement(&input.state, input.filing, f.agi, taxable_ss, &ret)
