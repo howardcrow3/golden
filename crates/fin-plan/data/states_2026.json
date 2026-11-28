@@ -235,7 +235,7 @@
    "std_joint": 2400000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint); above that the federally taxable amount is used (the state caps it at 25% of benefits, so this errs high). The $75,000 / $100,000 thresholds are checked against the 2025 CT-1040 instructions (Line 41, Rev. 12/25). Above the line, the 2025 Social Security Benefit Adjustment Worksheet leaves only 25% of the lesser of total benefits and line 9 of the federal worksheet in income; that needs total benefits, which the state calculation does not get, so the full federally taxable amount is used here (errs high).",
+   "notes": "Connecticut follows the CT-1040 Tax Calculation Schedule (Tables A to E: personal exemption, 2% add-back, recapture and personal tax credit by CT AGI) as printed in the 2024 form (CT-1040 TCS Rev. 12/24); the thresholds are set in law and are not indexed, and no 2026 schedule is published yet. Assumed: the personal tax credit is 100% at or below the first row of Table E. Check against the 2026 form when it appears. Connecticut leaves Social Security out when AGI is at or below $75,000 (single) / $100,000 (joint). The $75,000 / $100,000 thresholds are checked against the 2025 CT-1040 instructions (Line 41, Rev. 12/25). Above the line, the 2025 Social Security Benefit Adjustment Worksheet leaves only 25% of the lesser of total benefits and line 9 of the federal worksheet in income, and that is modelled; line 9 is estimated without tax-exempt interest or adjustments.",
    "joint_brackets": [
     [
      0,
@@ -2061,7 +2061,8 @@
    "taxes_social_security": true,
    "social_security": {
     "exempt_agi_single": 7500000,
-    "exempt_agi_joint": 10000000
+    "exempt_agi_joint": 10000000,
+    "benefit_cap_rate": 0.25
    }
   },
   "DC": {
