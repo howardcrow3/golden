@@ -167,3 +167,25 @@ fn restore_is_blocked_after_the_trial() {
     app.db().set_setting("first_run", "2026-01-01").unwrap();
     assert!(app.restore_backup(&text).is_err());
 }
+
+#[test]
+fn restore_keeps_a_refund_cancelling_its_purchase() {
+    let mut src = blank();
+    src.import_statement(
+        b"Date,Description,Amount\n11/01/2026,ACME PAYROLL,3000.00\n11/03/2026,TARGET #1234,-80.00\n11/10/2026,TARGET RETURN,80.00\n",
+        "Checking",
+        "checking",
+    )
+    .unwrap();
+    let nov = |a: &App| {
+        let m = a
+            .cash_flow(d(2026, 11, 1), d(2026, 11, 30), "month")
+            .unwrap()
+            .remove(0);
+        (m.income_cents, m.spending_cents)
+    };
+    assert_eq!(nov(&src), (300_000, 0));
+    let mut fresh = blank();
+    fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert_eq!(nov(&fresh), (300_000, 0));
+}

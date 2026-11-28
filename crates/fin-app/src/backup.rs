@@ -154,6 +154,9 @@ impl App {
             });
         }
         let summary = self.db.import_batch(&rows).map_err(|e| e.to_string())?;
+        // A refund and its purchase are paired after every import; a restore is one too, or
+        // both would count again in income and spending.
+        self.mark_refunds()?;
         let mut restored = vec![];
         for key in INCLUDED_SETTINGS {
             let have = self.db.get_setting(key).map_err(|e| e.to_string())?;
