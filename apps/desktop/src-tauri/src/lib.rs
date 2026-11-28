@@ -131,6 +131,14 @@ fn export_transactions(app: tauri::AppHandle, state: Shared, from: String, to: S
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Write an Excel workbook of the transactions between two dates into the Exports folder.
+#[tauri::command]
+fn export_transactions_xlsx(app: tauri::AppHandle, state: Shared, from: String, to: String) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("Exports");
+    let path = lock(&state)?.export_transactions_xlsx(&dir, &from, &to)?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Write a full JSON copy of everything the person has entered into the Exports folder.
 #[tauri::command]
 fn export_backup(app: tauri::AppHandle, state: Shared) -> Result<String, String> {
@@ -1179,6 +1187,7 @@ pub fn run() {
             import_statement,
             import_file,
             export_transactions,
+            export_transactions_xlsx,
             export_backup,
             save_report,
             restore_backup,

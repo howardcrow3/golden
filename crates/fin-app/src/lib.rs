@@ -50,6 +50,7 @@ pub mod vault;
 pub mod watch;
 pub mod watchlists;
 pub mod withholding;
+pub mod xlsx;
 
 use chrono::NaiveDate;
 use fin_core::{Grain, PeriodKey};

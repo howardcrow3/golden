@@ -615,6 +615,17 @@ describe("Transactions", () => {
     expect((await screen.findByRole("status")).textContent).toBe("Exported to /data/Exports/golden-transactions.csv");
     expect(log.find(([c]) => c === "export_transactions")![1]).toEqual({ from: "2025-11-16", to: "2026-11-16" });
   });
+  it("exports an Excel workbook for the same dates", async () => {
+    const log: [string, Record<string, unknown> | undefined][] = [];
+    const base = fake(log);
+    const invoke = async (cmd: string, args?: Record<string, unknown>) =>
+      cmd === "export_transactions_xlsx" ? (log.push([cmd, args]), "/data/Exports/golden-transactions.xlsx") : base(cmd, args);
+    render(Transactions, { invoke, today: new Date("2026-11-16T00:00:00Z") });
+    await screen.findByText("ACME PAYROLL");
+    await fireEvent.click(screen.getByRole("button", { name: "Export Excel" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Exported to /data/Exports/golden-transactions.xlsx");
+    expect(log.find(([c]) => c === "export_transactions_xlsx")![1]).toEqual({ from: "2025-11-16", to: "2026-11-16" });
+  });
   it("lists and exports the dates the person picked", async () => {
     const log: [string, Record<string, unknown> | undefined][] = [];
     const base = fake(log);
