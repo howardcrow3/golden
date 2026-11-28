@@ -201,6 +201,7 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
         roth_conversion: None,
         medicare: false,
         charity: Money::ZERO,
+        traditional_split: vec![],
     };
     run_plan(&plan, &req.picks, req.runs)
 }
