@@ -159,7 +159,7 @@ describe("License prices", () => {
   it("shows $39.99 once and $5 a month by default", () => {
     render(License);
     expect(screen.getByTestId("prices").textContent).toBe(
-      "Golden is $39.99 once per major version. Bank connections are an optional $9.97 a month, or $100.00 a year.",
+      "Golden is $39.99 once per major version. Automatic bank updates are a separate add-on, not included in that price: $9.97 a month, or $100.00 a year, on top of Golden.",
     );
   });
   it("uses the prices the app reports and shows a bad price ID warning", async () => {
@@ -169,7 +169,7 @@ describe("License prices", () => {
         : { state: "trial", daysLeft: 3, canEdit: true, plaidActive: false };
     render(License, { invoke });
     await vi.waitFor(() =>
-      expect(screen.getByTestId("prices").textContent).toBe("Golden is $25.00 once per major version. Bank connections are an optional $20.00 a year."),
+      expect(screen.getByTestId("prices").textContent).toBe("Golden is $25.00 once per major version. Automatic bank updates are a separate add-on, not included in that price: $20.00 a year, on top of Golden."),
     );
     expect((await screen.findByRole("alert")).textContent).toMatch(/product ID/);
   });
