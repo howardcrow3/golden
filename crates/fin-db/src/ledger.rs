@@ -8,7 +8,7 @@ pub struct AccountId(pub i64);
 
 /// SQL for "not money moved between the household's own accounts" on the `txn` table.
 const NOT_TRANSFER: &str =
-    "coalesce((SELECT name FROM category WHERE id = category_id), '') <> 'Transfer'";
+    "coalesce((SELECT name FROM category WHERE id = category_id), '') <> 'Transfer' AND netted = 0";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NewTxn {
@@ -444,6 +444,23 @@ impl Db {
         Ok(rows.collect::<std::result::Result<_, _>>()?)
     }
 
+    /// Mark transactions as cancelled out by a refund (or clear the mark). They stay listed and
+    /// still count toward balances, but are left out of income and spending totals.
+    pub fn set_netted(&self, ids: &[i64], on: bool) -> Result<()> {
+        for id in ids {
+            self.conn
+                .execute("UPDATE txn SET netted=?1 WHERE id=?2", params![on, id])?;
+        }
+        Ok(())
+    }
+
+    /// Ids of the transactions marked as cancelled out.
+    pub fn netted_ids(&self) -> Result<Vec<i64>> {
+        let mut st = self.conn.prepare("SELECT id FROM txn WHERE netted=1")?;
+        let rows = st.query_map([], |r| r.get(0))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
     pub fn txn_count(&self) -> Result<i64> {
         Ok(self
             .conn
@@ -543,10 +560,10 @@ impl Db {
         let sql = format!(
             "SELECT name, sum(cents) FROM (
                SELECT coalesce(c.name,'Uncategorized') AS name, t.cents AS cents FROM txn t LEFT JOIN category c ON c.id=t.category_id
-                WHERE t.{col}=?1 AND t.cents {cmp} 0 AND NOT EXISTS (SELECT 1 FROM split s WHERE s.txn_id=t.id)
+                WHERE t.{col}=?1 AND t.cents {cmp} 0 AND t.netted=0 AND NOT EXISTS (SELECT 1 FROM split s WHERE s.txn_id=t.id)
                UNION ALL
                SELECT c.name, s.cents FROM split s JOIN txn t ON t.id=s.txn_id JOIN category c ON c.id=s.category_id
-                WHERE t.{col}=?1 AND t.cents {cmp} 0
+                WHERE t.{col}=?1 AND t.cents {cmp} 0 AND t.netted=0
              ) WHERE name <> 'Transfer' GROUP BY 1 ORDER BY sum(cents) * {sign} DESC, 1"
         );
         let mut st = self.conn.prepare(&sql)?;

@@ -249,6 +249,8 @@ impl App {
         for acct in touched {
             report.reconciled += self.db.reconcile_bank(acct).map_err(|e| e.to_string())?;
         }
+        self.mark_transfers()?;
+        self.mark_refunds()?;
         // Only move the saved position once everything above is stored.
         items[at].cursor = changes.cursor;
         self.save_bank_items(&items)?;

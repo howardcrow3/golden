@@ -34,6 +34,7 @@ pub mod planfile;
 pub mod progress;
 pub mod receipts;
 pub mod recurring;
+pub mod refunds;
 pub mod report;
 pub mod retire_when;
 pub mod scenarios;
@@ -236,6 +237,7 @@ impl App {
             .collect();
         let summary = self.db.import_batch(&rows).map_err(|e| e.to_string())?;
         self.mark_transfers()?;
+        self.mark_refunds()?;
         let printed = fin_ingest::statement_balance(bytes);
         let balance_after = self
             .accounts()?
