@@ -287,6 +287,8 @@ export interface Household {
   locality?: string;
   /** Your own healthcare figures instead of the built-in estimates. */
   healthDetail?: HealthRow;
+  /** First person's share of the pre-tax balance in basis points; missing means split by pay. */
+  traditionalFirstBp?: number | null;
 }
 export interface HealthRow {
   pre65Cents: number;

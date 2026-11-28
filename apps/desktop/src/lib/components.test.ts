@@ -397,6 +397,19 @@ describe("household form helpers", () => {
     expect(() => fromForm(f)).toThrow(/Mortgage rate/);
   });
 
+  it("keeps the pre-tax owner share for two people and drops it for one", () => {
+    const two = { ...h, people: [h.people[0], { ...h.people[0], name: "Sam" }], traditionalFirstBp: 2500 };
+    const f = toForm(two);
+    expect(f.traditionalFirst).toBe("25");
+    expect(fromForm(f).traditionalFirstBp).toBe(2500);
+    f.traditionalFirst = "";
+    expect(fromForm(f).traditionalFirstBp).toBeUndefined();
+    f.traditionalFirst = "120";
+    expect(() => fromForm(f)).toThrow(/Pre-tax share/);
+    const one = toForm({ ...h, traditionalFirstBp: 2500 });
+    expect(fromForm(one).traditionalFirstBp).toBeUndefined();
+  });
+
   it("round-trips a household through the form", () => {
     expect(fromForm(toForm(h))).toEqual({ ...h, events: [], spendingRule: "fixed", withdrawalOrder: "standard", medicare: true });
   });
