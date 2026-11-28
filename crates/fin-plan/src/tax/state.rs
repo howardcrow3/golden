@@ -334,9 +334,54 @@ pub struct SocialSecurityRule {
     /// this much more income (Vermont: $10,000; Minnesota: 10% per $4,000, so $40,000).
     #[serde(default)]
     pub phaseout_width: Money,
+    /// Over the `exempt_agi` line no more than this share of the lesser of total benefits and
+    /// the federal worksheet's income over its base amount stays in (Connecticut: 25%).
+    #[serde(default)]
+    pub benefit_cap_rate: f64,
 }
 
+/// The federal Social Security worksheet's base amounts (line 8), set in law and not indexed.
+const FED_SS_BASE_SINGLE: i64 = 2_500_000;
+const FED_SS_BASE_JOINT: i64 = 3_200_000;
+
 impl SocialSecurityRule {
+    /// Caps `in_state` by `benefit_cap_rate` of the lesser of `gross` benefits and the federal
+    /// worksheet's line 9 (provisional income over the base). With no gross figure, or under the
+    /// AGI line, `in_state` is returned unchanged.
+    pub fn capped_by_benefits(
+        &self,
+        fs: FilingStatus,
+        agi: Money,
+        taxable_ss: Money,
+        gross: Money,
+        in_state: Money,
+    ) -> Money {
+        if self.benefit_cap_rate <= 0.0 || gross <= Money::ZERO {
+            return in_state;
+        }
+        let joint = fs == FilingStatus::MarriedJoint;
+        let limit = if joint {
+            self.exempt_agi_joint
+        } else {
+            self.exempt_agi_single
+        };
+        if agi <= limit {
+            return in_state;
+        }
+        let base = Money::from_cents(if joint {
+            FED_SS_BASE_JOINT
+        } else {
+            FED_SS_BASE_SINGLE
+        });
+        // Line 9: other income plus half the benefits, less the base (tax-exempt interest and
+        // adjustments are not tracked, so this can run a little high).
+        let provisional =
+            (agi - taxable_ss).max(Money::ZERO) + Money::from_cents(gross.cents() / 2);
+        let line9 = (provisional - base).max(Money::ZERO);
+        let cap = gross.min(line9).mul_rate(self.benefit_cap_rate);
+        in_state.min(cap)
+    }
+
     /// The part of `taxable_ss` that stays in state income.
     pub fn taxed(&self, fs: FilingStatus, agi: Money, taxable_ss: Money, ages: &[i32]) -> Money {
         let joint = fs == FilingStatus::MarriedJoint;
@@ -696,7 +741,10 @@ impl StateTaxYear {
         let ss = taxable_ss.max(Money::ZERO);
         let ss_in_state = match (&r.social_security, r.taxes_social_security) {
             (_, false) => Money::ZERO,
-            (Some(rule), true) => rule.taxed(fs, federal_agi, ss, &ret.ages),
+            (Some(rule), true) => {
+                let kept = rule.taxed(fs, federal_agi, ss, &ret.ages);
+                rule.capped_by_benefits(fs, federal_agi, ss, ret.social_security, kept)
+            }
             (None, true) => ss,
         };
         let mut income = (federal_agi - ss + ss_in_state).max(Money::ZERO);
@@ -1230,6 +1278,30 @@ mod tests {
         assert_eq!(go(90_000, 30_000, 0, 0, &[68]), plain(60_000));
         // At 62 they are not.
         assert_eq!(go(90_000, 30_000, 0, 0, &[62]), plain(90_000));
+    }
+
+    #[test]
+    fn connecticut_keeps_at_most_a_quarter_of_benefits_over_its_line() {
+        let y = StateTaxYear::y2026();
+        let single = FilingStatus::Single;
+        let go = |agi: i64, taxable: i64, gross: i64| {
+            let r = RetirementIncome {
+                social_security: m(gross),
+                ..ret(0, 0, &[70])
+            };
+            y.income_tax_with_retirement("CT", single, m(agi), m(taxable), &r)
+                .unwrap()
+        };
+        let plain = |inc: i64| y.income_tax("CT", single, m(inc)).unwrap();
+        // $24,000 of benefits, $20,400 federally taxable: 25% of $24,000 stays in.
+        assert_eq!(go(100_000, 20_400, 24_000), plain(79_600 + 6_000));
+        // When income over the federal base is smaller than the benefits, it sets the cap:
+        // $25,000 + $30,000 - $25,000 = $30,000, and 25% of that is $7,500.
+        assert_eq!(go(76_000, 51_000, 60_000), plain(25_000 + 7_500));
+        // Under the line benefits still come out entirely.
+        assert_eq!(go(70_000, 20_400, 24_000), plain(49_600));
+        // Without a gross figure the federally taxable amount is used, as before.
+        assert_eq!(go(100_000, 20_400, 0), plain(100_000));
     }
 
     #[test]
