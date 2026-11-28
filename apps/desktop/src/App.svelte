@@ -101,7 +101,7 @@
     <button class="nav" aria-pressed={dockOpen} onclick={() => setDock(!dockOpen)} title="Ask about your numbers beside any screen">Chat pane</button>
     <button class="nav" aria-pressed={hide} onclick={toggleHide} title="Hide dollar amounts, for screen sharing">{hide ? "Show amounts" : "Hide amounts"}</button>
     </div>
-    <div class="foot">
+    <div class="acct-foot">
       <PrivacyBadge onclick={() => (settings = "Privacy")} />
       <AccountMenu {lic} {canFeedback} onsettings={(t) => (settings = t)} />
     </div>
@@ -126,7 +126,7 @@
   nav.side .nav { border-color: transparent; background: transparent; height: 28px; padding: 0 8px; font-weight: 450; }
   nav.side .nav:hover:not(:disabled) { background: var(--hover); }
   nav.side .nav[aria-pressed="true"] { background: var(--selected); border-color: transparent; color: var(--ink); }
-  .foot { display: flex; flex-direction: column; gap: 2px; }
+  .acct-foot { display: flex; flex-direction: column; gap: 2px; }
   .hide :global(input) { -webkit-text-security: disc; }
   main { padding: 28px 36px; overflow-y: auto; min-width: 0; }
   main > :global(*) { max-width: 1040px; }
