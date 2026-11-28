@@ -307,3 +307,19 @@ fn unknown_banks_are_refused() {
     assert!(app.bank_unlink(&f, &s, "nope").is_err());
     assert!(app.bank_set_paused("nope", true).is_err());
 }
+
+#[test]
+fn erasing_everything_does_not_orphan_a_linked_bank() {
+    // Erasing would forget the bank while its access token stayed in the keychain and the
+    // Plaid connection stayed live, so it asks for the banks to be unlinked first.
+    let mut app = app_with_plaid(true);
+    let (f, s) = (Fake::default(), Secrets::default());
+    linked(&mut app, &f, &s);
+    let err = app.erase_all_data("DELETE").unwrap_err();
+    assert!(err.contains("nlink"), "{err}");
+    assert_eq!(app.bank_items().unwrap().len(), 1, "nothing was erased");
+    f.on("/item/remove", 200, json!({}));
+    app.bank_unlink(&f, &s, "item-1").unwrap();
+    app.erase_all_data("DELETE").unwrap();
+    assert!(s.get("plaid:item-1").unwrap().is_none());
+}
