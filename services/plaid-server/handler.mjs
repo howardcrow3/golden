@@ -154,7 +154,10 @@ export function createHandler({ fetchImpl = fetch, env = process.env, now = () =
       return reply(400, { error: "body must be a JSON object" });
     }
 
-    const today = now().toISOString().slice(0, 10);
+    // The app checks plaid_until against the person's local date, so "today" here is the date
+    // Anywhere on Earth (UTC-12): the paid-through day is honoured until it ends in every time
+    // zone, instead of lapsing at 4pm in California when the UTC date rolls over.
+    const today = new Date(now().getTime() - 12 * 3600 * 1000).toISOString().slice(0, 10);
     const major = Number(env.GOLDEN_APP_MAJOR ?? 1);
     const lic = checkLicence(input.licence, env.GOLDEN_LICENCE_PUBLIC_KEY ?? "", major, today);
     if (!lic.ok) return reply(403, { error_code: "LICENCE", error_message: lic.why });

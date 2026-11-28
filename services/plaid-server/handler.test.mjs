@@ -137,3 +137,16 @@ test("a JSON body that is not an object is a 400, not a crash", async () => {
     assert.equal(r.statusCode, 400, body);
   }
 });
+
+test("the paid-through day still works in the evening in US time zones", async () => {
+  // 8pm in California on 2026-11-23 is 04:00 UTC on 2026-11-24.
+  const h = createHandler({ fetchImpl: okFetch(), env, now: () => new Date("2026-11-24T04:00:00Z") });
+  const ok = await h({ rawPath: "/item/remove", requestContext: { http: { method: "POST" } },
+    body: JSON.stringify({ licence: licence({ plaid_until: "2026-11-23" }), access_token: "a" }) });
+  assert.equal(ok.statusCode, 200);
+  // A full day later it has lapsed everywhere.
+  const late = createHandler({ fetchImpl: okFetch(), env, now: () => new Date("2026-11-25T13:00:00Z") });
+  const r = await late({ rawPath: "/item/remove", requestContext: { http: { method: "POST" } },
+    body: JSON.stringify({ licence: licence({ plaid_until: "2026-11-23" }), access_token: "a" }) });
+  assert.equal(r.statusCode, 403);
+});
