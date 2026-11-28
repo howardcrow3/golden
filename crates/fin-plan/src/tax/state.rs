@@ -56,6 +56,9 @@ pub struct FederalTaxDeduction {
     pub limits_single: Vec<(Money, Money)>,
     #[serde(default)]
     pub limits_joint: Vec<(Money, Money)>,
+    /// Head of household filers use the joint limits (Oregon).
+    #[serde(default)]
+    pub head_uses_joint: bool,
 }
 
 impl FederalTaxDeduction {
@@ -78,7 +81,9 @@ impl FederalTaxDeduction {
             Self::row(&self.shares, state_income).unwrap_or(1.0)
         };
         let mut out = tax.mul_rate(share);
-        let limits = if fs == FilingStatus::MarriedJoint {
+        let joint = fs == FilingStatus::MarriedJoint
+            || (self.head_uses_joint && fs == FilingStatus::HeadOfHousehold);
+        let limits = if joint {
             &self.limits_joint
         } else {
             &self.limits_single
@@ -1617,6 +1622,10 @@ mod tests {
             go("OR", joint, 255_000, 40_000),
             plain("OR", joint, 248_200)
         );
+        // Oregon heads of household use the joint limits; Missouri's get the single $5,000.
+        let head = FilingStatus::HeadOfHousehold;
+        assert_eq!(go("OR", head, 140_000, 20_000), plain("OR", head, 131_500));
+        assert_eq!(go("MO", head, 24_000, 20_000), plain("MO", head, 19_000));
         // States without the rule ignore it.
         assert_eq!(go("CA", single, 80_000, 9_000), plain("CA", single, 80_000));
     }
