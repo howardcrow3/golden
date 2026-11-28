@@ -2408,8 +2408,19 @@
    "std_joint": 200000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Flat 2.95% after the $1,000 exemption per person; military retired pay is left out in full. County income tax (0.5% to 3%) is added separately when a county is chosen, at the rates in Departmental Notice #1 (Oct. 1, 2026).",
-   "military": {}
+   "notes": "Checked against the 2025 IT-40 instructions. Flat 2.95% after the $1,000 exemption per person, plus $1,000 for each person 65 or older and $500 more each when federal AGI is under $40,000 ($20,000 married filing separately); military retired pay is left out in full. County income tax (0.5% to 3%) is added separately when a county is chosen, at the rates in Departmental Notice #1 (Oct. 1, 2026).",
+   "military": {},
+   "age_exemption": {
+    "age": 65,
+    "amount": 150000,
+    "step": 50000,
+    "start_single": 3999999,
+    "width_single": 100000000000,
+    "start_joint": 3999999,
+    "width_joint": 100000000000,
+    "start_separate": 1999999,
+    "width_separate": 100000000000
+   }
   },
   "KS": {
    "name": "Kansas",

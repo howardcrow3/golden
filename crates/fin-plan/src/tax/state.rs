@@ -1674,6 +1674,24 @@ mod tests {
     }
 
     #[test]
+    fn indiana_adds_exemptions_at_65() {
+        let y = StateTaxYear::y2026();
+        let go = |fs: FilingStatus, agi: i64, ages: &[i32]| {
+            y.income_tax_with_retirement("IN", fs, m(agi), Money::ZERO, &ret(0, 0, ages))
+                .unwrap()
+        };
+        let plain = |fs: FilingStatus, inc: i64| y.income_tax("IN", fs, m(inc)).unwrap();
+        let (single, joint) = (FilingStatus::Single, FilingStatus::MarriedJoint);
+        // $1,500 at 65 with AGI under $40,000; $1,000 from $40,000.
+        assert_eq!(go(single, 30_000, &[64]), plain(single, 30_000));
+        assert_eq!(go(single, 30_000, &[65]), plain(single, 28_500));
+        assert_eq!(go(single, 40_000, &[70]), plain(single, 39_000));
+        // Each spouse of that age.
+        assert_eq!(go(joint, 35_000, &[66, 67]), plain(joint, 32_000));
+        assert_eq!(go(joint, 90_000, &[66, 60]), plain(joint, 89_000));
+    }
+
+    #[test]
     fn wisconsin_slides_its_standard_deduction_down_to_nothing() {
         let y = StateTaxYear::y2026();
         let p = y.rules("WI").unwrap().std_phase_down.clone().unwrap();
