@@ -153,7 +153,38 @@ impl App {
             status: "active".into(),
         });
         self.save_bank_items(&items)?;
-        self.bank_sync(t, secrets, &ex.item_id)
+        let report = self.bank_sync(t, secrets, &ex.item_id)?;
+        self.pause_replaced_items(&ex.item_id)?;
+        Ok(report)
+    }
+
+    /// The bank was connected again without unlinking the old connection: every account the
+    /// old one feeds is now fed by `new_item` too. Pause the old one, so the two don't keep
+    /// trading the same lines; it can still be unlinked (which keeps the lines the new one has).
+    fn pause_replaced_items(&self, new_item: &str) -> Result<(), String> {
+        let new_accounts = self
+            .db
+            .bank_item_accounts(new_item)
+            .map_err(|e| e.to_string())?;
+        let mut items = self.bank_items()?;
+        let mut changed = false;
+        for i in items
+            .iter_mut()
+            .filter(|i| i.item_id != new_item && i.status == "active")
+        {
+            let old = self
+                .db
+                .bank_item_accounts(&i.item_id)
+                .map_err(|e| e.to_string())?;
+            if !old.is_empty() && old.iter().all(|a| new_accounts.contains(a)) {
+                i.status = "paused".into();
+                changed = true;
+            }
+        }
+        if changed {
+            self.save_bank_items(&items)?;
+        }
+        Ok(())
     }
 
     /// Pull what changed at one bank since the last sync.
@@ -195,6 +226,9 @@ impl App {
         };
 
         let institution = items[at].institution.clone();
+        // Before this item's accounts are linked (which may share a Golden account with another
+        // connection to the same bank), note which connection older lines came from.
+        self.db.tag_bank_lines().map_err(|e| e.to_string())?;
         for a in &changes.accounts {
             let mask = a
                 .mask
@@ -258,6 +292,7 @@ impl App {
                         pending: m.pending,
                         replaces: m.replaces.clone(),
                         category: None,
+                        item: item_id.to_string(),
                     });
                 }
                 None => report.skipped += 1,

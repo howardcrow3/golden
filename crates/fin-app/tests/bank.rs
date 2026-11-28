@@ -351,3 +351,118 @@ fn a_line_for_an_account_plaid_did_not_describe_is_still_kept() {
     assert_eq!(rows[0].account, rows[1].account);
     assert_eq!(app.accounts().unwrap().len(), accounts_before);
 }
+
+/// The same history as `linked`, as Plaid sends it for a second connection to the same bank:
+/// new item, new account and transaction ids.
+fn relinked(app: &mut App, f: &Fake, s: &Secrets) {
+    f.on(
+        "/link/exchange",
+        200,
+        json!({"access_token": "access-2", "item_id": "item-2"}),
+    );
+    let mut a = tx("n1", "2026-11-02", 12.5, "SHELL");
+    let mut b = tx("n2", "2026-11-05", -2000.0, "PAYROLL");
+    a["account_id"] = json!("pb1");
+    b["account_id"] = json!("pb1");
+    let mut p = page(json!([a, b]), "d1");
+    p["accounts"][0]["account_id"] = json!("pb1");
+    f.on("/transactions/sync", 200, p);
+    app.bank_finish_link(f, s, "public-2", "Chase").unwrap();
+}
+
+#[test]
+fn connecting_the_same_bank_again_does_not_count_its_history_twice() {
+    let mut app = app_with_plaid(true);
+    let (f, s) = (Fake::default(), Secrets::default());
+    linked(&mut app, &f, &s);
+    relinked(&mut app, &f, &s);
+    assert_eq!(app.db().txn_count().unwrap(), 2, "history counted once");
+    let status = |app: &App, id: &str| {
+        app.bank_items()
+            .unwrap()
+            .into_iter()
+            .find(|i| i.item_id == id)
+            .unwrap()
+            .status
+    };
+    assert_eq!(
+        status(&app, "item-1"),
+        "paused",
+        "the old connection is set aside"
+    );
+    assert_eq!(status(&app, "item-2"), "active");
+
+    // Even if the old one is resumed, lines both report are counted once, whichever is first.
+    app.bank_set_paused("item-1", false).unwrap();
+    let mut p = page(json!([tx("t3", "2026-11-09", 4.0, "COFFEE")]), "c2");
+    f.on("/transactions/sync", 200, p.clone());
+    app.bank_sync(&f, &s, "item-1").unwrap();
+    let mut n3 = tx("n3", "2026-11-09", 4.0, "COFFEE");
+    n3["account_id"] = json!("pb1");
+    p = page(json!([n3]), "d2");
+    p["accounts"][0]["account_id"] = json!("pb1");
+    f.on("/transactions/sync", 200, p);
+    app.bank_sync(&f, &s, "item-2").unwrap();
+    assert_eq!(app.db().txn_count().unwrap(), 3);
+
+    // Unlinking the old connection keeps what the new one reports.
+    f.on("/item/remove", 200, json!({}));
+    app.bank_unlink(&f, &s, "item-1").unwrap();
+    assert_eq!(app.db().txn_count().unwrap(), 3);
+}
+
+#[test]
+fn genuine_repeats_from_one_connection_are_all_kept() {
+    let mut app = app_with_plaid(true);
+    let (f, s) = (Fake::default(), Secrets::default());
+    linked(&mut app, &f, &s);
+    // Two identical coffees in one sync, and a third identical one in the next.
+    f.on(
+        "/transactions/sync",
+        200,
+        page(
+            json!([
+                tx("t3", "2026-11-09", 4.0, "COFFEE"),
+                tx("t4", "2026-11-09", 4.0, "COFFEE")
+            ]),
+            "c2",
+        ),
+    );
+    app.bank_sync(&f, &s, "item-1").unwrap();
+    f.on(
+        "/transactions/sync",
+        200,
+        page(json!([tx("t5", "2026-11-09", 4.0, "COFFEE")]), "c3"),
+    );
+    app.bank_sync(&f, &s, "item-1").unwrap();
+    assert_eq!(app.db().txn_count().unwrap(), 5);
+
+    // A second connection that sends the three coffees and the earlier history matches them
+    // one for one, and nothing is added or lost.
+    f.on(
+        "/link/exchange",
+        200,
+        json!({"access_token": "access-2", "item_id": "item-2"}),
+    );
+    let lines: Vec<Value> = [
+        ("n1", "2026-11-02", 12.5, "SHELL"),
+        ("n2", "2026-11-05", -2000.0, "PAYROLL"),
+        ("n3", "2026-11-09", 4.0, "COFFEE"),
+        ("n4", "2026-11-09", 4.0, "COFFEE"),
+        ("n5", "2026-11-09", 4.0, "COFFEE"),
+        ("n6", "2026-11-09", 4.0, "COFFEE"),
+    ]
+    .iter()
+    .map(|(id, day, amt, name)| {
+        let mut t = tx(id, day, *amt, name);
+        t["account_id"] = json!("pb1");
+        t
+    })
+    .collect();
+    let mut p = page(json!(lines), "d1");
+    p["accounts"][0]["account_id"] = json!("pb1");
+    f.on("/transactions/sync", 200, p);
+    app.bank_finish_link(&f, &s, "public-2", "Chase").unwrap();
+    // The fourth coffee is new: it was only seen by the second connection.
+    assert_eq!(app.db().txn_count().unwrap(), 6);
+}
