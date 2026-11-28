@@ -11,8 +11,10 @@
 
   export function describe(s: LicenseStatus): string {
     if (s.state === "licensed") return s.plaidActive ? "Licensed, with bank connections." : "Licensed. Thank you.";
-    if (s.state === "trial") return `Trial: ${s.daysLeft} ${s.daysLeft === 1 ? "day" : "days"} left.`;
-    return "Trial ended. Your data is safe and exports still work.";
+    // A bank-connections key bought on its own turns on bank sync but not the app.
+    const bankOnly = s.plaidActive ? " Bank connections are on; Golden itself still needs buying." : "";
+    if (s.state === "trial") return `Trial: ${s.daysLeft} ${s.daysLeft === 1 ? "day" : "days"} left.${bankOnly}`;
+    return `Trial ended. Your data is safe and exports still work.${bankOnly}`;
   }
 
   export function priceLine(p: Pricing): string {
@@ -44,7 +46,10 @@
     try {
       status = await activateLicense(token, invoke);
       token = "";
-      note = "Licence accepted.";
+      note =
+        status.state !== "licensed" && status.plaidActive
+          ? "Bank connections key accepted. Golden itself still needs a licence: buy it above, then activate that key too."
+          : "Licence accepted.";
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }

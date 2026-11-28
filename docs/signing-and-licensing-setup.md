@@ -62,7 +62,7 @@ Today every merge refreshes the rolling `nightly` release. Before selling, add a
 
 ## 7. Licence delivery (Paddle webhook, signed key, email)
 
-Golden reuses the Turtlebox billing Lambda in `howardcrow3/highturtle` (`billing/`, AWS, behind `https://turtlebox.studio/api/billing/webhook`). When Paddle reports a completed transaction for the Golden core or Plaid price, it signs a licence with the Golden signing key and emails it to the buyer through SES. The app verifies it offline. Retried webhooks never send twice, and a failed email makes Paddle retry. The existing Paddle destination already sends `transaction.completed`.
+Golden reuses the Turtlebox billing Lambda in `howardcrow3/highturtle` (`billing/`, AWS, behind `https://turtlebox.studio/api/billing/webhook`). When Paddle reports a completed transaction for the Golden core or Plaid price, it signs a licence with the Golden signing key and emails it to the buyer through SES. The app verifies it offline. Retried webhooks never send twice, and a failed email makes Paddle retry. The existing Paddle destination already sends `transaction.completed`. Each licence says whether it unlocks the app: `"core":true` for a purchase of the app (and for an add-on renewal by someone who already bought it), `"core":false` for the bank add-on bought on its own, which turns on bank sync but not the app. Licences issued before this field existed leave it out and keep unlocking the app.
 
 One-time setup:
 

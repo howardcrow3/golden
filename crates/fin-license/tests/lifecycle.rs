@@ -28,6 +28,7 @@ fn trial_to_licensed_lifecycle() {
         issued: d(2026, 12, 20),
         plaid_until: Some(d(2027, 12, 20)),
         buyer: "buyer@example.com".into(),
+        core: None,
     };
     let token = issue(&sk, &payload);
     let got = verify(&vk, &token, APP_MAJOR).unwrap();
@@ -46,6 +47,7 @@ fn tampered_or_foreign_tokens_rejected() {
         issued: d(2026, 1, 1),
         plaid_until: None,
         buyer: "a".into(),
+        core: None,
     };
     let token = issue(&sk, &p);
     assert!(verify(&other.verifying_key(), &token, APP_MAJOR).is_err());

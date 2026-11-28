@@ -65,6 +65,7 @@ fn app_with_plaid(plaid: bool) -> App {
             issued: d(2026, 11, 1),
             plaid_until: plaid.then(|| d(2027, 11, 1)),
             buyer: "b".into(),
+            core: None,
         },
     );
     let app = App::in_memory()

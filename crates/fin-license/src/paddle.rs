@@ -173,6 +173,10 @@ pub fn licence_from_event(
             issued: when,
             plaid_until,
             buyer: customer_id.clone(),
+            // A purchase of the bank add-on alone must not unlock the app. A renewal for
+            // someone who also owns the app is told apart by the seller (who knows their past
+            // purchases), and the app never lets an add-on key replace an app key it holds.
+            core: Some(core),
         },
     );
     Ok(Some(Issued {
