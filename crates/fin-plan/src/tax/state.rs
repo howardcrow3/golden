@@ -2626,13 +2626,59 @@ mod tests {
     }
 
     #[test]
+    fn virginia_counts_its_930_exemption_and_illinois_drops_its_at_high_income() {
+        let y = StateTaxYear::y2026();
+        // Virginia, $50,000 single: less $8,750 and $930 leaves $40,320.
+        // 2% of $3,000, 3% of $2,000, 5% of $12,000 and 5.75% of the rest.
+        let va = y.income_tax("VA", FilingStatus::Single, m(50_000)).unwrap();
+        let want = 60.0 + 60.0 + 600.0 + 0.0575 * (40_320.0 - 17_000.0);
+        assert!((va.cents() as f64 / 100.0 - want).abs() < 1.0, "{va:?}");
+        // Illinois: the $2,850 exemption goes once AGI is over $250,000.
+        let il = |inc: i64| y.income_tax("IL", FilingStatus::Single, m(inc)).unwrap();
+        assert_eq!(il(250_000), m(250_000 - 2_850).mul_rate(0.0495));
+        assert_eq!(il(250_001), m(250_001).mul_rate(0.0495));
+        let ilj = y
+            .income_tax("IL", FilingStatus::MarriedJoint, m(400_000))
+            .unwrap();
+        assert_eq!(ilj, m(400_000 - 5_700).mul_rate(0.0495));
+    }
+
+    #[test]
     fn progressive_california() {
         let y = StateTaxYear::y2026();
-        let t = y
-            .income_tax("CA", FilingStatus::Single, m(100_000))
-            .unwrap();
-        // Taxable 94,460; brackets through 9.3%: plausible band for CA.
-        assert!(t > m(5_000) && t < m(7_000), "{t}");
+        let close = |fs, inc: i64, want: f64| {
+            let got = y.income_tax("CA", fs, m(inc)).unwrap();
+            assert!(
+                (got.cents() as f64 / 100.0 - want).abs() < 1.0,
+                "{got:?} vs {want}"
+            );
+        };
+        // FTB's 2026 Schedule X: $100,000 less the $5,900 deduction is $94,100, taxed at
+        // $3,310.88 plus 9.3% over $75,197, less the $158 exemption credit.
+        close(
+            FilingStatus::Single,
+            100_000,
+            3_310.88 + 0.093 * (94_100.0 - 75_197.0) - 158.0,
+        );
+        // Schedule Y: $200,000 less $11,800 is $188,200; credit $316.
+        close(
+            FilingStatus::MarriedJoint,
+            200_000,
+            6_621.76 + 0.093 * (188_200.0 - 150_394.0) - 316.0,
+        );
+        // Schedule Z: $100,000 less $11,800 is $88,200; credit $158.
+        close(
+            FilingStatus::HeadOfHousehold,
+            100_000,
+            2_483.29 + 0.08 * (88_200.0 - 86_654.0) - 158.0,
+        );
+        // The 1% surcharge starts at $1 million of taxable income for joint filers too.
+        let joint = |inc: i64| {
+            y.income_tax("CA", FilingStatus::MarriedJoint, m(inc))
+                .unwrap()
+        };
+        let step = joint(1_111_800) - joint(1_011_800);
+        assert_eq!(step, m(12_300));
     }
 
     #[test]
