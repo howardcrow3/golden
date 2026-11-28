@@ -151,7 +151,7 @@ impl FederalTaxYear {
     }
 
     /// The standard deduction including the extra amount for each filer 65 or older.
-    fn standard_with_aged(&self, fs: FilingStatus, seniors: u8) -> Money {
+    pub(crate) fn standard_with_aged(&self, fs: FilingStatus, seniors: u8) -> Money {
         let aged = self
             .aged_extra_deduction
             .get(&fs)

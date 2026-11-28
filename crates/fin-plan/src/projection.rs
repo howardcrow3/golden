@@ -264,8 +264,18 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         let fica = fed.fica_for_wages(input.filing, employee_wages) + se.tax;
         // Half the self-employment tax and the qualified business income deduction come off
         // ordinary income.
+        let seniors = input
+            .people
+            .iter()
+            .filter(|p| !p.is_dependent && p.age_on(chrono_start(year)) >= 65)
+            .count()
+            .min(2) as u8;
         let qbi = if se_net > Money::ZERO {
-            let before = (wages - contrib + rmd - se.deduction).max(Money::ZERO);
+            // The cap is 20% of taxable income, which is after the standard deduction.
+            let before = (wages - contrib + rmd
+                - se.deduction
+                - fed.standard_with_aged(input.filing, seniors))
+            .max(Money::ZERO);
             crate::tax::federal::qbi_deduction(
                 input.filing,
                 (se_net - se.deduction).max(Money::ZERO),
@@ -276,12 +286,6 @@ pub fn project(input: &PlanInput, real_return: &dyn Fn(usize) -> f64) -> Project
         };
         let qcd = crate::rmd::qcd(age_now, input.charity, rmd);
         let earned_ordinary = (wages - contrib + rmd - se.deduction - qbi - qcd).max(Money::ZERO);
-        let seniors = input
-            .people
-            .iter()
-            .filter(|p| !p.is_dependent && p.age_on(chrono_start(year)) >= 65)
-            .count()
-            .min(2) as u8;
         // How much of Social Security is taxed depends on all other income, so it is worked
         // out again whenever withdrawals change that income.
         let adult_ages: Vec<i32> = input
@@ -1290,6 +1294,34 @@ mod tests {
             .iter()
             .filter(|r| r.year <= 2036)
             .all(|r| tier(r) == 0));
+    }
+
+    #[test]
+    fn the_business_income_deduction_is_capped_by_income_after_the_standard_deduction() {
+        let mut one = couple();
+        one.people.truncate(1);
+        one.filing = FilingStatus::Single;
+        one.accounts = Accounts {
+            cash: Money::from_dollars(2_000_000),
+            taxable: Money::ZERO,
+            taxable_gain_share: 0.0,
+            traditional: Money::ZERO,
+            roth: Money::ZERO,
+        };
+        one.social_security.clear();
+        one.annual_spending = Money::from_dollars(20_000);
+        one.streams[0].self_employed = true;
+        one.streams[0].annual_gross = Money::from_dollars(20_000);
+        one.streams[0].traditional_contribution = Money::ZERO;
+        let p = project_constant(&one, 0.0);
+        // $20,000 less half the self-employment tax is about $18,600. The deduction may not
+        // exceed 20% of that after the standard deduction (about $2,500), so a little of it is
+        // taxable. Capping it by the income before the standard deduction would wipe that out.
+        assert!(
+            p.rows[0].income_tax > Money::ZERO,
+            "{:?}",
+            p.rows[0].income_tax
+        );
     }
 
     #[test]
