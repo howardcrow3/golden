@@ -538,6 +538,41 @@ mod tests {
     }
 
     #[test]
+    fn flat_states_take_their_standard_deduction_or_exemption() {
+        // (state, single, joint): North Carolina's standard deduction, Georgia's personal
+        // exemption, Mississippi's exemption plus standard deduction, Louisiana's 2025 standard
+        // deduction, Indiana's $1,000 exemption, Colorado's start from federal taxable income and
+        // Massachusetts' personal exemption.
+        let y = StateTaxYear::y2026();
+        for (code, single, joint) in [
+            ("NC", 12_750, 25_500),
+            ("GA", 12_000, 24_000),
+            ("MS", 8_300, 16_600),
+            ("LA", 12_500, 25_000),
+            ("IN", 1_000, 2_000),
+            ("CO", 16_100, 32_200),
+            ("MA", 4_400, 8_800),
+        ] {
+            let rate = y.rules(code).unwrap().brackets.0[0].rate;
+            for (fs, d) in [
+                (FilingStatus::Single, single),
+                (FilingStatus::MarriedJoint, joint),
+            ] {
+                assert_eq!(
+                    y.income_tax(code, fs, m(d)),
+                    Some(Money::ZERO),
+                    "{code} {fs:?}"
+                );
+                assert_eq!(
+                    y.income_tax(code, fs, m(d + 10_000)),
+                    Some(m(10_000).mul_rate(rate)),
+                    "{code} {fs:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn illinois_and_pennsylvania_do_not_tax_retirement_income() {
         let r = ret(20_000, 30_000, &[70]);
         for c in ["IL", "PA", "MS"] {
