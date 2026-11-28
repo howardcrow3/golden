@@ -254,3 +254,16 @@ fn backup_carries_every_setting_the_person_made() {
     assert_eq!(fresh.closed_months().unwrap(), vec!["2026-10".to_string()]);
     assert_eq!(fresh.progress().unwrap(), None);
 }
+
+#[test]
+fn restore_keeps_what_kind_of_holding_each_one_is() {
+    let src = blank();
+    src.add_holding("2019 Honda Civic", "Vehicle", 1_200_000)
+        .unwrap();
+    let mut fresh = blank();
+    fresh.restore_backup(&src.backup_json().unwrap()).unwrap();
+    assert_eq!(
+        fresh.balance_sheet().unwrap().assets,
+        src.balance_sheet().unwrap().assets
+    );
+}

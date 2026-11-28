@@ -35,10 +35,11 @@ impl App {
             .into_iter()
             .map(|(id, n, _, _)| (id.0, n))
             .collect();
+        let institutions = self.db.account_institutions().map_err(|e| e.to_string())?;
         let accounts: Vec<Value> = self
             .accounts()?
             .into_iter()
-            .map(|a| json!({"name": a.name, "kind": a.kind, "balanceCents": a.balance_cents, "openingCents": a.opening_cents}))
+            .map(|a| json!({"name": a.name, "kind": a.kind, "balanceCents": a.balance_cents, "openingCents": a.opening_cents, "institution": institutions.get(&a.id)}))
             .collect();
         let mut txns = self
             .db
@@ -134,10 +135,17 @@ impl App {
                 .map_err(|e| e.to_string())?
                 .iter()
                 .any(|(_, n, _, _)| n == name);
-            let id = self
-                .db
-                .find_or_add_account(name, kind)
-                .map_err(|e| e.to_string())?;
+            let id = if existed {
+                self.db
+                    .find_or_add_account(name, kind)
+                    .map_err(|e| e.to_string())?
+            } else {
+                // The institution also holds a hand-entered holding's label, such as "Vehicle".
+                let institution = a["institution"].as_str().filter(|s| !s.is_empty());
+                self.db
+                    .add_account(name, kind, institution, None)
+                    .map_err(|e| e.to_string())?
+            };
             // A starting balance comes back only for accounts this copy didn't have: never
             // overwrite what someone has typed here.
             if !existed {
