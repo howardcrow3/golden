@@ -184,7 +184,10 @@ mod tests {
     #[test]
     fn saved_keys_round_trip_and_junk_is_ignored() {
         let k = key(9);
-        assert_eq!(key_from_hex(&key_to_hex(&k)).unwrap().to_bytes(), k.to_bytes());
+        assert_eq!(
+            key_from_hex(&key_to_hex(&k)).unwrap().to_bytes(),
+            k.to_bytes()
+        );
         assert!(key_from_hex("nope").is_none());
         assert!(key_from_hex(&"zz".repeat(32)).is_none());
     }
