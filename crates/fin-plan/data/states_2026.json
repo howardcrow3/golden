@@ -59,7 +59,8 @@
     "start_joint": 2600000,
     "end_joint": 3550000,
     "floor_joint": 800000
-   }
+   },
+   "military": {}
   },
   "AR": {
    "name": "Arkansas",
@@ -2063,7 +2064,8 @@
     "exempt_agi_single": 7500000,
     "exempt_agi_joint": 10000000,
     "benefit_cap_rate": 0.25
-   }
+   },
+   "military": {}
   },
   "DC": {
    "name": "District of Columbia",
@@ -2338,7 +2340,13 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The 2025 rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), which is not modelled; the zero bracket is close to the amount the standard deduction replaces. The enhanced senior deduction is not modelled."
+   "notes": "Idaho conforms to federal law, so its standard deduction matches the federal amount (Idaho Tax Commission, What's new for 2025 returns). The 2025 rate is 5.3% above a zero bracket of $4,811 (single) / $9,622 (joint), which is not modelled; the zero bracket is close to the amount the standard deduction replaces. The enhanced senior deduction is not modelled. Military retired pay is deducted from age 62 up to $48,216 (single) / $72,324 (joint), less Social Security received (Form 39R line 8); the CSRS, Idaho police and firefighter pensions that share the deduction, and the disability route at any age, are not modelled.",
+   "military": {
+    "min_age": 62,
+    "cap_single": 4821600,
+    "cap_joint": 7232400,
+    "less_social_security": true
+   }
   },
   "IL": {
    "name": "Illinois",
@@ -2406,7 +2414,8 @@
    "retirement": {
     "min_age": 0,
     "public_pension_full": true
-   }
+   },
+   "military": {}
   },
   "KY": {
    "name": "Kentucky",
@@ -2455,7 +2464,8 @@
      }
     ],
     "public_pension_full": true
-   }
+   },
+   "military": {}
   },
   "MA": {
    "name": "Massachusetts",
@@ -2630,7 +2640,8 @@
      "start_joint": 25000000,
      "width": 10000000
     }
-   }
+   },
+   "military": {}
   },
   "MI": {
    "name": "Michigan",
@@ -2674,7 +2685,8 @@
      "less_taxable_ss": true,
      "less_exemptions": true
     }
-   ]
+   ],
+   "military": {}
   },
   "MN": {
    "name": "Minnesota",
@@ -2786,7 +2798,8 @@
     },
     "public_pension_cap": 4763300,
     "public_less_ss_subtracted": true
-   }
+   },
+   "military": {}
   },
   "MS": {
    "name": "Mississippi",
@@ -3069,7 +3082,7 @@
    "std_joint": 3220000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 PIT-1 and PIT-ADJ instructions. Follows the federal standard deduction. Social Security is left out when AGI is $100,000 or less (single) / $150,000 or less (joint, head of household). Each person 65 or older takes an exemption of $8,000 that falls by $1,000 for each step of income (Table 1); the blind exemption, the $30,000 armed forces retirement exemption and the medical expense exemption are not modelled.",
+   "notes": "Checked against the 2025 PIT-1 and PIT-ADJ instructions. Follows the federal standard deduction. Social Security is left out when AGI is $100,000 or less (single) / $150,000 or less (joint, head of household). Each person 65 or older takes an exemption of $8,000 that falls by $1,000 for each step of income (Table 1); the blind exemption, the $30,000 armed forces retirement exemption and the medical expense exemption are not modelled. Up to $30,000 of armed forces retirement pay per retiree is exempt (PIT-ADJ line 24).",
    "joint_brackets": [
     [
      0,
@@ -3111,6 +3124,9 @@
     "width_joint": 300000,
     "start_separate": 1500000,
     "width_separate": 150000
+   },
+   "military": {
+    "per_person_cap": 3000000
    }
   },
   "NV": {
@@ -3232,7 +3248,8 @@
      }
     ],
     "public_pension_full": true
-   }
+   },
+   "military": {}
   },
   "OH": {
    "name": "Ohio",
@@ -3282,7 +3299,8 @@
     ],
     "senior_age": 65,
     "senior_credit": 5000
-   }
+   },
+   "military": {}
   },
   "OK": {
    "name": "Oklahoma",
@@ -3738,7 +3756,8 @@
    "retirement": {
     "min_age": 0,
     "public_pension_cap": 200000
-   }
+   },
+   "military": {}
   },
   "WY": {
    "name": "Wyoming",

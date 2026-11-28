@@ -168,6 +168,7 @@
             <option value="">Job</option>
             <option value="pension">Pension or annuity</option>
             <option value="public_pension">Government pension (federal, state or local)</option>
+            <option value="military_pension">Military retired pay</option>
             <option value="other">Rent or other taxable</option>
           </select>
         </label>

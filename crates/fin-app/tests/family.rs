@@ -156,3 +156,38 @@ fn match_and_hsa_carry_through_and_bad_kinds_are_errors() {
     h.streams[0].hsa_cents = -1;
     assert!(h.plan_input(today()).unwrap_err().contains("negative"));
 }
+
+#[test]
+fn military_retired_pay_starts_now_and_some_states_leave_it_out() {
+    use fin_app::household::StreamRow;
+    let mut h = Household::sample();
+    h.state = "MO".into();
+    h.streams.push(StreamRow {
+        label: "Military retired pay".into(),
+        person: 0,
+        annual_cents: 3_000_000,
+        self_employed: false,
+        start_year: None,
+        end_year: None,
+        contribution_cents: 0,
+        kind: Some("military_pension".into()),
+        employer_match_cents: 0,
+        hsa_cents: 0,
+    });
+    let p = h.plan_input(today()).unwrap();
+    let s = p.streams.last().unwrap();
+    assert!(s.payroll_exempt && s.pension && s.military_pension && !s.public_pension);
+    assert_eq!(s.start_year, fin_core::Datelike::year(&today()));
+    let tax = |h: &Household| -> i64 {
+        let input = h.plan_input(today()).unwrap();
+        fin_plan::projection::project(&input, &|_| 0.04)
+            .rows
+            .iter()
+            .map(|r| r.income_tax.cents())
+            .sum()
+    };
+    let military = tax(&h);
+    // The same money as ordinary taxable income pays more Missouri tax.
+    h.streams.last_mut().unwrap().kind = Some("other".into());
+    assert!(tax(&h) > military);
+}

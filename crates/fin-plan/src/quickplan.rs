@@ -179,6 +179,7 @@ pub fn run(req: &QuickPlanRequest) -> Result<QuickPlanResult, String> {
                 payroll_exempt: false,
                 pension: false,
                 public_pension: false,
+                military_pension: false,
                 employer_match: Money::ZERO,
                 hsa: Money::ZERO,
             }]
