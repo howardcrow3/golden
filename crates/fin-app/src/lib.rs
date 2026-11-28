@@ -43,6 +43,7 @@ pub mod setup;
 pub mod ssa;
 pub mod subscriptions;
 pub mod suggest;
+pub mod terms;
 pub mod transactions;
 pub mod transfers;
 pub mod vault;

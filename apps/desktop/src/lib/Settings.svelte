@@ -3,15 +3,16 @@
   import Privacy from "./Privacy.svelte";
   import About from "./About.svelte";
   import Feedback from "./Feedback.svelte";
+  import Terms from "./Terms.svelte";
 
-  export type SettingsTab = "Licence" | "Privacy" | "About" | "Feedback";
+  export type SettingsTab = "Licence" | "Privacy" | "Terms" | "About" | "Feedback";
   let {
     tab = $bindable("Licence"),
     canFeedback = false,
     notice = "",
     onclose,
   }: { tab?: SettingsTab; canFeedback?: boolean; notice?: string; onclose: () => void } = $props();
-  let tabs = $derived<SettingsTab[]>(canFeedback ? ["Licence", "Privacy", "About", "Feedback"] : ["Licence", "Privacy", "About"]);
+  let tabs = $derived<SettingsTab[]>(canFeedback ? ["Licence", "Privacy", "Terms", "About", "Feedback"] : ["Licence", "Privacy", "Terms", "About"]);
 
   function onkeydown(e: KeyboardEvent) {
     if (e.key === "Escape") onclose();
@@ -35,7 +36,7 @@
         <button class="tb-xbtn" aria-label="Close settings" onclick={onclose}>×</button>
       </div>
       <div class="tb-mpanel" role="tabpanel">
-        {#if tab === "Licence"}<License {notice} />{:else if tab === "Privacy"}<Privacy />{:else if tab === "About"}<About />{:else}<Feedback />{/if}
+        {#if tab === "Licence"}<License {notice} />{:else if tab === "Privacy"}<Privacy />{:else if tab === "Terms"}<Terms />{:else if tab === "About"}<About />{:else}<Feedback />{/if}
       </div>
     </div>
   </div>
