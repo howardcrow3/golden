@@ -2284,7 +2284,7 @@
    "std_joint": 1108800,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption combined. Checked against the 2025 N-11 instructions: distributions from employer-funded pension plans are exempt; IRA and 401(k) withdrawals are treated as taxable here.",
+   "notes": "Standard deduction plus personal exemption combined. Checked against the 2025 N-11 instructions: distributions from employer-funded pension plans are exempt; IRA and 401(k) withdrawals are treated as taxable here. Adds an extra $1,144 exemption for each person 65 or older (2025 N-11 instructions).",
    "joint_brackets": [
     [
      0,
@@ -2338,7 +2338,9 @@
    "retirement": {
     "pension_full": true,
     "min_age": 0
-   }
+   },
+   "aged_extra_single": 114400,
+   "aged_extra_joint": 114400
   },
   "IA": {
    "name": "Iowa",
@@ -2670,7 +2672,7 @@
    "std_joint": 2730000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Standard deduction and exemption phase-outs are not modelled.",
+   "notes": "Checked against the 2025 Form 1040ME instructions and Schedule 1S. Social Security is not taxed. Each person 55 or older may deduct up to $48,216 of pension and IRA income, less all Social Security and railroad benefits received; the deduction fades out over $100,000 of AGI above $125,000 (single) / $250,000 (joint). Standard deduction and exemption phase-outs are not modelled. Follows the federal extra standard deduction at 65.",
    "joint_brackets": [
     [
      0,
@@ -2700,7 +2702,9 @@
      "width": 10000000
     }
    },
-   "military": {}
+   "military": {},
+   "aged_extra_single": 205000,
+   "aged_extra_joint": 165000
   },
   "MI": {
    "name": "Michigan",
@@ -2772,7 +2776,7 @@
    "std_joint": 3060000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Standard deduction phase-out at higher incomes is not modelled. The $84,490 / $108,320 thresholds are checked against the Minnesota Department of Revenue's Social Security subtraction page (updated 2025-12-17), which also says the subtraction falls 10% for each $4,000 of AGI over them; House Research (Minnesota Taxation of Social Security, 2025) confirms a part of $4,000 counts as a full step, and that is modelled. A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law.",
+   "notes": "Standard deduction phase-out at higher incomes is not modelled. The $84,490 / $108,320 thresholds are checked against the Minnesota Department of Revenue's Social Security subtraction page (updated 2025-12-17), which also says the subtraction falls 10% for each $4,000 of AGI over them; House Research (Minnesota Taxation of Social Security, 2025) confirms a part of $4,000 counts as a full step, and that is modelled. A bill to make the subtraction unlimited (H.F. 100) was seen only as a proposal, not as law. Adds $2,000 at 65 for single filers and $1,550 each for married filers (2025 M1 instructions).",
    "joint_brackets": [
     [
      0,
@@ -2798,7 +2802,9 @@
     "phaseout_width": 4000000,
     "phaseout_step": 400000
    },
-   "military": {}
+   "military": {},
+   "aged_extra_single": 200000,
+   "aged_extra_joint": 155000
   },
   "MO": {
    "name": "Missouri",
@@ -3029,7 +3035,7 @@
    "std_joint": 1770000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption credit $176 per filer.",
+   "notes": "Personal exemption credit $176 per filer. Each person 65 or older adds $2,000 (single) or $1,650 (married) to the standard deduction (2025 Form 1040N chart; not yet indexed to 2026 here).",
    "joint_brackets": [
     [
      0,
@@ -3046,7 +3052,9 @@
    ],
    "credit_single": 17600,
    "credit_joint": 35200,
-   "military": {}
+   "military": {},
+   "aged_extra_single": 200000,
+   "aged_extra_joint": 165000
   },
   "NH": {
    "name": "New Hampshire",
@@ -3436,7 +3444,7 @@
    "std_joint": 1470000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Standard deduction plus personal exemption combined. Oklahoma excludes up to $10,000 of pension and retirement income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income.",
+   "notes": "Standard deduction plus personal exemption combined. Oklahoma excludes up to $10,000 of pension and retirement income per person. The cap is counted for every adult of that age, which may overstate it when one spouse has all the retirement income. Each person 65 or older gets another $1,000 exemption when federal AGI is $15,000 or less ($25,000 joint, $12,500 separate; head of household uses the joint line here, though the form's is $19,000).",
    "joint_brackets": [
     [
      0,
@@ -3464,7 +3472,18 @@
      }
     ]
    },
-   "military": {}
+   "military": {},
+   "age_exemption": {
+    "age": 65,
+    "amount": 100000,
+    "step": 100000,
+    "start_single": 1500000,
+    "width_single": 100000000000,
+    "start_joint": 2500000,
+    "width_joint": 100000000000,
+    "start_separate": 1250000,
+    "width_separate": 100000000000
+   }
   },
   "OR": {
    "name": "Oregon",
@@ -3491,7 +3510,7 @@
    "std_joint": 582000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Personal exemption credit $256 per filer; federal income tax is subtracted up to $8,500, a limit that steps down over federal AGI of $125,000 ($250,000 joint) to nothing at $145,000 ($290,000); 2025 Table 4 figures. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled.",
+   "notes": "Personal exemption credit $256 per filer; federal income tax is subtracted up to $8,500, a limit that steps down over federal AGI of $125,000 ($250,000 joint) to nothing at $145,000 ($290,000); 2025 Table 4 figures. Checked against the 2025 Publication OR-17: Social Security is subtracted; the retirement income credit (age 62+, household income under $22,500 / $45,000; 9% of the lesser of retirement income and $7,500 / $15,000 less benefits less income over $15,000 / $30,000) is modelled, with household income taken as federal AGI less taxable Social Security. The federal pension subtraction (by months of service before October 1991) is not modelled. Adds $1,200 at 65 for single and head of household, $1,000 each for married filers (2025 instructions).",
    "joint_brackets": [
     [
      0,
@@ -3576,7 +3595,9 @@
      ]
     ],
     "head_uses_joint": true
-   }
+   },
+   "aged_extra_single": 120000,
+   "aged_extra_joint": 100000
   },
   "PA": {
    "name": "Pennsylvania",
@@ -3773,7 +3794,7 @@
    "std_joint": 1750000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled. Military benefits subtraction of up to $40,000 each.",
+   "notes": "Virginia's age deduction is $12,000 for each person 65 or older, reduced $1 for every $1 that income (AGI less taxable Social Security) is over $50,000 single / $75,000 married (tax.virginia.gov/subtractions). The older rule for people born before 1939 is not modelled. Military benefits subtraction of up to $40,000 each. Each person 65 or older also gets an $800 personal exemption (2025 Form 760 instructions).",
    "age_deduction": {
     "age": 65,
     "amount": 1200000,
@@ -3782,7 +3803,9 @@
    },
    "military": {
     "per_person_cap": 4000000
-   }
+   },
+   "aged_extra_single": 80000,
+   "aged_extra_joint": 80000
   },
   "VT": {
    "name": "Vermont",
@@ -3809,7 +3832,7 @@
    "std_joint": 2590000,
    "joint_multiplier": 1.0,
    "approximate": true,
-   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Checked against the 2025 Vermont income booklet (Retirement Income Exemption Worksheet): Social Security is fully exempt under $55,000 (single, head of household, separate) / $70,000 (joint) of Vermont AGI, and the exemption falls in a straight line to nothing at $65,000 / $80,000. The exemption is an either-or with the exemption for some government pensions, which is not modelled. Military retirement pay is exempt in full with AGI up to $125,000, falling to nothing at $175,000 (Military Retirement Income Exemption Worksheet).",
+   "notes": "Brackets and standard deduction + exemption from the 2025 IN-111 instructions (2026 widths unpublished). Over $150,000 AGI, tax is at least 3% of AGI (the US-interest subtraction is not modelled). Checked against the 2025 Vermont income booklet (Retirement Income Exemption Worksheet): Social Security is fully exempt under $55,000 (single, head of household, separate) / $70,000 (joint) of Vermont AGI, and the exemption falls in a straight line to nothing at $65,000 / $80,000. The exemption is an either-or with the exemption for some government pensions, which is not modelled. Military retirement pay is exempt in full with AGI up to $125,000, falling to nothing at $175,000 (Military Retirement Income Exemption Worksheet). Adds $1,250 for each person 65 or older (2025 booklet).",
    "joint_brackets": [
     [
      0,
@@ -3844,7 +3867,9 @@
      "start_joint": 12500000,
      "width": 5000000
     }
-   }
+   },
+   "aged_extra_single": 125000,
+   "aged_extra_joint": 125000
   },
   "WA": {
    "name": "Washington",
@@ -3881,7 +3906,7 @@
    "std_joint": 2724000,
    "joint_multiplier": 1.0,
    "approximate": false,
-   "notes": "The sliding-scale standard deduction falls by 12% (single) / 19.778% (joint) of income over the line, to nothing; the lines come from the 2025 Standard Deduction Table scaled to the 2026 maximum. From 2025 each person 67 or older may subtract up to $24,000 of retirement income (Publication 126, 1/26); the smaller $5,000 subtraction at 65 for incomes under $15,000 / $30,000 is not modelled. Claiming the subtraction forgoes Wisconsin tax credits, which are not modelled.",
+   "notes": "The sliding-scale standard deduction falls by 12% (single) / 19.778% (joint) of income over the line, to nothing; the lines come from the 2025 Standard Deduction Table scaled to the 2026 maximum. From 2025 each person 67 or older may subtract up to $24,000 of retirement income (Publication 126, 1/26); the smaller $5,000 subtraction at 65 for incomes under $15,000 / $30,000 is not modelled. Claiming the subtraction forgoes Wisconsin tax credits, which are not modelled. Adds a $250 exemption for each person 65 or older (2025 Form 1 instructions).",
    "joint_brackets": [
     [
      0,
@@ -3917,7 +3942,9 @@
     "start_joint": 3060300,
     "end_joint": 16833200,
     "floor_joint": 0
-   }
+   },
+   "aged_extra_single": 25000,
+   "aged_extra_joint": 25000
   },
   "WV": {
    "name": "West Virginia",
